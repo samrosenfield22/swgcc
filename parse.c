@@ -26,6 +26,10 @@ decl -> type id initializer | type id(arglist) {stmtlist}
 initializer -> e | = expr
 stmtlist -> stmt*
 
+instead of
+decl -> type id (= comma)?
+do
+decl -> type id = logical (, id = logical)*
 
 this seems to not work for statement:
   int c=5, d, e=6;
@@ -79,6 +83,8 @@ node *base_p(void);
 
 static bool match_op(const char *op);
 static bool match_op_peek(const char *op);
+static bool match_variable(void);
+static bool match_variable_peek(void);
 static void index_advance(void);
 node *pn_create(ptree_tok_type type, int c);
 
@@ -155,44 +161,51 @@ node *stmt_p(void)
 }
 
 //decl -> type id (= comma)?
+//decl -> type id = logical (, id = logical)*
+//can i do  int a=5, b=c=6; ??
 node *decl_p(void)
 {
     node *root = pn_create(DECL, '\0');
     int ci = 0;
 
+    //get the type
     assert((tp->type == IDENTIFIER) && (tp->sym->type == SYM_TYPE_KW));
     //i don't know what to do w the type yet (Set the variable type, etc)
-
-    index_advance();
-
-    if(!(tp->type==IDENTIFIER && tp->sym->type==SYM_IDENTIFIER))  //can't have "int 5" or "int for"
+    
+    while(1)
     {
-        PARSER_STATUS = P_TYPE_NOT_FOLLOWED_BY_ID;
-        return NULL;
-    }
-    if(tp->sym->declared == true) //can't declare a var that's already been declared
-    {
-        PARSER_STATUS = P_ALREADY_DECLD;
-        return NULL;
-    }
-    tp->sym->declared = true;   //declare it
-
-    if(match_op_peek("="))
-    {
-        //
-
-        root->children[ci++] = pn_create(NUMBER, (int)(tp->sym)); //lvalue, so we use the address of the symbol
-        root->children[ci++] = pn_create(PRIM, '=');
-
-        //advance to the comma expression
-        index_advance();
         index_advance();
 
-        //
-        root->children[ci++] = comma_p();
-        if(PARSER_STATUS != P_OK) return NULL;
+        //if(!(tp->type==IDENTIFIER && tp->sym->type==SYM_IDENTIFIER))  //can't have "int 5" or "int for"
+        if(!match_variable())
+        {
+            PARSER_STATUS = P_TYPE_NOT_FOLLOWED_BY_ID;
+            return NULL;
+        }
+        if(tp->sym->declared == true) //can't declare a var that's already been declared
+        {
+            PARSER_STATUS = P_ALREADY_DECLD;
+            return NULL;
+        }
+        tp->sym->declared = true;   //declare it
 
-        root->children[ci++] = pn_create(SEMACT, '=');
+        if(match_op_peek("="))
+        {
+            root->children[ci++] = pn_create(NUMBER, (int)(tp->sym)); //lvalue, so we use the address of the symbol
+            root->children[ci++] = pn_create(PRIM, '=');
+
+            //advance to the comma expression
+            index_advance();
+            index_advance();
+
+            //
+            root->children[ci++] = logical_p();
+            if(PARSER_STATUS != P_OK) return NULL;
+
+            root->children[ci++] = pn_create(SEMACT, '=');
+
+
+        }
     }
 
     return root;
@@ -561,10 +574,24 @@ static bool match_op(const char *op)
 //checks the next token
 static bool match_op_peek(const char *op)
 {
-    bool match;
+    //bool match;
     tp++;
-    if(tp->type != OPERATOR)  match = false;
-    else match = (strcmp(op, tp->opstr)==0);
+    //if(tp->type != OPERATOR)  match = false;
+    //else match = (strcmp(op, tp->opstr)==0);
+    bool match = match_op(op);
+    tp--;
+    return match;
+}
+
+static bool match_variable(void)
+{
+    return (tp->type==IDENTIFIER && tp->sym->type==SYM_IDENTIFIER);
+}
+
+static bool match_variable_peek(void)
+{
+    tp++;
+    bool match = match_variable();
     tp--;
     return match;
 }
