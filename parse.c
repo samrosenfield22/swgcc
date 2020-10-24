@@ -39,6 +39,13 @@ given the productions:
 we expand:
   stmt -> decl -> comma (5,d,e=6) (breaks on e=6 because e isn't declared)
 
+stmtlist -> {stmt*} | stmt
+stmt -> (stmt_val | conditional);
+stmt_val -> comma | decl
+conditional -> ifcond | ifelse | forloop
+forloop -> for(stmt_val; comma; comma) stmtlist
+
+
 
 int val = 5,6,4,3;
 
@@ -60,6 +67,8 @@ if (thing) {}
 
 #include "parse.h"
 
+#define PARSER_FAIL(reason)     {PARSER_STATUS = reason; return NULL;}
+
 
 //const char *rp = NULL;
 //int ri = 0;
@@ -70,6 +79,7 @@ parser_status_type PARSER_STATUS = P_OK;
 
 node *stmtlist_p(void);
 node *stmt_p(void);
+node *stmt_val_p(void);
 node *decl_p(void);
 node *comma_p(void);
 node *assign_p(void);
@@ -81,6 +91,8 @@ node *shift_p(void);
 node *sum_p(void);
 node *prod_p(void);
 node *base_p(void);
+
+node *forloop_p(void);
 
 static bool match_op(const char *op);
 static bool match_op_peek(const char *op);
@@ -173,6 +185,7 @@ node *stmtlist_p(void)
         {
             PARSER_STATUS = P_STMTLIST_NO_MATCHING_CURLY;
             return NULL;
+            //PARSER_FAIL(P_STMTLIST_NO_MATCHING_CURLY)
         }
         root->children[ci++] = pn_create(PRIM, '}');
     }
@@ -185,10 +198,80 @@ node *stmtlist_p(void)
     return root;
 }
 
-//stmt -> (expr | decl);    //expr -> comma
+//stmt -> (stmt_val | conditional);
 node *stmt_p(void)
 {
-    node *root = pn_create(STMT, '\0');
+    node *root = pn_create(STMT_VAL, '\0');
+    int ci = 0;
+
+    if((tp->type == IDENTIFIER) && (tp->sym->type == SYM_OTHER_KW))
+    {
+        if(strcmp(tp->sym->name,"for")==0)
+            root->children[ci++] = forloop_p();
+        else assert(0);
+    }
+    else
+        root->children[ci++] = stmt_val_p();
+
+    //eat the semicolon
+    if(!match_op(";"))
+    {
+        PARSER_STATUS = P_MISSING_SEMICOLON;
+        return NULL;
+    }
+    index_advance();
+
+    return root;
+}
+
+//forloop -> for(stmt_val; comma; comma) stmtlist
+node *forloop_p(void)
+{
+    node *root = pn_create(STMT_VAL, '\0');
+    int ci = 0;
+
+    index_advance();
+
+    if(!match_op("(")) {PARSER_STATUS = P_FORLOOP_MISSING_PARENS; return NULL;}
+    index_advance();
+    printf("matched (\n");
+
+    //
+    root->children[ci++] = stmt_val_p();
+    if(PARSER_STATUS != P_OK) return NULL;
+    printf("matched init\n");
+
+    if(!match_op(";")) {PARSER_STATUS = P_MISSING_SEMICOLON; return NULL;}
+    index_advance();
+    printf("matched ;\n");
+
+    root->children[ci++] = comma_p();
+    if(PARSER_STATUS != P_OK) return NULL;
+    printf("matched condition\n");
+
+    if(!match_op(";")) {PARSER_STATUS = P_MISSING_SEMICOLON; return NULL;}
+    index_advance();
+    printf("matched ;\n");
+
+    root->children[ci++] = comma_p();
+    if(PARSER_STATUS != P_OK) return NULL;
+    printf("matched increment\n");
+
+    if(!match_op(")")) {PARSER_STATUS = P_FORLOOP_MISSING_PARENS; return NULL;}
+    index_advance();
+
+    //
+    root->children[ci++] = stmtlist_p();
+    if(PARSER_STATUS != P_OK) return NULL;
+    
+
+    return root;
+}
+
+//stmt_val -> (expr | decl)    //expr -> comma
+node *stmt_val_p(void)
+{
+    node *root = pn_create(STMT_VAL, '\0');
     int ci = 0;
     
     //if the first token is a type, then the statement is a decl
@@ -200,13 +283,6 @@ node *stmt_p(void)
 
     root->children[ci++] = stmt_type();
     if(PARSER_STATUS != P_OK) return NULL;
-
-    if(!match_op(";"))
-    {
-        PARSER_STATUS = P_MISSING_SEMICOLON;
-        return NULL;
-    }
-    index_advance();
 
     return root;
 }
@@ -296,7 +372,6 @@ node *comma_p(void)
 //assign -> id (= | += | -= | *= | /= | %= | <<= | >>= | &= | |= | ^=) assign | logical
 node *assign_p(void)
 {
-    printf("parsing assign expression\n");
     node *root = pn_create(ASSIGN, '\0');
     int ci = 0;
 
@@ -583,7 +658,7 @@ node *base_p(void)
         //printf("using rvalue %d from identifier %s\n", tp->sym->val, tp->sym->name);
         if(tp->sym->declared == true)
         {
-            if(!tp->sym->initialized) printf("--- warning: using uninitialized variable %s ---", tp->sym->name);
+            
 
             //root->children[ci++] = pn_create(NUMBER, tp->sym->val);
             root->children[ci++] = pn_create(VARIABLE, (int)tp->sym);
@@ -703,6 +778,7 @@ void print_ptree_recursive(node *pt, int depth)
     {
         case STMTLIST:    printf("stmtlist"); break;
         case STMT:        printf("stmt");   break;
+        case STMT_VAL:    printf("stmt_val"); break;
         case DECL:        printf("decl");   break;
         case COMMA:       printf("comma");   break;
         case ASSIGN:      printf("assign");   break;
@@ -714,9 +790,12 @@ void print_ptree_recursive(node *pt, int depth)
         case SUM:     printf("sum");     break;
         case PROD:    printf("prod");     break;
         case BASE:    printf("base");     break;
+        case PRIM:    printf("prim");   break;
+
+        case FORLOOP:   printf("forloop"); break;
 
         case NUMBER:  printf("prim");   break;
-        case PRIM:    printf("prim");   break;
+        case VARIABLE: printf("variable");  break;
         case SEMACT:  printf("semact"); break;
     }
     if(pt->c)

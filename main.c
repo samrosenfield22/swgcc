@@ -10,6 +10,9 @@
 
 int main(void)
 {
+    //int a;
+    //for(if(2>1) {a=2;} else {a=3;};     a<10;       a++) {printf("%d\n", a);}
+
     nfa_builder_initialize();
     nfa_simulator_initialize();
 
@@ -32,15 +35,17 @@ int main(void)
         dump_symbol_table();
 
         void *parse_tree = parse(tokens);
+        if(!parse_tree)
+            continue;
+        print_ptree(parse_tree);
+        printf("\n\n");
+        
+        //int res = ptree_evaluate(parse_tree);
+        generate_intermediate_code(parse_tree);
+        dump_intermediate();
 
-        if(parse_tree)
-        {
-            print_ptree(parse_tree);
-            printf("\n\n");
-
-            int res = ptree_evaluate(parse_tree);
-            printf("%d\n", res);
-        }
+        int res = run_intermediate_code();
+        printf("\n%d\n", res);
     }
 
     

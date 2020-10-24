@@ -7,6 +7,8 @@
 
 void ptree_evaluate_recursive(node *n);
 
+static void generate_intermediate_code_recursive(node *n);
+
 void sim_stack_push(int n);
 int sim_stack_pop(void);
 void add_op(void);
@@ -30,6 +32,117 @@ void assign_op(void);
 
 int sim_stack[256];
 int *sp = sim_stack;
+
+typedef struct intermediate_spec_s
+{
+    ptree_tok_type type;
+    int val;
+} intermediate_spec;
+intermediate_spec code[1000];
+int ispec_index = 0;
+
+void generate_intermediate_code(node *n)
+{
+    ispec_index = 0;
+
+    generate_intermediate_code_recursive(n);
+    //return code;
+}
+
+static void generate_intermediate_code_recursive(node *n)
+{
+    for(int ci=0; n->children[ci]; ci++)
+    {
+        generate_intermediate_code_recursive(n->children[ci]);
+    }
+
+    if(n->type == SEMACT || n->type==NUMBER || n->type==VARIABLE)
+    {
+        code[ispec_index].type = n->type;
+        code[ispec_index].val = n->c;
+        ispec_index++;
+    }
+}
+
+int run_intermediate_code(void)
+{
+    sp = sim_stack;
+
+    for(int i=0; i<ispec_index; i++)
+    {
+        intermediate_spec *instr = &code[i];
+
+        if(instr->type == SEMACT)
+        {
+            //printf("semantic %c\n", n->c);
+            switch(instr->val)
+            {
+                case ' ': case '(': case ')': break;
+                case '+': add_op(); break;
+                case '-': sub_op(); break;
+                case '*': mult_op(); break;
+                case '/': div_op(); break;
+                case '%': mod_op(); break;
+                case 'L': shl_op(); break;
+                case 'R': shr_op(); break;
+                case 'O': log_or_op(); break;
+                case 'A': log_and_op(); break;
+                case '&': bw_and_op(); break;
+                case '|': bw_or_op(); break;
+                case '^': bw_xor_op(); break;
+                case 'E': eq_op(); break;
+                case 'N': neq_op(); break;
+                case 'g': geq_op(); break;
+                case 'l': leq_op(); break;
+                case ',': comma_op(); break;
+                case '=': assign_op(); break;
+                //case '': _op(); break;
+
+                default:  printf("unknown semantic action %c\n", instr->val); assert(0);
+            }
+        }
+        else if(instr->type == NUMBER)
+            sim_stack_push(instr->val);
+        else if(instr->type == VARIABLE)    //only for rvalues. for lvalues, we want type NUMBER (push the address)
+        {
+            symbol *sym = (symbol *)instr->val;
+            if(!sym->initialized) printf("--- warning: using uninitialized variable %s ---", sym->name);
+            sim_stack_push(((symbol *)(instr->val))->val);
+        }
+    }
+
+    //pop the final result off the stack, return it
+    int res = 0;
+    if(sp != sim_stack)   //pure declarations (i.e. "int num;") don't create any value that goes on the stack
+        res = sim_stack_pop();
+    assert(sp >= sim_stack);
+    return res;
+}
+
+void dump_intermediate(void)
+{
+    for(int i=0; i<ispec_index; i++)
+    {
+        printf("%0d\t", i);
+        intermediate_spec *instr = &code[i];
+        switch(instr->type)
+        {
+            case SEMACT:
+                printf("SEMACT,\t  %c\n", instr->val);
+                break;
+            case NUMBER:
+                printf("NUMBER,\t  %d\n", instr->val);
+                break;
+            case VARIABLE:
+                printf("VARIABLE, %d\n", instr->val);
+                break;
+            default: assert(0);
+        }
+    }
+}
+
+
+
 
 int ptree_evaluate(node *n)
 {
@@ -94,7 +207,11 @@ void ptree_evaluate_recursive(node *n)
         sim_stack_push(n->c);
     else if(n->type == VARIABLE)    //only for rvalues. for lvalues, we want type NUMBER (push the address)
     {
-        printf("pushing variable val %d\n", ((symbol *)(n->c))->val);
+        //printf("pushing variable val %d\n", ((symbol *)(n->c))->val);
+        //if(!tp->sym->initialized) printf("--- warning: using uninitialized variable %s ---", tp->sym->name);
+
+        symbol *sym = (symbol *)n->c;
+        if(!sym->initialized) printf("--- warning: using uninitialized variable %s ---", sym->name);
         sim_stack_push(((symbol *)(n->c))->val);
     }
 }

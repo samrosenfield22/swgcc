@@ -8,6 +8,7 @@
 typedef enum ptree_tok_type_e
 {
     STMTLIST,
+    STMT_VAL,
     STMT,
     DECL,
     COMMA,
@@ -21,6 +22,8 @@ typedef enum ptree_tok_type_e
     PROD,
     BASE,
     PRIM,
+
+    FORLOOP,
 
     NUMBER,     //literals and variable lvalues
     VARIABLE,   //only for variable rvalues
@@ -45,7 +48,8 @@ typedef enum parser_status_type_e
     P_DECL_NO_EQUALS,
     P_TYPE_NOT_FOLLOWED_BY_ID,
     P_STMTLIST_NO_MATCHING_CURLY,
-    P_MISSING_SEMICOLON
+    P_MISSING_SEMICOLON,
+    P_FORLOOP_MISSING_PARENS
 } parser_status_type;
 
 
