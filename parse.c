@@ -585,7 +585,8 @@ node *base_p(void)
         {
             if(!tp->sym->initialized) printf("--- warning: using uninitialized variable %s ---", tp->sym->name);
 
-            root->children[ci++] = pn_create(NUMBER, tp->sym->val);
+            //root->children[ci++] = pn_create(NUMBER, tp->sym->val);
+            root->children[ci++] = pn_create(VARIABLE, (int)tp->sym);
             index_advance();
         }
         else

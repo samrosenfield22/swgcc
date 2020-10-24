@@ -20,9 +20,10 @@ typedef enum ptree_tok_type_e
     SUM,
     PROD,
     BASE,
-
     PRIM,
+
     NUMBER,
+    VARIABLE,
     SEMACT
 } ptree_tok_type;
 

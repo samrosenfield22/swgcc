@@ -53,11 +53,13 @@ void ptree_evaluate_recursive(node *n)
         ptree_evaluate_recursive(n->children[ci]);
     }
 
-    if(n->type == SEMACT)
+    /*if(n->type == SEMACT)
         printf("SEMACT,\t %c\n", n->c);
     else if(n->type == NUMBER)
         printf("NUMBER,\t %d\n", n->c);
-    return;
+    else if(n->type == VARIABLE)
+        printf("VARIABLE,\t %d\n", ((symbol *)(n->c))->val);
+    return;*/
 
     if(n->type == SEMACT)
     {
@@ -90,6 +92,11 @@ void ptree_evaluate_recursive(node *n)
     }
     else if(n->type == NUMBER)
         sim_stack_push(n->c);
+    else if(n->type == VARIABLE)    //only for rvalues. for lvalues, we want type NUMBER (push the address)
+    {
+        printf("pushing variable val %d\n", ((symbol *)(n->c))->val);
+        sim_stack_push(((symbol *)(n->c))->val);
+    }
 }
 
 
