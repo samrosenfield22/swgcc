@@ -22,8 +22,8 @@ typedef enum ptree_tok_type_e
     BASE,
     PRIM,
 
-    NUMBER,
-    VARIABLE,
+    NUMBER,     //literals and variable lvalues
+    VARIABLE,   //only for variable rvalues
     SEMACT
 } ptree_tok_type;
 

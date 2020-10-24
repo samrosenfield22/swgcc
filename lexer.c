@@ -99,7 +99,6 @@ lex_token *lexer(const char *str)
         tp++;
     }
 
-    dump_symbol_table();
     return toks;
 }
 

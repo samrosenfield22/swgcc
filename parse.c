@@ -42,8 +42,8 @@ we expand:
 
 int val = 5,6,4,3;
 
-cond -> if (expr) {stmtlist}
-forloop -> for(stmt; stmt; stmt)
+cond -> if (expr) stmtlist
+forloop -> for(stmt; comma; comma) stmtlist
 
 int num = func(5);
 int main(void) {}

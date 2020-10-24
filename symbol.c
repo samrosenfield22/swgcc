@@ -13,10 +13,13 @@ symbol SYMBOL_TABLE[SYMTABLE_LEN];
 int sym_index = 0;
 
 const char *type_idents[] = {"int", "char", "float", "double", "short", "long"};
+const char *other_keywords[] = {"if", "else", "do", "for", "while", "switch", "case"};
 void symbol_table_initialize(void)
 {
     for(int i=0; i<sizeof(type_idents)/sizeof(type_idents[0]); i++)
         symbol_create(type_idents[i], SYM_TYPE_KW);
+    for(int i=0; i<sizeof(other_keywords)/sizeof(other_keywords[0]); i++)
+        symbol_create(type_idents[i], SYM_OTHER_KW);
 }
 
 symbol *symbol_search(const char *name, symbol_type type)

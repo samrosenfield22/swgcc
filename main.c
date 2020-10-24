@@ -29,7 +29,8 @@ int main(void)
         void *tokens = lexer(inbuf);
         if(!tokens)
             continue;
-        
+        dump_symbol_table();
+
         void *parse_tree = parse(tokens);
 
         if(parse_tree)
