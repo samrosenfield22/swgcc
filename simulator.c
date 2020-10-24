@@ -54,6 +54,12 @@ void ptree_evaluate_recursive(node *n)
     }
 
     if(n->type == SEMACT)
+        printf("SEMACT,\t %c\n", n->c);
+    else if(n->type == NUMBER)
+        printf("NUMBER,\t %d\n", n->c);
+    return;
+
+    if(n->type == SEMACT)
     {
         //printf("semantic %c\n", n->c);
         switch(n->c)

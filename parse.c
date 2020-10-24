@@ -5,6 +5,7 @@ https://en.cppreference.com/w/c/language/operator_precedence
 
 
 -------------- top level -------------
+stmtlist -> {stmt*} | stmt
 stmt -> (comma | decl);
 decl -> type id = logical (, id = logical)*
 comma -> assign (, assign)*
@@ -16,7 +17,7 @@ relational -> shift (> shift)* | shift (>= shift)* | shift (< shift)* | shift (<
 shift -> sum (<< sum)* | sum (>> sum)* | sum
 sum ->  prod (+ prod)* | prod (- prod)* | prod
 prod -> base (* base)* | base (/ base)* | base (% base)* | base
-base -> num | id | (expr)
+base -> num | id | (comma)
 
 
 base -> num | id | (expr) | id(arglist)
@@ -24,8 +25,6 @@ arglist -> e | (, expr)*
 
 decl -> type id initializer | type id(arglist) {stmtlist}
 initializer -> e | = expr
-
-stmtlist -> {stmt*} | stmt
 
 instead of
 decl -> type id (= comma)?
