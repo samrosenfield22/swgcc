@@ -27,6 +27,9 @@ int main(void)
         inbuf[strlen(inbuf)-1] = '\0';
 
         void *tokens = lexer(inbuf);
+        if(!tokens)
+            continue;
+        
         void *parse_tree = parse(tokens);
 
         if(parse_tree)

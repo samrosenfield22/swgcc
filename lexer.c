@@ -29,9 +29,9 @@ regex_action_pair regex_table[] =
     //{"[A-Za-z]+[A-Za-z0-9]*", NULL, make_identifier},
     {"[a-z]+", NULL, make_identifier},
     {"[0-9]+", NULL, make_decimal},
-    //{"0x[0-9A-Fa-f]+", NULL, make_hex},
-    //{"0b(0|1)+", NULL, make_bin},
-    {"= | , | \\&\\& | \\|\\| | \\^ | \\& | \\| | \\^ | == | != | < | > | <= | >= | << | >> | \\+ | - | \\* | \\/ | \\% | \\( | \\)", NULL, make_op}
+    {"0x[0-9A-Fa-f]+", NULL, make_hex},
+    {"0b(0|1)+", NULL, make_bin},
+    {"; | { | } | = | , | \\&\\& | \\|\\| | \\^ | \\& | \\| | \\^ | == | != | < | > | <= | >= | << | >> | \\+ | - | \\* | \\/ | \\% | \\( | \\)", NULL, make_op}
     //still missing ? (ternary), +=, -=, *=...
     //{"\\+ | - | \\* | \\/ | \\% | \\&\\& | \\|\\| | \\^ | \\| | \\&", NULL, make_op},
 };
@@ -76,7 +76,17 @@ lex_token *lexer(const char *str)
             }
             //printf("%d moves\n", moves);
         }
-        assert(longest_match != -1);
+
+        //no matches found for a token
+        //assert(longest_match != -1);
+        if(longest_match == -1)
+        {
+            printf("no lexer match at %s\n", buf);
+            for(int i=0; i<18 + (bp-buf); i++) putchar(' ');
+            printf("^\n");
+            free(toks);
+            return NULL;
+        }
 
         //break off the lexeme
         //printf("breaking off %d chars from \'%s\'\n", longest_match_ct, bp);
@@ -113,14 +123,17 @@ static void make_decimal(const char *l, lex_token *tp)
 static void make_hex(const char *l, lex_token *tp)
 {
     tp->type = LITERAL;
-    tp->litval = strtol(l, NULL, 10);
+    tp->litval = strtol(l, NULL, 16);
     tp->opstr = NULL;
     tp->sym = NULL;
 }
 
 static void make_bin(const char *l, lex_token *tp)
 {
-
+    tp->type = LITERAL;
+    tp->litval = strtol(l+2, NULL, 2);
+    tp->opstr = NULL;
+    tp->sym = NULL;
 }
 
 static void make_op(const char *l, lex_token *tp)

@@ -7,6 +7,7 @@
 
 typedef enum ptree_tok_type_e
 {
+    STMTLIST,
     STMT,
     DECL,
     COMMA,
@@ -41,7 +42,9 @@ typedef enum parser_status_type_e
     P_UNMATCHED_PAREN,
     P_ALREADY_DECLD,
     P_DECL_NO_EQUALS,
-    P_TYPE_NOT_FOLLOWED_BY_ID
+    P_TYPE_NOT_FOLLOWED_BY_ID,
+    P_STMTLIST_NO_MATCHING_CURLY,
+    P_MISSING_SEMICOLON
 } parser_status_type;
 
 

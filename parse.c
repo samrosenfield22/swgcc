@@ -24,7 +24,8 @@ arglist -> e | (, expr)*
 
 decl -> type id initializer | type id(arglist) {stmtlist}
 initializer -> e | = expr
-stmtlist -> stmt*
+
+stmtlist -> {stmt*} | stmt
 
 instead of
 decl -> type id (= comma)?
@@ -68,6 +69,7 @@ lex_token *tp;
 
 parser_status_type PARSER_STATUS = P_OK;
 
+node *stmtlist_p(void);
 node *stmt_p(void);
 node *decl_p(void);
 node *comma_p(void);
@@ -84,7 +86,7 @@ node *base_p(void);
 static bool match_op(const char *op);
 static bool match_op_peek(const char *op);
 static bool match_variable(void);
-static bool match_variable_peek(void);
+//static bool match_variable_peek(void);
 static void index_advance(void);
 node *pn_create(ptree_tok_type type, int c);
 
@@ -99,7 +101,7 @@ void ptree_extract_dfs(node *n);
 void ptree_extract_dfs_recursive(node *n);
 */
 
-node *(*grammar_start_nonterm)(void) = stmt_p;
+node *(*grammar_start_nonterm)(void) = stmtlist_p;
 
 
 
@@ -131,7 +133,10 @@ node *parse(lex_token *toks_in)
         case P_ALREADY_DECLD: printf("error: redeclaring variable name\n"); break;
         //case P_DECL_NO_EQUALS: printf("error: declaration")
         case P_TYPE_NOT_FOLLOWED_BY_ID: printf("error: type name must be followed by identifier\n"); break;
+        case P_STMTLIST_NO_MATCHING_CURLY: printf("error: no terminating curly brace\n"); break;
+        case P_MISSING_SEMICOLON: printf("error: missing semicolon\n"); break;
         //case : printf(""); break;
+
 
         default: assert(0);
     }
@@ -139,15 +144,47 @@ node *parse(lex_token *toks_in)
     return NULL;
 }
 
+//stmtlist -> {stmt*} | stmt
+node *stmtlist_p(void)
+{
+    node *root = pn_create(STMTLIST, '\0');
+    int ci = 0;
+
+    if(match_op("{"))
+    {
+        root->children[ci++] = pn_create(PRIM, '{');
+        index_advance();
+
+        while(!match_op("}") && *(void**)(tp) != NULL)// && (*tp)!=(lex_token)(NULL))
+        {
+            root->children[ci++] = stmt_p();
+            if(PARSER_STATUS != P_OK) return NULL;
+        }
+
+        if(!match_op("}"))
+        {
+            PARSER_STATUS = P_STMTLIST_NO_MATCHING_CURLY;
+            return NULL;
+        }
+        root->children[ci++] = pn_create(PRIM, '{');
+    }
+    else
+    {
+        root->children[ci++] = stmt_p();
+        if(PARSER_STATUS != P_OK) return NULL;
+    }
+
+    return root;
+}
 
 //stmt -> (expr | decl);    //expr -> comma
 node *stmt_p(void)
 {
     node *root = pn_create(STMT, '\0');
     int ci = 0;
-    node *(*stmt_type)(void) = NULL;
-
+    
     //if the first token is a type, then the statement is a decl
+    node *(*stmt_type)(void) = NULL;
     if((tp->type == IDENTIFIER) && (tp->sym->type == SYM_TYPE_KW))
         stmt_type = decl_p;
     else
@@ -156,7 +193,11 @@ node *stmt_p(void)
     root->children[ci++] = stmt_type();
     if(PARSER_STATUS != P_OK) return NULL;
 
-    //match(";")
+    if(!match_op(";"))
+    {
+        PARSER_STATUS = P_MISSING_SEMICOLON;
+        return NULL;
+    }
 
     return root;
 }
@@ -514,7 +555,7 @@ node *base_p(void)
     {
         index_advance();
         root->children[ci++] = pn_create(PRIM, '(');
-        root->children[ci++] = grammar_start_nonterm();
+        root->children[ci++] = comma_p();   //non grammar_start_nonterm(), this requires a semicolon, could be a decl...
         if(!match_op(")"))
         {
             PARSER_STATUS = P_UNMATCHED_PAREN;
@@ -546,7 +587,9 @@ node *base_p(void)
     }
     else
     {
-        printf("no good!\n"); assert(0);
+        printf("no good!\n"); 
+        printf("%s\n", tp->sym->name);
+        assert(0);
     }
 
     /*switch(rp[ri])
@@ -599,13 +642,13 @@ static bool match_variable(void)
     return (tp->type==IDENTIFIER && tp->sym->type==SYM_IDENTIFIER);
 }
 
-static bool match_variable_peek(void)
+/*static bool match_variable_peek(void)
 {
     tp++;
     bool match = match_variable();
     tp--;
     return match;
-}
+}*/
 
 static void index_advance(void)
 {
@@ -648,6 +691,7 @@ void print_ptree_recursive(node *pt, int depth)
 
     switch(pt->type)
     {
+        case STMTLIST:    printf("stmtlist"); break;
         case STMT:        printf("stmt");   break;
         case DECL:        printf("decl");   break;
         case COMMA:       printf("comma");   break;
