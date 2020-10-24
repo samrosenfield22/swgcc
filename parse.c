@@ -155,10 +155,19 @@ node *stmtlist_p(void)
         root->children[ci++] = pn_create(PRIM, '{');
         index_advance();
 
-        while(!match_op("}") && *(void**)(tp) != NULL)// && (*tp)!=(lex_token)(NULL))
+        //while(!match_op("}") && *(void**)(tp) != NULL)// && (*tp)!=(lex_token)(NULL))
+        while(!match_op("}"))
         {
+
             root->children[ci++] = stmt_p();
             if(PARSER_STATUS != P_OK) return NULL;
+
+            /*if(*(void**)(tp) != NULL)
+            {
+                printf("op is %s\n", tp->opstr);
+                printf("%s\n", tp->sym->name);
+                printf("\t\tnootnoot\n"); assert(0);
+            }*/
         }
 
         if(!match_op("}"))
@@ -166,7 +175,7 @@ node *stmtlist_p(void)
             PARSER_STATUS = P_STMTLIST_NO_MATCHING_CURLY;
             return NULL;
         }
-        root->children[ci++] = pn_create(PRIM, '{');
+        root->children[ci++] = pn_create(PRIM, '}');
     }
     else
     {
@@ -198,6 +207,7 @@ node *stmt_p(void)
         PARSER_STATUS = P_MISSING_SEMICOLON;
         return NULL;
     }
+    index_advance();
 
     return root;
 }
