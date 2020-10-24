@@ -6,7 +6,7 @@ https://en.cppreference.com/w/c/language/operator_precedence
 
 -------------- top level -------------
 stmt -> (comma | decl);
-decl -> type id (= comma)?
+decl -> type id = logical (, id = logical)*
 comma -> assign (, assign)*
 assign -> id (= | += | -= | *= | /= | %= | <<= | >>= | &= | |= | ^=) assign | logical
 logical -> bitwise (&& bitwise)* | bitwise (|| bitwise)* | bitwise
@@ -129,6 +129,7 @@ node *parse(lex_token *toks_in)
         case P_UNDECLARED:   printf("error: using undeclared variable\n"); break;
         case P_UNMATCHED_PAREN: printf("error: unmatched parentheses\n"); break;
         case P_ALREADY_DECLD: printf("error: redeclaring variable name\n"); break;
+        //case P_DECL_NO_EQUALS: printf("error: declaration")
         case P_TYPE_NOT_FOLLOWED_BY_ID: printf("error: type name must be followed by identifier\n"); break;
         //case : printf(""); break;
 
@@ -162,7 +163,6 @@ node *stmt_p(void)
 
 //decl -> type id (= comma)?
 //decl -> type id = logical (, id = logical)*
-//can i do  int a=5, b=c=6; ??
 node *decl_p(void)
 {
     node *root = pn_create(DECL, '\0');
@@ -187,14 +187,21 @@ node *decl_p(void)
             PARSER_STATUS = P_ALREADY_DECLD;
             return NULL;
         }
+        /*if(!match_op_peek("="))
+        {
+            PARSER_STATUS = P_DECL_NO_EQUALS;
+            return NULL;
+        }*/
+
         tp->sym->declared = true;   //declare it
 
         if(match_op_peek("="))
         {
+
             root->children[ci++] = pn_create(NUMBER, (int)(tp->sym)); //lvalue, so we use the address of the symbol
             root->children[ci++] = pn_create(PRIM, '=');
 
-            //advance to the comma expression
+            //advance to the expression
             index_advance();
             index_advance();
 
@@ -203,9 +210,13 @@ node *decl_p(void)
             if(PARSER_STATUS != P_OK) return NULL;
 
             root->children[ci++] = pn_create(SEMACT, '=');
-
-
         }
+        else
+            index_advance();
+
+        if(!match_op(","))
+            break;
+
     }
 
     return root;
@@ -627,7 +638,7 @@ void print_ptree(node *pt)
 {
     print_ptree_recursive(pt, 0);
 
-    printf("%s", ptree_compose_string(pt));
+    //printf("%s", ptree_compose_string(pt));
 }
 
 void print_ptree_recursive(node *pt, int depth)
@@ -659,9 +670,8 @@ void print_ptree_recursive(node *pt, int depth)
         if(pt->type == NUMBER)  printf(" %d", pt->c);
         else                    printf(" %c", pt->c);
     }
-    else
-        printf(" %s", ptree_compose_string(pt));
-        //printf("(%s)", pt->str);
+    //else
+    //    printf(" %s", ptree_compose_string(pt));
     putchar('\n');
 
     for(int ci=0; pt->children[ci]; ci++)

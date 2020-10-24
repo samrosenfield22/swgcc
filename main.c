@@ -31,8 +31,8 @@ int main(void)
 
         if(parse_tree)
         {
-            //print_ptree(parse_tree);
-            //printf("\n\n");
+            print_ptree(parse_tree);
+            printf("\n\n");
 
             int res = ptree_evaluate(parse_tree);
             printf("%d\n", res);

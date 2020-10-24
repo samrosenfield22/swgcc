@@ -39,7 +39,10 @@ int ptree_evaluate(node *n)
     int res = 0;
     if(sp != sim_stack)   //pure declarations (i.e. "int num;") don't create any value that goes on the stack
         res = sim_stack_pop();
-    assert(sp == sim_stack);
+
+    //printf("sp=%p, sim_stack=%p\n", sp, sim_stack);
+    //assert(sp == sim_stack);
+    assert(sp >= sim_stack);
     return res;
 }
 
@@ -52,7 +55,7 @@ void ptree_evaluate_recursive(node *n)
 
     if(n->type == SEMACT)
     {
-        printf("semantic %c\n", n->c);
+        //printf("semantic %c\n", n->c);
         switch(n->c)
         {
             case ' ': case '(': case ')': break;
@@ -139,7 +142,7 @@ void assign_op(void)
     symbol *as = (symbol *)sim_stack_pop();
     //int *val = as->val;
 
-    printf("simulator: var w symbol at addr %p, value is %d\n", as, as->val);
+    //printf("simulator: var w symbol at addr %p, value is %d\n", as, as->val);
 
     //*val = b;
     as->val = b;

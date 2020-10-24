@@ -40,6 +40,7 @@ typedef enum parser_status_type_e
     P_UNDECLARED,
     P_UNMATCHED_PAREN,
     P_ALREADY_DECLD,
+    P_DECL_NO_EQUALS,
     P_TYPE_NOT_FOLLOWED_BY_ID
 } parser_status_type;
 
