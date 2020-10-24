@@ -23,7 +23,7 @@ typedef struct lex_token_s
 } lex_token;
 
 void lexer_build_all_regexes(void);
-lex_token *lexer_new(const char *str);
+lex_token *lexer(const char *str);
 
 lex_token *lexer(const char *str);
 

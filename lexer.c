@@ -17,13 +17,6 @@ static void make_bin(const char *l, lex_token *tp);
 static void make_op(const char *l, lex_token *tp);
 
 
-//old shit
-static char **lexer_scan(char *str);
-static lex_token *lexer_tokenize(char **lexemes);
-
-static bool is_numeric(const char *str);
-static bool is_operator(const char *str);
-
 typedef struct regex_action_pair_s
 {
     const char *exp;
@@ -51,7 +44,7 @@ void lexer_build_all_regexes(void)
     }
 }
 
-lex_token *lexer_new(const char *str)
+lex_token *lexer(const char *str)
 {
     char buf[401], lexeme_buf[80];
     strncpy(buf, str, 400);
@@ -138,110 +131,3 @@ static void make_op(const char *l, lex_token *tp)
     tp->sym = NULL;
 }
 
-
-
-
-
-/////////////////////////////////////////////////////////
-
-lex_token *lexer(const char *str)
-{
-    char buf[401];
-    strncpy(buf, str, 400);
-
-    char **lexemes = lexer_scan(buf);
-    //for(char **p=lexemes; *p; p++) printf("lexeme:\t%s\n", *p);
-    lex_token *toks = lexer_tokenize(lexemes);
-    dump_symbol_table();
-
-    free(lexemes);
-    return toks;
-}
-
-//for now just use spaces
-static char **lexer_scan(char *str)
-{
-    char **lexemes = calloc(80, sizeof(*lexemes));
-    assert(lexemes);
-    char **lp = lexemes;
-
-    char *c = strtok(str, " \t");
-    while(c)
-    {
-        *lp++ = c;
-        c = strtok(NULL, " \t");
-    }
-
-    return lexemes;
-}
-
-
-static lex_token *lexer_tokenize(char **lexemes)
-{
-    //any lexeme is of type: LITERAL, IDENT, OPERATOR
-    lex_token *toks = calloc(80, sizeof(*toks));
-    assert(toks);
-    lex_token *tp = toks;
-
-    for(char **l=lexemes; *l; l++)
-    {
-        //printf("tokenizing lexeme \'%s\'...\t ", *l);
-        if(is_numeric(*l))
-        {
-            //printf("literal");
-            tp->type = LITERAL;
-            tp->litval = atoi(*l);
-            tp->opstr = NULL;
-            tp->sym = NULL;
-        }
-        else if(is_operator(*l))
-        {
-            //printf("operator");
-            tp->type = OPERATOR;
-            tp->opstr = malloc(strlen(*l)+1);
-            strcpy(tp->opstr, *l);
-            tp->sym = NULL;
-        }
-        else
-        {
-            //printf("identifier");
-            tp->type = IDENTIFIER;
-            tp->opstr = NULL;
-            tp->sym = symbol_search(*l, SYM_ANY);
-            if(!(tp->sym))
-                tp->sym = symbol_create(*l, SYM_IDENTIFIER);
-        }
-
-        //printf("\n");
-        tp++;
-    }
-
-    return toks;
-}
-
-static bool is_operator(const char *str)
-{
-    //printf("checking if operator");
-    const char *operators[] = {"+", "-", "*", "/", "%", "^", "|", "&", "||", "&&", "==", "!=", ">=", "<=", "<<", ">>", "=", "(", ")", ",", NULL};
-
-    for(const char **o=operators; *o; o++)
-    {
-        //printf("%s\n", *o);
-        if(strcmp(str, *o)==0)
-            return true;
-    }
-
-    return false;
-}
-
-static bool is_numeric(const char *str)
-{
-    //printf("checking if it's a number");
-    for(const char *c=str; *c!='\0'; c++)
-    {
-        if(!isdigit(*c))
-            return false;
-    }
-
-    return true;
-}
