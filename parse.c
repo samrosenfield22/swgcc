@@ -6,7 +6,8 @@ https://en.cppreference.com/w/c/language/operator_precedence
 
 -------------- top level -------------
 stmtlist -> {stmt*} | stmt
-stmt -> (comma | decl);
+stmt -> stmt_val; | conditional
+stmt_val -> comma | decl
 decl -> type id = logical (, id = logical)*
 comma -> assign (, assign)*
 assign -> id (= | += | -= | *= | /= | %= | <<= | >>= | &= | |= | ^=) assign | logical
@@ -18,6 +19,21 @@ shift -> sum (<< sum)* | sum (>> sum)* | sum
 sum ->  prod (+ prod)* | prod (- prod)* | prod
 prod -> base (* base)* | base (/ base)* | base (% base)* | base
 base -> num | id | (comma)
+
+conditional -> ifcond | ifelse | forloop...
+forloop -> for(stmt_val; comma; comma) stmtlist
+ifcond -> if(cond) stmtlist
+-----------------------------------------
+
+if takes 2 "arguments": the conditional, and the jump addr
+if (expr) stmtlist {push jumpaddr} {if semact}
+evaluate expr (result gets pushed)
+push jump addr
+if
+
+if:
+    pop addr
+    pop expr
 
 
 base -> num | id | (expr) | id(arglist)
@@ -39,11 +55,7 @@ given the productions:
 we expand:
   stmt -> decl -> comma (5,d,e=6) (breaks on e=6 because e isn't declared)
 
-stmtlist -> {stmt*} | stmt
-stmt -> (stmt_val | conditional);
-stmt_val -> comma | decl
-conditional -> ifcond | ifelse | forloop
-forloop -> for(stmt_val; comma; comma) stmtlist
+
 
 
 
@@ -75,6 +87,8 @@ if (thing) {}
 lex_token *toks = NULL;
 lex_token *tp;
 
+int jmp_index = 0;
+
 parser_status_type PARSER_STATUS = P_OK;
 
 node *stmtlist_p(void);
@@ -92,6 +106,7 @@ node *sum_p(void);
 node *prod_p(void);
 node *base_p(void);
 
+node *ifcond_p(void);
 node *forloop_p(void);
 
 static bool match_op(const char *op);
@@ -199,6 +214,7 @@ node *stmtlist_p(void)
 }
 
 //stmt -> (stmt_val | conditional);
+//stmt -> stmt_val; | conditional
 node *stmt_p(void)
 {
     node *root = pn_create(STMT_VAL, '\0');
@@ -206,21 +222,60 @@ node *stmt_p(void)
 
     if((tp->type == IDENTIFIER) && (tp->sym->type == SYM_OTHER_KW))
     {
-        if(strcmp(tp->sym->name,"for")==0)
+        if(strcmp(tp->sym->name,"if")==0)
+            root->children[ci++] = ifcond_p();
+        else if(strcmp(tp->sym->name,"for")==0)
             root->children[ci++] = forloop_p();
         else assert(0);
     }
     else
+    {
         root->children[ci++] = stmt_val_p();
 
-    //eat the semicolon
-    if(!match_op(";"))
-    {
-        PARSER_STATUS = P_MISSING_SEMICOLON;
-        return NULL;
+        //eat the semicolon
+        if(!match_op(";"))
+        {
+            PARSER_STATUS = P_MISSING_SEMICOLON;
+            return NULL;
+        }
+        index_advance();
     }
+
+    
+
+    return root;
+}
+
+//if (expr) {push jumpaddr} {jumpz semact} stmtlist {jmp label}
+node *ifcond_p(void)
+{
+    node *root = pn_create(STMT_VAL, '\0');
+    int ci = 0;
+
     index_advance();
 
+    if(!match_op("(")) {PARSER_STATUS = P_IFCOND_MISSING_PARENS; return NULL;}
+    index_advance();
+
+    root->children[ci++] = comma_p();
+    if(PARSER_STATUS != P_OK) return NULL;
+
+    if(!match_op(")")) {PARSER_STATUS = P_IFCOND_MISSING_PARENS; return NULL;}
+    index_advance();
+
+    //push the jump address (really a dummy instruction that gets replaced by the address of the jump label)
+    root->children[ci++] = pn_create(JMP_ADDR, jmp_index);
+
+    //{jumpz semact}
+    root->children[ci++] = pn_create(SEMACT, 'j');
+
+    root->children[ci++] = stmtlist_p();
+    if(PARSER_STATUS != P_OK) return NULL;
+
+    //push the jump label -- the address that gets jumped to if the condition == 0
+    root->children[ci++] = pn_create(JMP_LABEL, jmp_index);
+
+    jmp_index++;
     return root;
 }
 

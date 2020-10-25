@@ -23,7 +23,11 @@ typedef enum ptree_tok_type_e
     BASE,
     PRIM,
 
+    IFCOND,
     FORLOOP,
+
+    JMP_ADDR,
+    JMP_LABEL,
 
     NUMBER,     //literals and variable lvalues
     VARIABLE,   //only for variable rvalues
@@ -49,6 +53,7 @@ typedef enum parser_status_type_e
     P_TYPE_NOT_FOLLOWED_BY_ID,
     P_STMTLIST_NO_MATCHING_CURLY,
     P_MISSING_SEMICOLON,
+    P_IFCOND_MISSING_PARENS,
     P_FORLOOP_MISSING_PARENS
 } parser_status_type;
 

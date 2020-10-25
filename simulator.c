@@ -8,30 +8,32 @@
 void ptree_evaluate_recursive(node *n);
 
 static void generate_intermediate_code_recursive(node *n);
+void resolve_jump_addresses(void);
 
 void sim_stack_push(int n);
 int sim_stack_pop(void);
-void add_op(void);
-void sub_op(void);
-void mult_op(void);
-void div_op(void);
-void mod_op(void);
-void shl_op(void);
-void shr_op(void);
-void leq_op(void);
-void geq_op(void);
-void eq_op(void);
-void neq_op(void);
-void bw_and_op(void);
-void bw_or_op(void);
-void bw_xor_op(void);
-void log_and_op(void);
-void log_or_op(void);
-void comma_op(void);
-void assign_op(void);
 
-int sim_stack[256];
-int *sp = sim_stack;
+int add_op(void);
+int sub_op(void);
+int mult_op(void);
+int div_op(void);
+int mod_op(void);
+int shl_op(void);
+int shr_op(void);
+int leq_op(void);
+int geq_op(void);
+int eq_op(void);
+int neq_op(void);
+int bw_and_op(void);
+int bw_or_op(void);
+int bw_xor_op(void);
+int log_and_op(void);
+int log_or_op(void);
+int comma_op(void);
+int assign_op(void);
+int jumpz_op(void);
+int addr_op(void);
+
 
 typedef struct intermediate_spec_s
 {
@@ -41,14 +43,21 @@ typedef struct intermediate_spec_s
 intermediate_spec code[1000];
 int ispec_index = 0;
 
+
+int sim_stack[256];
+int *sp = sim_stack;
+int ip;
+
 void generate_intermediate_code(node *n)
 {
     ispec_index = 0;
 
     generate_intermediate_code_recursive(n);
+    resolve_jump_addresses();
     //return code;
 }
 
+int jump_addr_table[1024];
 static void generate_intermediate_code_recursive(node *n)
 {
     for(int ci=0; n->children[ci]; ci++)
@@ -56,21 +65,55 @@ static void generate_intermediate_code_recursive(node *n)
         generate_intermediate_code_recursive(n->children[ci]);
     }
 
-    if(n->type == SEMACT || n->type==NUMBER || n->type==VARIABLE)
+    if(n->type == SEMACT || n->type==NUMBER || n->type==VARIABLE || n->type==JMP_ADDR)
     {
         code[ispec_index].type = n->type;
         code[ispec_index].val = n->c;
         ispec_index++;
+    }
+    //else if(n->type == JUMP_ADDR)
+    else if(n->type == JMP_LABEL)
+    {
+        jump_addr_table[n->c] = ispec_index;
+    }
+}
+
+void resolve_jump_addresses(void)
+{
+    for(int i=0; i<ispec_index; i++)
+    {
+        /*intermediate_spec *instr = &code[ip];
+
+        if(instr->type == JMP_ADDR)
+        {
+            //printf("changing ")
+            instr->type = NUMBER;
+            instr->val = jump_addr_table[instr->val];
+        }*/
+
+        if(code[i].type == JMP_ADDR)
+        {
+            //printf("found jmp addr placeholder, replacing w jump to addr %d\n", code[])
+            code[i].type = NUMBER;
+            code[i].val = jump_addr_table[code[i].val];
+        }
     }
 }
 
 int run_intermediate_code(void)
 {
     sp = sim_stack;
+    ip = 0;
 
-    for(int i=0; i<ispec_index; i++)
+    bool jump_taken;
+
+    //for(int i=0; i<ispec_index; i++)
+    for(ip=0; ip<ispec_index; /*ip++*/)
     {
-        intermediate_spec *instr = &code[i];
+        printf("executing instruction %d of %d\n", ip, ispec_index);
+
+        intermediate_spec *instr = &code[ip];
+        jump_taken = false;
 
         if(instr->type == SEMACT)
         {
@@ -96,19 +139,30 @@ int run_intermediate_code(void)
                 case 'l': leq_op(); break;
                 case ',': comma_op(); break;
                 case '=': assign_op(); break;
+
+                case 'j': if(jumpz_op()) jump_taken = true; break;
+                //case 'a': addr_op(); break;
                 //case '': _op(); break;
 
                 default:  printf("unknown semantic action %c\n", instr->val); assert(0);
             }
         }
         else if(instr->type == NUMBER)
+        {
+            printf("pushing %d\n", instr->val);
             sim_stack_push(instr->val);
+        }
         else if(instr->type == VARIABLE)    //only for rvalues. for lvalues, we want type NUMBER (push the address)
         {
             symbol *sym = (symbol *)instr->val;
             if(!sym->initialized) printf("--- warning: using uninitialized variable %s ---", sym->name);
             sim_stack_push(((symbol *)(instr->val))->val);
         }
+        else assert(0);
+
+
+        if(!jump_taken)
+            ip++;
     }
 
     //pop the final result off the stack, return it
@@ -131,12 +185,12 @@ void dump_intermediate(void)
                 printf("SEMACT,\t  %c\n", instr->val);
                 break;
             case NUMBER:
-                printf("NUMBER,\t  %d\n", instr->val);
+                printf("push %d\n", instr->val);
                 break;
             case VARIABLE:
                 printf("VARIABLE, %d\n", instr->val);
                 break;
-            default: assert(0);
+            default: printf("%s\n", instr->type==JMP_ADDR? "addr":"label"); assert(0);
         }
     }
 }
@@ -230,11 +284,12 @@ int sim_stack_pop(void)
 
 //all binary operators follow the same semantic action format
 #define def_bin_op(name,op) \
-  void name##_op(void)      \
+  int name##_op(void)      \
   {                         \
       int b = sim_stack_pop();  \
       int a = sim_stack_pop();  \
       sim_stack_push(a op b);   \
+      return 0;                 \
   }
 
 def_bin_op(add,+)
@@ -256,14 +311,15 @@ def_bin_op(log_and,&&)
 //def_bin_op(comma, ,)
 //def_bin_op(,)
 
-void comma_op(void)
+int comma_op(void)
 {
     int b = sim_stack_pop();
-    sim_stack_pop();
+    sim_stack_pop();    //throw away value
     sim_stack_push(b);
+    return 0;
 }
 
-void assign_op(void)
+int assign_op(void)
 {
     int b = sim_stack_pop();
     //int *p = (int*)stack_pop();
@@ -278,4 +334,29 @@ void assign_op(void)
     as->val = b;
     as->initialized = true;
     sim_stack_push(b);
+
+    return 0;
+}
+
+int jumpz_op(void)
+{
+    int addr = sim_stack_pop();
+    int n = sim_stack_pop();
+    if(n == 0)
+    {
+        printf("jumping to addr %d\n", addr);
+        ip = addr;
+        return 1;
+    }
+    else
+        return 0;
+}
+
+int addr_op(void)
+{
+    assert(0);
+    sim_stack_push(ip+3);
+    printf("pushed addr %d\n", ip+3);
+
+    return 0;
 }
