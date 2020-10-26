@@ -58,7 +58,9 @@ lex_token *lexer(const char *str)
     while(*bp)
     {
         //swallow whitespace
-        while(*bp==' ' || *bp=='\t') bp++;
+        while(*bp==' ' || *bp=='\t' || *bp=='\n') bp++;
+        if(*bp=='\0')
+            break;
 
         longest_match_ct = -1;
         longest_match = -1;
