@@ -10,7 +10,7 @@ void generate_intermediate_code(node *n);
 int run_intermediate_code(void);
 void dump_intermediate(void);
 
-int ptree_evaluate(node *n);
+//int ptree_evaluate(node *n);
 
 
 #endif //SIMULATOR_H_

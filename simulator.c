@@ -5,7 +5,7 @@
 
 #include "simulator.h"
 
-void ptree_evaluate_recursive(node *n);
+//void ptree_evaluate_recursive(node *n);
 
 static void generate_intermediate_code_recursive(node *n);
 void resolve_jump_addresses(void);
@@ -31,6 +31,8 @@ int log_and_op(void);
 int log_or_op(void);
 int comma_op(void);
 int assign_op(void);
+int jump_op(void);
+int jumpnz_op(void);
 int jumpz_op(void);
 int addr_op(void);
 
@@ -53,6 +55,7 @@ void generate_intermediate_code(node *n)
     ispec_index = 0;
 
     generate_intermediate_code_recursive(n);
+    dump_intermediate();
     resolve_jump_addresses();
     //return code;
 }
@@ -110,7 +113,6 @@ int run_intermediate_code(void)
     //for(int i=0; i<ispec_index; i++)
     for(ip=0; ip<ispec_index; /*ip++*/)
     {
-        printf("executing instruction %d of %d\n", ip, ispec_index);
 
         intermediate_spec *instr = &code[ip];
         jump_taken = false;
@@ -140,7 +142,9 @@ int run_intermediate_code(void)
                 case ',': comma_op(); break;
                 case '=': assign_op(); break;
 
-                case 'j': if(jumpz_op()) jump_taken = true; break;
+                case 'z': if(jumpz_op()) jump_taken = true; break;
+                case 'n': if(jumpnz_op()) jump_taken = true; break;
+                case 'j': jump_op(); jump_taken = true; break;
                 //case 'a': addr_op(); break;
                 //case '': _op(); break;
 
@@ -149,7 +153,6 @@ int run_intermediate_code(void)
         }
         else if(instr->type == NUMBER)
         {
-            printf("pushing %d\n", instr->val);
             sim_stack_push(instr->val);
         }
         else if(instr->type == VARIABLE)    //only for rvalues. for lvalues, we want type NUMBER (push the address)
@@ -158,8 +161,12 @@ int run_intermediate_code(void)
             if(!sym->initialized) printf("--- warning: using uninitialized variable %s ---", sym->name);
             sim_stack_push(((symbol *)(instr->val))->val);
         }
-        else assert(0);
-
+        else
+        {
+            printf("instruction w unknown type at index %d (addr %p)", ip, instr);
+            printf("instr type = %d\n", instr->type);
+            assert(0);
+        }
 
         if(!jump_taken)
             ip++;
@@ -190,14 +197,19 @@ void dump_intermediate(void)
             case VARIABLE:
                 printf("VARIABLE, %d\n", instr->val);
                 break;
+            case JMP_ADDR:
+                printf("JUMP ADDR (placeholder)\n");
+                break;
             default: printf("%s\n", instr->type==JMP_ADDR? "addr":"label"); assert(0);
         }
     }
+
+    printf("\n");
 }
 
 
 
-
+/*
 int ptree_evaluate(node *n)
 {
     sp = sim_stack;
@@ -219,14 +231,6 @@ void ptree_evaluate_recursive(node *n)
     {
         ptree_evaluate_recursive(n->children[ci]);
     }
-
-    /*if(n->type == SEMACT)
-        printf("SEMACT,\t %c\n", n->c);
-    else if(n->type == NUMBER)
-        printf("NUMBER,\t %d\n", n->c);
-    else if(n->type == VARIABLE)
-        printf("VARIABLE,\t %d\n", ((symbol *)(n->c))->val);
-    return;*/
 
     if(n->type == SEMACT)
     {
@@ -269,7 +273,7 @@ void ptree_evaluate_recursive(node *n)
         sim_stack_push(((symbol *)(n->c))->val);
     }
 }
-
+*/
 
 void sim_stack_push(int n)
 {
@@ -350,6 +354,27 @@ int jumpz_op(void)
     }
     else
         return 0;
+}
+
+int jumpnz_op(void)
+{
+    int addr = sim_stack_pop();
+    int n = sim_stack_pop();
+    if(n != 0)
+    {
+        ip = addr;
+        return 1;
+    }
+    else
+        return 0;
+}
+
+//unconditional
+int jump_op(void)
+{
+    int addr = sim_stack_pop();
+    ip = addr;
+    return 1;
 }
 
 int addr_op(void)
