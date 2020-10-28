@@ -166,11 +166,13 @@ struct node_s
 };
 
 //
-int *productions_to_parse_table(production_rule *productions);
+void productions_to_parse_table(production_rule *productions);
+void mark_entries_for_nonterminal(nonterminal_type nt);
 
 node *parse(lextok *lex_tokens_in);
 node *parse_nonterm(nonterminal_type nt);
 int parse_table_lookup(nonterminal_type nt);
+int find_parse_table_column(const char *symbol);
 bool match(prod_tok *tok);
 void next(void);
 node *node_create(bool is_nonterminal, int type, const char *str);
@@ -280,26 +282,45 @@ prod_tok **productions[] =
 */
 //-1 is a "magic number" -- it means an invalid option
 const char *parse_table_columns[] = {NULL, "*", "+", "?", "(", ")", "[", "]", "|"};
-int manual_parse_table[8][9] =
+/*int manual_parse_table[8][9] =
 {
 	[REGEX] =		{0, 0, 0, 0, 0, 0, 0, 0, 0},
+	[MORETERM] =	{-1, -1, -1, -1, -1, -1, -1, -1, 1},
 	//[TERM] =		{2, 2, 2, 2, 2, 2, 2, 2, 2},
 	[TERM] =		{2, -1, -1, -1, 2, -1, 2, -1, -1},
-	[MORETERM] =	{-1, -1, -1, -1, -1, -1, -1, -1, 1},
 	//[FACTOR] =		{3, 3, 3, 3, 3, 3, 3, 3, 3},
 	[FACTOR] =		{3, -1, -1, -1, 3, -1, 3, -1, -1},
 	[CONFACTOR] =	{11, -1, -1, -1, 11, -1, 11, -1, -1},
-	[BASE] =		{7, -1, -1, -1, 8, -1, 9, -1, -1},
 	[BASE_SUFFIX] =	{-1, 4, 5, 6, -1, -1, -1, -1, -1},
+	[BASE] =		{7, -1, -1, -1, 8, -1, 9, -1, -1},
 	[RANGE] =		{10, -1, -1, -1, -1, -1, -1, -1, -1}
-};
+};*/
 
-int *parse_table = (int*)manual_parse_table;
+int *parse_table;
+
 
 int main(void)
 {
 	productions_to_parse_table(productions);
-	//return 0;
+
+	/*int *mpt = (int*)manual_parse_table;
+	for(int i=0; i<8; i++)
+	{
+		printf("%s\t", nt_strings[i]);
+		for(int j=0; j<9; j++)
+			printf("%d\t", mpt[i*9+j]);
+		putchar('\n');
+	}
+	printf("\n\n");
+	for(int i=0; i<8; i++)
+	{
+		printf("%s\t", nt_strings[i]);
+		for(int j=0; j<9; j++)
+			printf("%d\t", parse_table[i*9+j]);
+		putchar('\n');
+	}
+
+	//return 0;*/
 
 	lextok *dummy = chars_to_substrings_lexer("(a(b|c))+|xyz|fg?h");
 
@@ -318,20 +339,101 @@ int main(void)
 	return 0;
 }
 
+//int *parse_table = (int*)manual_parse_table;
 int alphabet_len = 8;	//not including idents
 int nt_cnt = 8;
-int *productions_to_parse_table(production_rule *productions)
+int production_cnt = sizeof(productions) / sizeof(productions[0]);
+
+bool *production_marked;
+#define table_entry(nt, alphabet_index) (nt*(alphabet_len+1) + alphabet_index)
+void productions_to_parse_table(production_rule *productions)
 {
 	int table_entries = (alphabet_len+1) * nt_cnt;
-	int *ptab = malloc(table_entries * sizeof(*ptab));
-	assert(ptab);
+	parse_table = malloc(table_entries * sizeof(*parse_table));
+	assert(parse_table);
 
 	for(int i=0; i<table_entries; i++)
-		ptab[i] = -1;
+		parse_table[i] = -1;
 
+	production_marked = malloc(production_cnt * sizeof(*production_marked));
+	assert(production_marked);
+	for(int i=0; i<production_cnt; i++)
+		production_marked[i] = false;
 
+	//mark_entries_for_nonterminal(grammar_start_symbol);
+	//mark_entries_for_nonterminal(BASE_SUFFIX);
+	for(int i=0; i<production_cnt; i++)
+		mark_entries_for_nonterminal(i);
 
-	return NULL;
+}
+
+void mark_entries_for_nonterminal(nonterminal_type nt)
+{
+	if(production_marked[nt] == true)
+		return;
+
+	printf("marking entries for nonterminal: %s\n", nt_strings[nt]);
+	/*
+	for each production for that nonterminal
+		if the first (non-semantic) element of the rhs is a terminal/ident
+			ptab[table_entry(nt, term)] = that production's id
+		else if it's a nonterminal
+			make sure that's the ONLY production for that nonterminal (else error)
+			recurse on that nonterminal
+	*/
+
+	int alpha_col;
+
+	//iterate through all productions for this nonterminal
+	for(int i=0; i<production_cnt; i++)
+	{
+		if(productions[i].lhs != nt)
+		{
+			//printf("\tno good (production %d is for a %s)\n", i, nt_strings[productions[i].lhs]);
+			continue;
+		}
+
+		//grab the first token of the production's rhs
+		prod_tok **rhs = productions[i].rhs;
+		prod_tok *firsttok = *rhs;
+		switch(firsttok->type)
+		{
+			case SEMACT: case EXPR: break;
+
+			case TERMINAL:
+			case IDENT:
+				if(firsttok->type == IDENT)
+					alpha_col = 0;
+				else
+				{
+					alpha_col = find_parse_table_column(firsttok->term);
+					assert(alpha_col != -1);
+				}
+
+				parse_table[table_entry(nt, alpha_col)] = i;
+				break;
+
+			case NONTERMINAL:
+
+			//make sure that's the ONLY production for that nonterminal
+			/*for(int j=i+1; j<production_cnt; j++)
+				if(productions[j].lhs == nt)
+					assert(0);*/
+
+			//recurse on that nonterminal
+			mark_entries_for_nonterminal(firsttok->nonterm);
+
+			//copy all the ones that aren't -1
+			for(int j=0; j<alphabet_len; j++)
+			{
+				if(parse_table[table_entry(firsttok->nonterm, j)] != -1)
+					parse_table[table_entry(nt, j)] = i;
+			}
+		}
+	}
+
+	//mark this production as complete
+	production_marked[nt] = true;
 }
 
 node *parse(lextok *lex_tokens_in)
@@ -452,7 +554,7 @@ int parse_table_lookup(nonterminal_type nt)
 		return -1;
 
 	//lookup the column in the parse table
-	bool col_found = false;
+	/*bool col_found = false;
 	int col;
 	for(col=1; col < sizeof(parse_table_columns)/sizeof(parse_table_columns[0]); col++)
 	{
@@ -463,12 +565,29 @@ int parse_table_lookup(nonterminal_type nt)
 		}
 	}
 	if(!col_found)
+		col = 0;*/
+
+	int col = find_parse_table_column(lex_tok->str);
+	if(col == -1)
 		col = 0;
 
 	//return parse_table[nt][col];
 
 	int num_col = sizeof(parse_table_columns)/sizeof(parse_table_columns[0]);
 	return parse_table[nt*num_col + col];
+}
+
+int find_parse_table_column(const char *symbol)
+{
+	for(int col=1; col < sizeof(parse_table_columns)/sizeof(parse_table_columns[0]); col++)
+	{
+		if(strcmp(parse_table_columns[col], symbol) == 0)
+		{
+			return col;
+		}
+	}
+
+	return -1;	//not found
 }
 
 //the token must either be a terminal, or NULL (end of tokens)
