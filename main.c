@@ -22,8 +22,10 @@ int count_char_in_str(const char *str, char c)
 }
 char *read_stmtlist(void)
 {
-    int brackets=0;
     char inbuf[81];
+
+    int brackets=0;
+    strbuf[0] = '\0';
     
     printf(">> ");
     do

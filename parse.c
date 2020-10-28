@@ -258,7 +258,21 @@ node *stmt_p(void)
         if(PARSER_STATUS != P_OK) return NULL;
 
         //eat the semicolon
-        if(!match_op(";")) PARSER_FAIL(P_MISSING_SEMICOLON)
+        if(!match_op(";")) {
+            for(int i=0; i<5; i++)
+            {
+                if(tp+i)
+                {
+                    if((tp+i)->type == IDENTIFIER)
+                        printf("%s ", (tp+i)->sym->name);
+                    else if((tp+i)->type == LITERAL)
+                        printf("%d ", (tp+i)->litval);
+                    else
+                        printf("%s ", (tp+i)->opstr);
+                }
+            }
+            PARSER_FAIL(P_MISSING_SEMICOLON)
+        }
         /*{
             PARSER_STATUS = P_MISSING_SEMICOLON;
             return NULL;
@@ -441,7 +455,7 @@ node *decl_p(void)
 
     //get the type
     assert((tp->type == IDENTIFIER) && (tp->sym->type == SYM_TYPE_KW));
-    root->children[ci++] = pn_create(PRIM, 'n');
+    //root->children[ci++] = pn_create(PRIM, 'n');
     //i don't know what to do w the type yet (Set the variable type, etc)
     
     while(1)
@@ -522,7 +536,10 @@ node *assign_p(void)
     node *root = pn_create(ASSIGN, '\0');
     int ci = 0;
 
-    if(tp->type == IDENTIFIER && match_op_peek("="))  // = | += | -= | *= | /= | %= | <<= | >>= | &= | |= | ^=
+    if(tp->type == IDENTIFIER &&
+    (match_op_peek("=") || match_op_peek("+=") || match_op_peek("-=") || match_op_peek("*=") || 
+    match_op_peek("/=") || match_op_peek("%=") || match_op_peek("<<=") || match_op_peek(">>=") || 
+    match_op_peek("&=") || match_op_peek("|=") || match_op_peek("^=") ))
     {
         //check if id is a variable, and if it's been declared
         if(!tp->sym->declared) PARSER_FAIL(P_UNDECLARED)//
