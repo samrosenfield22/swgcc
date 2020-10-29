@@ -138,7 +138,7 @@ production_rule productions[] =
 	[0] =	{REGEX, (prod_tok*[]){NT_TOK(TERM), NT_TOK(MORETERM), EXPR_TOK('*'), NULL}},
 	[1] =	{MORETERM, (prod_tok*[]){T_TOK("|"), NT_TOK(TERM), SEM_TOK("union"), NULL}},
 	[2] =	{TERM, (prod_tok*[]){NT_TOK(FACTOR), NT_TOK(CONFACTOR), EXPR_TOK('*'), NULL}},		//the concat sem_tok needs to be inside the repetition!
-	[3] =	{FACTOR, (prod_tok*[]){NT_TOK(BASE), NT_TOK(BASE_SUFFIX), EXPR_TOK('?'), NULL}},
+	[3] =	{FACTOR, (prod_tok*[]){NT_TOK(BASE), NT_TOK(BASE_SUFFIX), EXPR_TOK('*'), NULL}},
 	[4] =	{BASE_SUFFIX, (prod_tok*[]){T_TOK("*"), SEM_TOK("0 or more"), NULL}},
 	[5] =	{BASE_SUFFIX, (prod_tok*[]){T_TOK("+"), SEM_TOK("1 or more"), NULL}},
 	[6] =	{BASE_SUFFIX, (prod_tok*[]){T_TOK("?"), SEM_TOK("0 or 1"), NULL}},
@@ -209,20 +209,18 @@ void productions_to_parse_table(void)
 
 }
 
-void mark_entries_for_nonterminal(nonterminal_type nt)
-{
-	if(production_marked[nt] == true)
-		return;
-
-	printf("marking entries for nonterminal: %s\n", nt_strings[nt]);
-	/*
+/*
 	for each production for that nonterminal
 		if the first (non-semantic) element of the rhs is a terminal/ident
 			ptab[table_entry(nt, term)] = that production's id
 		else if it's a nonterminal
 			make sure that's the ONLY production for that nonterminal (else error)
 			recurse on that nonterminal
-	*/
+*/
+void mark_entries_for_nonterminal(nonterminal_type nt)
+{
+	if(production_marked[nt] == true)
+		return;
 
 	int alpha_col;
 
@@ -256,6 +254,7 @@ void mark_entries_for_nonterminal(nonterminal_type nt)
 
 			//make sure that's the ONLY production for that nonterminal
 			//for now we're just assuming that's the case...
+			//...or does this code work?
 			for(int j=i+1; j<production_cnt; j++)
 				if(productions[j].lhs == nt)
 					assert(0);
@@ -381,28 +380,13 @@ int parse_table_lookup(nonterminal_type nt)
 	if(!lex_tok->str)
 		return -1;
 
-	//lookup the column in the parse table
-	/*bool col_found = false;
-	int col;
-	for(col=1; col < sizeof(parse_table_columns)/sizeof(parse_table_columns[0]); col++)
-	{
-		if(strcmp(parse_table_columns[col], lex_tok->str) == 0)
-		{
-			col_found = true;
-			break;
-		}
-	}
-	if(!col_found)
-		col = 0;*/
-
 	int col = find_parse_table_column(lex_tok->str);
 	if(col == -1)
 		col = 0;
 
-	//return parse_table[nt][col];
-
-	int num_col = sizeof(parse_table_columns)/sizeof(parse_table_columns[0]);
-	return parse_table[nt*num_col + col];
+	//int num_col = sizeof(parse_table_columns)/sizeof(parse_table_columns[0]);
+	//return parse_table[nt*num_col + col];
+	return parse_table[table_entry(nt, col)];
 }
 
 int find_parse_table_column(const char *symbol)
