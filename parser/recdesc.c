@@ -255,9 +255,10 @@ void mark_entries_for_nonterminal(nonterminal_type nt)
 			case NONTERMINAL:
 
 			//make sure that's the ONLY production for that nonterminal
-			/*for(int j=i+1; j<production_cnt; j++)
+			//for now we're just assuming that's the case...
+			for(int j=i+1; j<production_cnt; j++)
 				if(productions[j].lhs == nt)
-					assert(0);*/
+					assert(0);
 
 			//recurse on that nonterminal
 			mark_entries_for_nonterminal(firsttok->nonterm);
