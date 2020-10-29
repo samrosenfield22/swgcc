@@ -29,7 +29,7 @@ int main(void)
 	//return 0;*/
 
 	//lextok *dummy = chars_to_substrings_lexer("(a(b|c))+|xyz|fg?h");
-	lextok *dummy = chars_to_substrings_lexer("([a-e]|_)+.txt");
+	lextok *dummy = chars_to_substrings_lexer("a?b");
 
 	//test lexer
 	for(lextok *l=dummy; l->str; l++)

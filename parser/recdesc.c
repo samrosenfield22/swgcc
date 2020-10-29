@@ -304,8 +304,6 @@ node *parse_nonterm(nonterminal_type nt)
 	node *root = node_create(true, nt, NULL);
 	int ci = 0;
 
-	bool always_do_first, repeat;
-
 	//look in the parse table, get the next production to apply
 	int next_production = parse_table_lookup(nt);
 	printf("\tapplying production %d\n", next_production);
@@ -318,64 +316,63 @@ node *parse_nonterm(nonterminal_type nt)
 		switch(tok->type)
 		{
 			case NONTERMINAL:
-
-				if(next_tok && next_tok->type == EXPR)
-				{
-					//printf("\t\tnext token is expr (%c)\n", next_tok->expr);
-					always_do_first = (next_tok->expr == '+');
-					repeat = (next_tok->expr == '*' || next_tok->expr == '+');
-					//second_tok = *(rhs+2);
-
-					if(!repeat)
-					{
-						if(parse_table_lookup(tok->nonterm) == -1)
-							break;
-					}
-					while(1)
-					{
-						if(!always_do_first)
-							if(parse_table_lookup(tok->nonterm) == -1)
-								break;	//out of the while loop, not the case :|
-
-						//
-						root->children[ci++] = parse_nonterm(tok->nonterm);
-						//node_add_child(root, parse_nonterm(tok->nonterm));
-						//ci++;
-						BAIL_IF_PARSER_FAILED;
-
-						always_do_first = false;	//bad variable name lol
-					}
-				}
-				else
-				{
-					root->children[ci++] = parse_nonterm(tok->nonterm);
-					BAIL_IF_PARSER_FAILED;
-				}
+				if(!consume_nonterm(root, &ci, tok, next_tok))
+					BAIL_IF_PARSER_FAILED
 				break;
 
 			case TERMINAL:
 			case IDENT:
-
-				if(match(tok))
-				{
-					root->children[ci++] = node_create(false, tok->type, lex_tok->str);
-					if(lex_tok->is_ident) root->children[ci++] = node_create(false, SEMACT, lex_tok->str);	//just for testing
-					next();
-				}
-				else
-				{
-					printf("failed to match token \'%s\' (type %s)\n", tok->term, t_strings[tok->type]);
+				if(!consume_term_or_ident(root, &ci, tok))
 					PARSER_FAILURE;
-				}
 				break;
 
-			case SEMACT:	root->children[ci++] = node_create(false, tok->type, tok->semact); /*root->children[ci++] = node_create(false, tok->type, lex_tok->str);*/ break;
-
+			case SEMACT:	root->children[ci++] = node_create(false, tok->type, tok->semact); break;
 			case EXPR: 		break;
 		}
 	}
 
 	return root;
+}
+
+bool consume_nonterm(node *root, int *ci, prod_tok *tok, prod_tok *next_tok)
+{
+	bool always_do_first = true, repeat = false;
+
+	if(next_tok && next_tok->type == EXPR)
+	{
+		always_do_first = (next_tok->expr == '+');
+		repeat = (next_tok->expr == '*' || next_tok->expr == '+');
+	}
+
+	if(always_do_first)
+		goto skip_first_check;
+
+	do {
+		if(parse_table_lookup(tok->nonterm) == -1)
+			return true;
+
+		skip_first_check:
+		root->children[(*ci)++] = parse_nonterm(tok->nonterm);
+		if(PARSER_STATUS != P_OK)
+			return false;
+	} while(repeat);
+
+	return true;
+}
+
+bool consume_term_or_ident(node *root, int *ci, prod_tok *tok)
+{
+	if(!match(tok))
+	{
+		printf("failed to match token \'%s\' (type %s)\n", tok->term, t_strings[tok->type]);
+		return false;
+	}
+	
+	root->children[(*ci)++] = node_create(false, tok->type, lex_tok->str);
+	if(lex_tok->is_ident)
+		root->children[(*ci)++] = node_create(false, SEMACT, lex_tok->str);	//just for testing
+	next();
+	return true;
 }
 
 int parse_table_lookup(nonterminal_type nt)
