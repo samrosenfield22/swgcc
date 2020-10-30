@@ -21,10 +21,12 @@ struct node_s
     char *str;
 };
 
-extern const char *nt_strings[], *t_strings[];
+extern const char *t_strings[];
 
 node *node_create(bool is_nonterminal, int type, const char *str);
 void node_add_child(node *root, node *child);
+
+void ptree_init_names(char **strings);
 
 void ptree_traverse_dfs(node *pt, void (*action)(node *pt, int arg), bool node_then_children);
 void ptree_traverse_dfs_recursive(node *pt, void (*action)(node *pt, int arg), int depth, bool node_then_children);

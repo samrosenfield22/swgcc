@@ -4,16 +4,16 @@
 #define RECDESC_H_
 
 #include "recdesc_types.h"
+#include "grammar.h"
 #include "tree.h"
-
-
 
 
 //
 lextok *chars_to_substrings_lexer(const char *instr);
 
-void productions_to_parse_table(void);
+void productions_to_parse_table(grammar *g);
 void mark_entries_for_nonterminal(nonterminal_type nt);
+void dump_parse_table(int *pt);
 
 node *parse(lextok *lex_tokens_in);
 node *parse_nonterm(nonterminal_type nt);

@@ -8,7 +8,7 @@
 
 #include "tree.h"
 
-const char *nt_strings[] =
+/*const char *nt_strings[] =
 {
 	[REGEX] = "regex",
 	[MORETERM] = "moreterm",
@@ -18,7 +18,8 @@ const char *nt_strings[] =
 	[BASE_SUFFIX] = "base_suffix",
 	[BASE] = "base",
 	[RANGE] = "range",
-};
+};*/
+char **nt_strings;
 
 const char *t_strings[] =
 {
@@ -60,6 +61,11 @@ void node_add_child(node *root, node *child)
 	root->next_child++;
 }
 
+void ptree_init_names(char **strings)
+{
+	nt_strings = strings;
+}
+
 void ptree_traverse_dfs(node *pt, void (*action)(node *pt, int arg), bool node_then_children)
 {
 		ptree_traverse_dfs_recursive(pt, action, 0, node_then_children);
@@ -87,6 +93,7 @@ void node_print(node *pt, int depth)
 	}
 		if(pt->is_nonterminal == true)
 			printf("(%s) ", nt_strings[pt->type]);
+			//printf("nootnoot ");
 		else
 			printf("(%s) ", t_strings[pt->type]);
 

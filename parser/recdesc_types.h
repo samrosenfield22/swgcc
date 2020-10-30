@@ -11,7 +11,7 @@ typedef struct lextok_s
 } lextok;
 
 //eventually will get auto-gened/non needed
-typedef enum nonterminal_type_e
+/*typedef enum nonterminal_type_e
 {
 	REGEX,
 	MORETERM,
@@ -21,7 +21,8 @@ typedef enum nonterminal_type_e
 	BASE_SUFFIX,
 	BASE,
 	RANGE
-} nonterminal_type;
+} nonterminal_type;*/
+typedef int nonterminal_type;
 
 //types of tokens in the rhs of a production rule
 typedef enum prod_tok_type_e
@@ -39,11 +40,13 @@ typedef struct prod_tok_s
 	prod_tok_type type;
 	union
 	{
-		nonterminal_type nonterm;
-		char *term;
+		//nonterminal_type nonterm;
+		int nonterm;
+		/*char *term;
 		char *semact;
 		char expr;
-		char *ident;
+		char *ident;*/
+		char *str;
 	};
 } prod_tok;
 
@@ -52,5 +55,13 @@ typedef struct production_rule_s
 	nonterminal_type lhs;
 	prod_tok **rhs;
 } production_rule;
+
+typedef struct grammar_s
+{
+    production_rule *rules;
+    char **nonterminals, **terminals;
+    //char **nonterm_names;
+    int alphabet_len, nonterm_len, grammar_len;
+} grammar;
 
 #endif //RECDESC_TYPES_H

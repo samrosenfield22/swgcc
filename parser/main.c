@@ -3,11 +3,14 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+#include "grammar.h"
 #include "recdesc.h"
 
 int main(void)
 {
-	productions_to_parse_table();
+	grammar *g = load_grammar("regex_grammar.txt");
+	//return 0;
+	productions_to_parse_table(g);
 
 	/*int *mpt = (int*)manual_parse_table;
 	for(int i=0; i<8; i++)
@@ -28,8 +31,9 @@ int main(void)
 
 	//return 0;*/
 
-	//lextok *dummy = chars_to_substrings_lexer("(a(b|c))+|xyz|fg?h");
-	lextok *dummy = chars_to_substrings_lexer("a?b");
+	lextok *dummy = chars_to_substrings_lexer("(a(b|c))+|xyz|fg?h");
+	//lextok *dummy = chars_to_substrings_lexer("abc");
+	//lextok *dummy = chars_to_substrings_lexer("a?b");
 
 	//test lexer
 	for(lextok *l=dummy; l->str; l++)
@@ -41,6 +45,8 @@ int main(void)
 		printf("\nparser failed!\n");
 		return 0;
 	}
+
+	ptree_init_names(g->nonterminals);
 	ptree_traverse_dfs(tree, node_print, true);
 	ptree_traverse_dfs(tree, semact_print, true);
 	return 0;
