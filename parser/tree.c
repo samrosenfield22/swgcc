@@ -55,11 +55,11 @@ node *node_create(bool is_nonterminal, int type, const char *str)
     return n;
 }
 
-void node_add_child(node *root, node *child)
+/*void node_add_child(node *root, node *child)
 {
 	root->children[root->next_child] = child;
 	root->next_child++;
-}
+}*/
 
 void ptree_init_names(char **strings)
 {

@@ -1,0 +1,21 @@
+
+
+
+
+
+
+
+
+
+<regex> ::= <term> <moreterm>*
+<moreterm> ::= "|" <term> {union}
+<term> ::= <factor> <confactor>*
+<confactor> ::= <factor> {concat}
+<factor> ::= <base> <base_suffix>*
+<base_suffix> ::= "*" {0 or more}
+<base_suffix> ::= "+" {1 or more}
+<base_suffix> ::= "?" {0 or 1}
+<base> ::= char {push}
+<base> ::= "(" <regex> ")"
+<base> ::= "[" <range>+ "]"
+<range> ::= char {push} "-" char {push} {range}

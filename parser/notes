@@ -1,0 +1,8 @@
+added idents to the parse table
+----------------------------------
+
+to do:
+
+* lexer needs to create the ident table, ident structures (see the comment in recdesc.c, right above chars_to_substrings_lexer())
+* right now if i use the wrong type of ident, it'll still parse (ex. if the grammar says <thing> ::= num ..., but i use a id instead of a num, it won't bail)
+  probably need to fix match()

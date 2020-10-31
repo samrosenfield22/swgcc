@@ -1,0 +1,75 @@
+stmt -> (comma | decl);
+decl -> type id (= comma)?
+comma -> assign (, assign)*
+assign -> id (= | += | -= | *= | /= | %= | <<= | >>= | &= | |= | ^=) assign | logical
+logical -> bitwise (&& bitwise)* | bitwise (|| bitwise)* | bitwise
+bitwise -> equality (& equality)* | equality (| equality)* | equality (^ equality)* | equality
+equality -> relational (== relational)* |  relational (!= relational)* |  relational
+relational -> shift (> shift)* | shift (>= shift)* | shift (< shift)* | shift (<= shift)* | shift
+shift -> sum (<< sum)* | sum (>> sum)* | sum
+sum ->  prod (+ prod)* | prod (- prod)* | prod
+prod -> base (* base)* | base (/ base)* | base (% base)* | base
+base -> num | id | (expr)
+
+<regex> ::= <term> <moreterm>*
+<moreterm> ::= "|" <term> {union}
+<term> ::= <factor> <confactor>*
+<confactor> ::= <factor> {concat}
+<factor> ::= <base> <base_suffix>*
+
+------------------------------------------------
+<stmt> ::= <comma> ";"
+<stmt> ::= <decl> ";"
+
+
+<decl>        ::= type id <mdecl>?
+<mdecl>       ::= "=" <comma>
+
+<comma>       ::= <assign> <mcomma>*
+<mcomma>      ::= "," <assign>
+
+<assign>      ::= id <massign>+
+<assign>      ::= <logical>
+<massign>     ::= "=" <assign>
+<massign>     ::= "+=" <assign>
+<massign>     ::= "-=" <assign>
+<massign>     ::= "*=" <assign>
+<massign>     ::= "/=" <assign>
+<massign>     ::= "%=" <assign>
+<massign>     ::= "<<=" <assign>
+<massign>     ::= ">>=" <assign>
+<massign>     ::= "&=" <assign>
+<massign>     ::= "|=" <assign>
+<massign>     ::= "^=" <assign>
+
+<logical>     ::= <bitwise> <mlogical>*
+<mlogical>    ::= "&&" <bitwise>
+<mlogical>    ::= "||" <bitwise>
+
+<bitwise>     ::= <equality> <mbitwise>*
+<mbitwise>    ::= "&" <equality>
+<mbitwise>    ::= "|" <equality>
+<mbitwise>    ::= "^" <equality>
+
+<equality>    ::= <relational> <mequality>*
+<mequality>   ::= "==" <equality>
+<mequality>   ::= "!=" <equality>
+
+<relational>  ::= <shift> <mrelational>*
+<mrelational> ::= ">" <shift>
+<mrelational> ::= ">=" <shift>
+<mrelational> ::= "<" <shift>
+<mrelational> ::= "<=" <shift>
+
+<shift>       ::= <sum> <mshift>*
+<mshift>      ::= "<<" <sum>
+<mshift>      ::= ">>" <sum>
+
+<prod>        ::= <base> <mprod>*
+<mprod>       ::= "*" <base>
+<mprod>       ::= "/" <base>
+<mprod>       ::= "%" <base>
+
+<base>        ::= num
+<base>        ::= id
+<base>        ::= "(" <expr> ")"

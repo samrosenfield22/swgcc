@@ -7,7 +7,8 @@
 typedef struct lextok_s
 {
 	char *str;
-	bool is_ident;	//type
+	bool is_ident;
+	int ident_id;
 } lextok;
 
 //eventually will get auto-gened/non needed
@@ -60,8 +61,8 @@ typedef struct grammar_s
 {
     production_rule *rules;
     char **nonterminals, **terminals;
-    //char **nonterm_names;
     int alphabet_len, nonterm_len, grammar_len;
+		int *parse_table;
 } grammar;
 
 #endif //RECDESC_TYPES_H
