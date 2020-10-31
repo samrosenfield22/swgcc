@@ -3,6 +3,7 @@
 #ifndef GRAMMAR_H_
 #define GRAMMAR_H_
 
+#include "../lexer/lexer.h"
 #include "recdesc_types.h"
 
 extern grammar gg;

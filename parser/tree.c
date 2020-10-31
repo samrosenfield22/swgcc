@@ -8,17 +8,6 @@
 
 #include "tree.h"
 
-/*const char *nt_strings[] =
-{
-	[REGEX] = "regex",
-	[MORETERM] = "moreterm",
-	[TERM] = "term",
-	[FACTOR] = "factor",
-	[CONFACTOR] = "confactor",
-	[BASE_SUFFIX] = "base_suffix",
-	[BASE] = "base",
-	[RANGE] = "range",
-};*/
 char **nt_strings;
 
 const char *t_strings[] =
@@ -61,10 +50,10 @@ node *node_create(bool is_nonterminal, int type, const char *str)
 	root->next_child++;
 }*/
 
-void ptree_init_names(char **strings)
+/*void ptree_init_names(char **strings)
 {
 	nt_strings = strings;
-}
+}*/
 
 void ptree_traverse_dfs(node *pt, void (*action)(node *pt, int arg), bool node_then_children)
 {
@@ -92,7 +81,7 @@ void node_print(node *pt, int depth)
 		printf("  ");
 	}
 		if(pt->is_nonterminal == true)
-			printf("(%s) ", nt_strings[pt->type]);
+			printf("(%s) ", gg.nonterminals[pt->type]);
 			//printf("nootnoot ");
 		else
 			printf("(%s) ", t_strings[pt->type]);

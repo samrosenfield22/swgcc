@@ -235,8 +235,8 @@ bool consume_term_or_ident(node *root, int *ci, prod_tok *tok)
 	}
 
 	root->children[(*ci)++] = node_create(false, tok->type, lex_tok->str);
-	if(lex_tok->is_ident)
-		root->children[(*ci)++] = node_create(false, SEMACT, lex_tok->str);	//just for testing
+	//if(lex_tok->is_ident)
+	//	root->children[(*ci)++] = node_create(false, SEMACT, lex_tok->str);	//just for testing
 	next();
 	return true;
 }

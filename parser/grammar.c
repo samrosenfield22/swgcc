@@ -56,18 +56,18 @@ int ntn_index;
 char *terminal_names[SOME_BIG_NUMBER];
 int tn_index;
 
-prod_tok token_buf[100];
+prod_tok token_buf[SOME_BIG_NUMBER];
 int tbuf_index = 0;
 
 grammar gg;
 
-char *ident_table[] =
+/*char *ident_table[] =
 {
 	"char",
     "num"
 };
 int ident_len = 2;  //for now
-
+*/
 
 grammar *load_grammar(const char *fname)
 {
@@ -102,6 +102,7 @@ grammar *load_grammar(const char *fname)
     gg = (grammar){production_rules, nonterminal_names, terminal_names, tn_index+ident_len, ntn_index, pd_index};
 
     productions_to_parse_table();
+    
 
     return &gg;
 }
@@ -110,6 +111,8 @@ grammar *load_grammar(const char *fname)
 
 static void build_production(char *bp)
 {
+    printf("building production %s\n", bp);
+
     int first_token = tbuf_index;
 
     production_rules[pd_index].rhs = calloc(80, sizeof(prod_tok *));
@@ -135,29 +138,26 @@ static void build_production(char *bp)
 
 static char *consume_token(char *s)
 {
-    /*if((*s>='a' && *s<='z') || (*s>='A' && *s<='Z'))
+    
+    switch(*s)
     {
-        s = consume_ident(s);
-    }*/
-    if(search_ident_name(s) != -1)
-        s = consume_ident(s);
-    else
-    {
-        switch(*s)
-        {
-            case '<':   s = consume_thing(s, '<', '>'); break;  //nonterminal,
-            case '"':   s = consume_thing(s, '"', '"'); break;   //
-            case '{':   s = consume_thing(s, '{', '}'); break;  //semact
+        case '<':   s = consume_thing(s, '<', '>'); break;  //nonterminal,
+        case '"':   s = consume_thing(s, '"', '"'); break;   //
+        case '{':   s = consume_thing(s, '{', '}'); break;  //semact
 
-            case '+': case '*': case '?':
-              add_classname((char[]){*s, '\0'}, EXPR);
-              s++; break;
+        case '+': case '*': case '?':
+            add_classname((char[]){*s, '\0'}, EXPR);
+            s++; break;
 
-            case ' ': case '\t': case ':': case '=':
-              s++; break;
+        case ' ': case '\t': case ':': case '=':
+            s++; break;
 
-            default: assert(0);
-        }
+        default:
+            if(search_ident_name(s) != -1)
+                s = consume_ident(s);
+            else
+                {printf("found bad char in grammar:\n%s\n", s); assert(0);}
+            break;
     }
 
     return s;
@@ -168,7 +168,7 @@ static char *consume_thing(char *s, char start, char end)
     assert(*s == start);
     s++;
 
-    char *cn_end = strchr(s, end);
+    char *cn_end = strchr(s+1, end);    //was just (s, end)
     assert(cn_end);
     *cn_end = '\0';
 
@@ -198,7 +198,8 @@ static int search_ident_name(char *s)
     printf("searching for ident name \'%s\'\n", buf);
 
     int index = -1;
-    for(int i=0; i<sizeof(ident_table)/sizeof(ident_table[0]); i++)
+    //for(int i=0; i<sizeof(ident_table)/sizeof(ident_table[0]); i++)
+    for(int i=0; i<ident_len; i++)
     {
       if(strcmp(buf, ident_table[i])==0)
       {
@@ -449,10 +450,9 @@ static void mark_parse_table(int nt, int alpha, int val)
     int index = table_entry(nt, alpha);
     if(parse_table[index] != -1)  //already marked, there's a problem with the grammar
     {
-        //printf("attempting to mark previous marked parse table entry\n(%s)(%s) = %d\nwith value %d\n",
-        //    gg.nonterminals[nt], gg.terminals[alpha], parse_table[index], val);
-        printf("failure constructing parse table: mulitple parse paths for nonterminal=%s, lookahead=%s\n", gg.nonterminals[nt], gg.terminals[alpha]);
-        //printf("this combination applies both productions %d and %d\n", parse_table[index], val);
+        printf("failure constructing parse table: mulitple parse paths for nonterminal=%s, lookahead=%s\n",
+            gg.nonterminals[nt], (alpha<ident_len)? ident_table[alpha] : gg.terminals[alpha-ident_len]);
+
         printf("\t%d:\t", parse_table[index]); print_production_rule(parse_table[index]); printf("\n");
         printf("\t%d:\t", val);                print_production_rule(val); printf("\n");
         assert(0);
@@ -479,16 +479,16 @@ static void mark_parse_table(int nt, int alpha, int val)
 int find_parse_table_column(char *str, prod_tok_type type)
 {
   int index;
-  if(type == TERMINAL)
+  if(type == IDENT)
+  {
+      index = search_ident_name(str);
+      assert(index != -1);
+  }
+  else if(type == TERMINAL)
   {
       index = search_term_name(str);
       assert(index != -1);
       index += ident_len;
-  }
-  else if(type == IDENT)
-  {
-      index = search_ident_name(str);
-      assert(index != -1);
   }
 
   return index;

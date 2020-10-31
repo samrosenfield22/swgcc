@@ -1,12 +1,12 @@
-
+//  gcc -o main.exe main.c regex.c ../../swglib/automata/nfa/nfa_build.c ../../swglib/automata/nfa/nfa_run.c ../../swglib/structures/stack/stack.c $(FLAGS)
 
 #include <stdio.h>
 #include <string.h>
 
-#include "lexer.h"
+#include "lexer/lexer.h"
 #include "symbol.h"
-#include "parse.h"
-#include "simulator.h"
+#include "parser/recdesc.h"
+//#include "simulator.h"
 
 char strbuf[801];
 
@@ -53,25 +53,18 @@ char *read_stmtlist(void)
 
 int main(void)
 {
-    //int a;
-    //for(if(2>1) {a=2;} else {a=3;};     a<10;       a++) {printf("%d\n", a);}
+    
+    lexer_initialize();
 
-    nfa_builder_initialize();
-    nfa_simulator_initialize();
+    //symbol_table_initialize();
 
-    printf("building regexes... ");
-    lexer_build_all_regexes();
-    printf("done!\n");
+    grammar *g = load_grammar("parser/c_grammar.txt");
+    dump_classnames();
+    //dump_productions(g);
+    dump_parse_table(g->parse_table);
 
-    symbol_table_initialize();
-
-    //char inbuf[81], strbuf[800];
     while(1)
     {
-        /*parens=0; brackets=0;
-        printf(">> ");
-        fgets(inbuf, 80, stdin);
-        inbuf[strlen(inbuf)-1] = '\0';*/
 
         char *in = read_stmtlist();
         if(!in)
@@ -87,16 +80,21 @@ int main(void)
 
         void *parse_tree = parse(tokens);
         if(!parse_tree)
+        {
+            printf("parse failed\n");
             continue;
-        print_ptree(parse_tree);
+        }
+        //print_ptree(parse_tree);
+        ptree_traverse_dfs(parse_tree, node_print, true);
+        ptree_traverse_dfs(parse_tree, semact_print, true);
         printf("\n\n");
-        
+        /*
         //int res = ptree_evaluate(parse_tree);
         generate_intermediate_code(parse_tree);
         dump_intermediate();
 
         int res = run_intermediate_code();
-        printf("\n%d\n", res);
+        printf("\n%d\n", res);*/
     }
 
     

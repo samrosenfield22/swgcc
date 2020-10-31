@@ -4,12 +4,12 @@
 #define RECDESC_TYPES_H
 
 //these will actually be some struct *
-typedef struct lextok_s
+/*typedef struct lextok_s
 {
 	char *str;
 	bool is_ident;
 	int ident_id;
-} lextok;
+} lextok;*/
 
 //eventually will get auto-gened/non needed
 /*typedef enum nonterminal_type_e

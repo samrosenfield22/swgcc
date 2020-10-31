@@ -1,46 +1,26 @@
-stmt -> (comma | decl);
-decl -> type id (= comma)?
-comma -> assign (, assign)*
-assign -> id (= | += | -= | *= | /= | %= | <<= | >>= | &= | |= | ^=) assign | logical
-logical -> bitwise (&& bitwise)* | bitwise (|| bitwise)* | bitwise
-bitwise -> equality (& equality)* | equality (| equality)* | equality (^ equality)* | equality
-equality -> relational (== relational)* |  relational (!= relational)* |  relational
-relational -> shift (> shift)* | shift (>= shift)* | shift (< shift)* | shift (<= shift)* | shift
-shift -> sum (<< sum)* | sum (>> sum)* | sum
-sum ->  prod (+ prod)* | prod (- prod)* | prod
-prod -> base (* base)* | base (/ base)* | base (% base)* | base
-base -> num | id | (expr)
 
-<regex> ::= <term> <moreterm>*
-<moreterm> ::= "|" <term> {union}
-<term> ::= <factor> <confactor>*
-<confactor> ::= <factor> {concat}
-<factor> ::= <base> <base_suffix>*
-
-------------------------------------------------
-<stmt> ::= <comma> ";"
-<stmt> ::= <decl> ";"
+<stmt>			::= <comma> ";"
+<stmt>			::= <decl> ";"
 
 
-<decl>        ::= type id <mdecl>?
-<mdecl>       ::= "=" <comma>
+<decl>			::= type id <mdecl>?
+<mdecl>			::= "=" <comma>
 
-<comma>       ::= <assign> <mcomma>*
-<mcomma>      ::= "," <assign>
+<comma>       	::= <assign> <mcomma>*
+<mcomma>      	::= "," <assign>
 
-<assign>      ::= id <massign>+
-<assign>      ::= <logical>
-<massign>     ::= "=" <assign>
-<massign>     ::= "+=" <assign>
-<massign>     ::= "-=" <assign>
-<massign>     ::= "*=" <assign>
-<massign>     ::= "/=" <assign>
-<massign>     ::= "%=" <assign>
-<massign>     ::= "<<=" <assign>
-<massign>     ::= ">>=" <assign>
-<massign>     ::= "&=" <assign>
-<massign>     ::= "|=" <assign>
-<massign>     ::= "^=" <assign>
+<assign> 		::= <logical> <massign>*
+<massign>     	::= "=" <logical>
+<massign>     	::= "+=" <logical>
+<massign>     	::= "-=" <logical>
+<massign>     	::= "*=" <logical>
+<massign>     	::= "/=" <logical>
+<massign>     	::= "%=" <logical>
+<massign>     	::= "<<=" <logical>
+<massign>     	::= ">>=" <logical>
+<massign>     	::= "&=" <logical>
+<massign>     	::= "|=" <logical>
+<massign>     	::= "^=" <logical>
 
 <logical>     ::= <bitwise> <mlogical>*
 <mlogical>    ::= "&&" <bitwise>
@@ -65,6 +45,10 @@ base -> num | id | (expr)
 <mshift>      ::= "<<" <sum>
 <mshift>      ::= ">>" <sum>
 
+<sum>			::= <prod> <msum>*
+<msum>			::= "+" <prod>
+<msum>			::= "-" <prod>
+
 <prod>        ::= <base> <mprod>*
 <mprod>       ::= "*" <base>
 <mprod>       ::= "/" <base>
@@ -72,4 +56,4 @@ base -> num | id | (expr)
 
 <base>        ::= num
 <base>        ::= id
-<base>        ::= "(" <expr> ")"
+<base>        ::= "(" <comma> ")"
