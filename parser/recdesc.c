@@ -152,14 +152,14 @@ node *parse(lextok *lex_tokens_in)
 
 #define PARSER_FAILURE do {PARSER_STATUS = P_FAIL; return NULL;} while(0)
 //#define BAIL_IF_PARSER_FAILED if(PARSER_STATUS != P_OK) return NULL
-#define BAIL_IF_PARSER_FAILED if(PARSER_STATUS != P_OK) {ptree_traverse_dfs(root, node_delete, false); return NULL;}
+#define BAIL_IF_PARSER_FAILED if(PARSER_STATUS != P_OK) {ptree_traverse_dfs(root, NULL, node_delete, false); return NULL;}
 
 node *parse_nonterm(nonterminal_type nt)
 {
 	//printf("\nparsing nonterminal: %s\n", loaded_grammar->nonterminals[nt]);
 	//printf("\tlookahead at lex tok %d (%s)\n", lex_tok-lex_tokens, lex_tok->str);
 
-	node *root = node_create(true, nt, NULL);
+	node *root = node_create(true, nt, NULL, NULL);
 	int ci = 0;
 
 	//look in the parse table, get the next production to apply
@@ -184,7 +184,7 @@ node *parse_nonterm(nonterminal_type nt)
 					PARSER_FAILURE;
 				break;
 
-			case SEMACT:	root->children[ci++] = node_create(false, tok->type, tok->str); break;
+			case SEMACT:	root->children[ci++] = node_create(false, tok->type, tok->str, NULL); break;
 			case EXPR: 		break;
 		}
 	}
@@ -234,7 +234,8 @@ bool consume_term_or_ident(node *root, int *ci, prod_tok *tok)
 		return false;
 	}
 
-	root->children[(*ci)++] = node_create(false, tok->type, lex_tok->str);
+	symbol *sym = (tok->type==IDENT)? lex_tok->sym : NULL; 
+	root->children[(*ci)++] = node_create(false, tok->type, lex_tok->str, sym);
 	//if(lex_tok->is_ident)
 	//	root->children[(*ci)++] = node_create(false, SEMACT, lex_tok->str);	//just for testing
 	next();

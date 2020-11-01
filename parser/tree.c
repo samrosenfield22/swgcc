@@ -20,17 +20,17 @@ const char *t_strings[] =
 };
 
 
-node *node_create(bool is_nonterminal, int type, const char *str)
+node *node_create(bool is_nonterminal, int type, const char *str, symbol *sym)
 {
     node *n = malloc(sizeof(*n));
     assert(n);
 
 	n->is_nonterminal = is_nonterminal;
     n->type = type;
+    n->sym = sym;
 
     for(int i=0; i<NODE_CHILDREN_CT; i++)
         n->children[i] = NULL;
-    n->next_child = 0;
 
     if(str)
     {
@@ -55,23 +55,45 @@ node *node_create(bool is_nonterminal, int type, const char *str)
 	nt_strings = strings;
 }*/
 
-void ptree_traverse_dfs(node *pt, void (*action)(node *pt, int arg), bool node_then_children)
+void ptree_traverse_dfs(node *pt, bool (*filter)(node *n), void (*action)(node *n, int arg), bool node_then_children)
 {
-		ptree_traverse_dfs_recursive(pt, action, 0, node_then_children);
+		ptree_traverse_dfs_recursive(pt, filter, action, 0, node_then_children);
 }
 
-void ptree_traverse_dfs_recursive(node *pt, void (*action)(node *pt, int depth), int depth, bool node_then_children)
+void ptree_traverse_dfs_recursive(node *pt, bool (*filter)(node *n), void (*action)(node *n, int depth), int depth, bool node_then_children)
 {
+	//static node *prev;
+
 		if(node_then_children)
-			action(pt, depth);
+		{
+			if((filter && filter(pt)) || (filter == NULL))
+				action(pt, depth);
+			//prev = pt;
+		}
 
 		for(int ci=0; pt->children[ci]; ci++)
 		{
-			ptree_traverse_dfs_recursive(pt->children[ci], action, depth+1, node_then_children);
+			ptree_traverse_dfs_recursive(pt->children[ci], filter, action, depth+1, node_then_children);
+			//prev = &pt->children[ci];
 		}
 
 		if(!node_then_children)
-			action(pt, depth);
+		{
+			if((filter && filter(pt)) || (filter == NULL))
+				action(pt, depth);
+			//prev = pt;
+		}
+}
+
+//returns the first one that matches, or NULL
+node *node_has_direct_child(node *pt, bool (*filter)(node *n))
+{
+	for(int ci=0; pt->children[ci]; ci++)
+	{
+		if(filter(pt->children[ci]))
+			return pt->children[ci];
+	}
+	return NULL;
 }
 
 void node_print(node *pt, int depth)

@@ -2,58 +2,78 @@
 <stmt>			::= <comma> ";"
 <stmt>			::= <decl> ";"
 
-
-<decl>			::= type id <mdecl>?
-<mdecl>			::= "=" <comma>
+<decl> ::= type <mdecl> <moredecl>*
+<mdecl> ::= <base_id> <decl_assign>?
+<moredecl> ::= "," <mdecl>
+<decl_assign> ::= "=" <assign> {=}
 
 <comma>       	::= <assign> <mcomma>*
-<mcomma>      	::= "," <assign>
+<mcomma>      	::= "," <assign> {,}
 
-<assign> 		::= <logical> <massign>*
-<massign>     	::= "=" <logical>
-<massign>     	::= "+=" <logical>
-<massign>     	::= "-=" <logical>
-<massign>     	::= "*=" <logical>
-<massign>     	::= "/=" <logical>
-<massign>     	::= "%=" <logical>
-<massign>     	::= "<<=" <logical>
-<massign>     	::= ">>=" <logical>
-<massign>     	::= "&=" <logical>
-<massign>     	::= "|=" <logical>
-<massign>     	::= "^=" <logical>
+<assign> ::= <base_id> <assign_id>*
+<assign> ::= <base_other> <more>*
+
+<assign_id> ::= "=" <assign> {=}
+<assign_id> ::= "+=" <assign> {+=}
+<assign_id> ::= "-=" <assign> {-=}
+<assign_id> ::= "*=" <assign> {*=}
+<assign_id> ::= "/=" <assign> {/=}
+<assign_id> ::= "%=" <assign> {%=}
+<assign_id> ::= "<<=" <assign> {<<=}
+<assign_id> ::= ">>=" <assign> {>>=}
+<assign_id> ::= "&=" <assign> {&=}
+<assign_id> ::= "|=" <assign> {|=}
+<assign_id> ::= "^=" <assign> {^=}
+<assign_id> ::= <more>
+
+<more>		::= <mlogical>
+<more>		::= <mbitwise>
+<more>		::= <mequality>
+<more>		::= <mrelational>
+<more>		::= <mshift>
+<more>		::= <msum>
+<more>		::= <mprod>
+<more>		::= <m>
+<more>		::= <m>
+<more>		::= <m>
+<more>		::= <m>
+
 
 <logical>     ::= <bitwise> <mlogical>*
-<mlogical>    ::= "&&" <bitwise>
-<mlogical>    ::= "||" <bitwise>
+<mlogical>    ::= "&&" <bitwise> {&&}
+<mlogical>    ::= "||" <bitwise> {||}
 
 <bitwise>     ::= <equality> <mbitwise>*
-<mbitwise>    ::= "&" <equality>
-<mbitwise>    ::= "|" <equality>
-<mbitwise>    ::= "^" <equality>
+<mbitwise>    ::= "&" <equality> {&}
+<mbitwise>    ::= "|" <equality> {|}
+<mbitwise>    ::= "^" <equality> {^}
 
 <equality>    ::= <relational> <mequality>*
-<mequality>   ::= "==" <equality>
-<mequality>   ::= "!=" <equality>
+<mequality>   ::= "==" <equality> {==}
+<mequality>   ::= "!=" <equality> {!=}
 
 <relational>  ::= <shift> <mrelational>*
-<mrelational> ::= ">" <shift>
-<mrelational> ::= ">=" <shift>
-<mrelational> ::= "<" <shift>
-<mrelational> ::= "<=" <shift>
+<mrelational> ::= ">" <shift> {>}
+<mrelational> ::= ">=" <shift> {>=}
+<mrelational> ::= "<" <shift> {<}
+<mrelational> ::= "<=" <shift> {<=}
 
 <shift>       ::= <sum> <mshift>*
-<mshift>      ::= "<<" <sum>
-<mshift>      ::= ">>" <sum>
+<mshift>      ::= "<<" <sum> {<<}
+<mshift>      ::= ">>" <sum> {>>}
 
 <sum>			::= <prod> <msum>*
-<msum>			::= "+" <prod>
-<msum>			::= "-" <prod>
+<msum>			::= "+" <prod> {+}
+<msum>			::= "-" <prod> {-}
 
 <prod>        ::= <base> <mprod>*
-<mprod>       ::= "*" <base>
-<mprod>       ::= "/" <base>
-<mprod>       ::= "%" <base>
+<mprod>       ::= "*" <base> {*}
+<mprod>       ::= "/" <base> {/}
+<mprod>       ::= "%" <base> {%}
 
-<base>        ::= num
-<base>        ::= id
-<base>        ::= "(" <comma> ")"
+<base>			::= <base_id>
+<base>			::= <base_other>
+
+<base_id>		::= id {push %s}
+<base_other>	::= num {push %s}
+<base_other>	::= "(" <comma> ")"

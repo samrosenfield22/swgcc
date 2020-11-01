@@ -102,7 +102,7 @@ grammar *load_grammar(const char *fname)
     gg = (grammar){production_rules, nonterminal_names, terminal_names, tn_index+ident_len, ntn_index, pd_index};
 
     productions_to_parse_table();
-    
+
 
     return &gg;
 }
@@ -195,7 +195,6 @@ static int search_ident_name(char *s)
     char buf[81];
     strncpy(buf, s, end-s);
     buf[end-s] = '\0';
-    printf("searching for ident name \'%s\'\n", buf);
 
     int index = -1;
     //for(int i=0; i<sizeof(ident_table)/sizeof(ident_table[0]); i++)

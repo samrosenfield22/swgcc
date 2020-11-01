@@ -1,0 +1,212 @@
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <assert.h>
+
+#include "lexer.h"
+
+
+//
+/*static void make_identifier(const char *l, lextok *tp, lextok *default_tok);
+static void make_decimal(const char *l, lextok *tp, lextok *default_tok);
+static void make_hex(const char *l, lextok *tp, lextok *default_tok);
+static void make_bin(const char *l, lextok *tp, lextok *default_tok);
+static void make_op(const char *l, lextok *tp, lextok *default_tok);*/
+
+static void make_identifier(lextok *tp);
+static void make_decimal(lextok *tp);
+static void make_hex(lextok *tp);
+static void make_bin(lextok *tp);
+
+
+typedef struct regex_action_pair_s
+{
+    const char *name;
+    const char *exp;
+    nfa_model *model;
+    lextok default_tok;
+    //void (*action)(const char *l, lextok *tp, lextok *default_tok);
+    void (*action)(lextok *tp);
+} regex_action_pair;
+
+#define LEXTOK_IDENT(id)    (lextok){NULL, true, id, 0, NULL}
+#define LEXTOK_TERM         (lextok){NULL, false, 0, 0, NULL}
+
+//regex table for c
+regex_action_pair regex_table[] =
+{
+    //{"[A-Za-z]+[A-Za-z0-9]*", NULL, make_identifier},
+
+    {"type", "int|char|short|long", NULL, LEXTOK_IDENT(2), NULL},
+    {"id", "[a-z]+", NULL, LEXTOK_IDENT(0), make_identifier},
+    {"num", "[0-9]+", NULL, LEXTOK_IDENT(1), make_decimal},
+    {"num", "0x[0-9A-Fa-f]+", NULL, LEXTOK_IDENT(1), make_hex},
+    {"num", "0b(0|1)+", NULL, LEXTOK_IDENT(1), make_bin},
+    {"whatever", "; | { | } | = | , | \\&\\& | \\|\\| | \\^ | \\& | \\| | \\^ | == | != | < | > | <= | >= | << | >> | \\+ | - | \\* | \\/ | \\% | \\( | \\) | \\+= | -= | \\*= | \\/= | %= | <<= | >>= | \\&= | \\|= | \\^=",
+    NULL, LEXTOK_TERM, NULL}
+    //still missing ? (ternary), +=, -=, *=...
+    //{"\\+ | - | \\* | \\/ | \\% | \\&\\& | \\|\\| | \\^ | \\| | \\&", NULL, make_op},
+
+    //+= | -= | *= | /= | %= | <<= | >>= | &= | |= | ^=)
+    //////
+};
+
+char *ident_table[] =
+{
+    "id",
+    "num",
+    "type"
+};
+int ident_len = 3;  //should get autogen'd
+
+
+void lexer_initialize(void)
+{
+    nfa_builder_initialize();
+    nfa_simulator_initialize();
+
+    printf("building regexes... ");
+    lexer_build_all_regexes();
+    printf("done!\n");
+}
+
+void lexer_build_all_regexes(void)
+{
+    for(int i=0; i<sizeof(regex_table)/sizeof(regex_table[0]); i++)
+    {
+        regex_table[i].model = regex_compile(regex_table[i].exp);
+    }
+}
+
+//lex_token *lexer(const char *str)
+lextok *lexer(const char *str)
+{
+    char buf[401], lexeme_buf[80];
+    strncpy(buf, str, 400);
+    char *bp = buf;
+
+    lextok *toks = calloc(80, sizeof(*toks));
+    assert(toks);
+    lextok *tp = toks;
+
+    int longest_match_ct, longest_match;
+    while(*bp)
+    {
+        //swallow whitespace
+        while(*bp==' ' || *bp=='\t' || *bp=='\n') bp++;
+        if(*bp=='\0')
+            break;
+
+        longest_match_ct = -1;
+        longest_match = -1;
+
+        //printf("matching string \'%s\'...\n", bp);
+        for(int i=0; i<sizeof(regex_table)/sizeof(regex_table[0]); i++)
+        {
+            //try and match the regex against the current location in the string
+            //printf("\tagainst regex %s\t\t", regex_table[i].exp);
+            int moves = nfa_run(regex_table[i].model, bp);
+            if(moves > longest_match_ct)
+            {
+                longest_match_ct = moves;
+                longest_match = i;
+            }
+            //printf("%d moves\n", moves);
+        }
+
+        //no matches found for a token
+        //assert(longest_match != -1);
+        if(longest_match == -1)
+        {
+            printf("no lexer match at %s\n", buf);
+            for(int i=0; i<18 + (bp-buf); i++) putchar(' ');
+            printf("^\n");
+            free(toks);
+            return NULL;
+        }
+
+        //break off the lexeme
+        //printf("breaking off %d chars from \'%s\'\n", longest_match_ct, bp);
+        strncpy(lexeme_buf, bp, longest_match_ct);
+        lexeme_buf[longest_match_ct] = '\0';
+        bp += longest_match_ct;
+
+        //create a token for the match
+        regex_action_pair *pair = &regex_table[longest_match];
+        memcpy(tp, &pair->default_tok, sizeof(*tp));
+        tp->str = malloc(strlen(lexeme_buf)+1);
+        assert(tp->str);
+        strcpy(tp->str, lexeme_buf);
+        if(pair->action)
+            pair->action(tp);
+            //pair->action(lexeme_buf, tp, pair->default_tok);
+        //regex_table[longest_match].action(lexeme_buf, tp);
+        tp++;
+    }
+
+    //test -- dump all tokens
+    for(lextok *t=toks; t!=tp; t++)
+    {
+        printf("%s ", t->str);
+        if(t->is_ident)
+            printf("(ident %d, val = %d)", t->ident_id, t->val);
+        putchar('\n');
+    }
+
+    return toks;
+}
+
+/*static void make_identifier(const char *l, lextok *tp, lextok *default_tok)
+{
+    memcpy(tp, default_tok, sizeof(*tp));
+
+    tp->type = IDENTIFIER;
+    tp->opstr = NULL;
+    tp->sym = symbol_search(l, SYM_ANY);
+    if(!(tp->sym))
+        tp->sym = symbol_create(l, SYM_IDENTIFIER);
+}*/
+
+static void make_identifier(lextok *tp)
+{
+    //printf("checking if identifier \"%s\" is already a symbol", tp->str);
+    tp->sym = symbol_search(tp->str, SYM_ANY);
+    //printf("table addr %p\n", tp->sym);
+    if(tp->sym)
+    {
+        if(tp->sym->type != SYM_IDENTIFIER)
+            tp->is_ident = false;
+    }
+    else
+        tp->sym = symbol_create(tp->str, SYM_IDENTIFIER);
+}
+
+static void make_decimal(lextok *tp)
+{
+    tp->val = strtol(tp->str, NULL, 10);
+}
+
+static void make_hex(lextok *tp)
+{
+    tp->val = strtol(tp->str, NULL, 16);
+}
+
+static void make_bin(lextok *tp)
+{
+    tp->val = strtol((tp->str)+2, NULL, 2);
+}
+
+//or maybe just a general make_symbol?
+//static void make_type(lextok *tp)
+
+/*static void make_op(const char *l, lextok *tp, lextok *default_tok)
+{
+    tp->type = OPERATOR;
+    tp->opstr = malloc(strlen(l)+1);
+    strcpy(tp->opstr, l);
+    tp->sym = NULL;
+}*/
+

@@ -6,7 +6,8 @@
 #include "lexer/lexer.h"
 #include "symbol.h"
 #include "parser/recdesc.h"
-//#include "simulator.h"
+#include "parser/semantic.h"
+#include "simulator.h"
 
 char strbuf[801];
 
@@ -85,9 +86,15 @@ int main(void)
             continue;
         }
         //print_ptree(parse_tree);
-        ptree_traverse_dfs(parse_tree, node_print, true);
-        ptree_traverse_dfs(parse_tree, semact_print, true);
+        ptree_traverse_dfs(parse_tree, NULL, node_print, true);
+        
         printf("\n\n");
+
+        if(!check_variable_declarations(parse_tree))
+            printf("semantic fail\n");
+
+        ptree_traverse_dfs(parse_tree, NULL, semact_print, true);
+
         /*
         //int res = ptree_evaluate(parse_tree);
         generate_intermediate_code(parse_tree);
