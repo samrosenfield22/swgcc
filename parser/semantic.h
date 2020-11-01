@@ -4,6 +4,7 @@
 #define SEMANTIC_H_
 
 #include "tree.h"
+#include "../simulator.h"
 
 bool check_variable_declarations(node *pt);
 

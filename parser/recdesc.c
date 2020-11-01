@@ -139,6 +139,8 @@ lextok *chars_to_substrings_lexer(const char *instr)
 
 node *parse(lextok *lex_tokens_in)
 {
+	PARSER_STATUS = P_OK;
+	
 	lex_tokens = lex_tokens_in;
 	lex_tok = lex_tokens;
 

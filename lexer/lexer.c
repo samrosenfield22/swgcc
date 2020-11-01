@@ -16,6 +16,8 @@ static void make_hex(const char *l, lextok *tp, lextok *default_tok);
 static void make_bin(const char *l, lextok *tp, lextok *default_tok);
 static void make_op(const char *l, lextok *tp, lextok *default_tok);*/
 
+static void lexer_build_all_regexes(void);
+
 static void make_identifier(lextok *tp);
 static void make_decimal(lextok *tp);
 static void make_hex(lextok *tp);
@@ -73,7 +75,7 @@ void lexer_initialize(void)
     printf("done!\n");
 }
 
-void lexer_build_all_regexes(void)
+static void lexer_build_all_regexes(void)
 {
     for(int i=0; i<sizeof(regex_table)/sizeof(regex_table[0]); i++)
     {
@@ -88,7 +90,7 @@ lextok *lexer(const char *str)
     strncpy(buf, str, 400);
     char *bp = buf;
 
-    lextok *toks = calloc(80, sizeof(*toks));
+    lextok *toks = calloc(240, sizeof(*toks));
     assert(toks);
     lextok *tp = toks;
 
@@ -148,15 +150,20 @@ lextok *lexer(const char *str)
     }
 
     //test -- dump all tokens
-    for(lextok *t=toks; t!=tp; t++)
-    {
-        printf("%s ", t->str);
-        if(t->is_ident)
-            printf("(ident %d, val = %d)", t->ident_id, t->val);
-        putchar('\n');
-    }
+    
 
     return toks;
+}
+
+void lex_tokens_dump(lextok *lt)
+{
+    for(lextok *l=lt; l->str; l++)
+    {
+        printf("%s ", l->str);
+        if(l->is_ident)
+            printf("(ident %d, val = %d)", l->ident_id, l->val);
+        putchar('\n');
+    }
 }
 
 /*static void make_identifier(const char *l, lextok *tp, lextok *default_tok)

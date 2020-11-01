@@ -48,7 +48,7 @@ char *read_stmtlist(void)
         
     } while(brackets>0);
 
-    printf("\n%s\n", strbuf);
+    //printf("\n%s\n", strbuf);
     return strbuf;
 }
 
@@ -77,7 +77,9 @@ int main(void)
         void *tokens = lexer(in);
         if(!tokens)
             continue;
-        dump_symbol_table();
+        lex_tokens_dump(tokens);
+        //dump_symbol_table();
+        //continue;
 
         void *parse_tree = parse(tokens);
         if(!parse_tree)
@@ -85,15 +87,23 @@ int main(void)
             printf("parse failed\n");
             continue;
         }
-        //print_ptree(parse_tree);
-        ptree_traverse_dfs(parse_tree, NULL, node_print, true);
-        
-        printf("\n\n");
+        //ptree_traverse_dfs(parse_tree, NULL, node_print, true);
 
         if(!check_variable_declarations(parse_tree))
+        {
             printf("semantic fail\n");
+            continue;
+        }
+
+        ptree_traverse_dfs(parse_tree, NULL, node_print, true);
 
         ptree_traverse_dfs(parse_tree, NULL, semact_print, true);
+
+        generate_intermediate_code(parse_tree);
+
+        int res = run_intermediate_code();
+        dump_symbol_table();
+        printf("\n%d\n", res);
 
         /*
         //int res = ptree_evaluate(parse_tree);

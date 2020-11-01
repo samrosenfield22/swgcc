@@ -33,8 +33,8 @@ typedef struct lextok_s
 } lextok;
 
 void lexer_initialize(void);
-void lexer_build_all_regexes(void);
 lextok *lexer(const char *str);
+void lex_tokens_dump(lextok *lt);
 
 extern char *ident_table[];
 extern int ident_len;

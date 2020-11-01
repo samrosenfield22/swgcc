@@ -17,8 +17,9 @@ typedef struct symbol_s
 {
     symbol_type type;
     char *name;
-    int val;
-    //variable type
+    //int val;
+
+    int *var;
 
     bool declared;
     bool initialized;

@@ -390,6 +390,8 @@ static void mark_entries_for_nonterminal(nonterminal_type nt)
 		//grab the first token of the production's rhs
 		prod_tok **rhs = gg.rules[i].rhs;
 		prod_tok *firsttok = *rhs;
+        while(firsttok->type==SEMACT || firsttok->type==EXPR)
+            firsttok++;
 		switch(firsttok->type)
 		{
 			case SEMACT: case EXPR: assert(0); /*break;*/

@@ -47,7 +47,8 @@ symbol *symbol_create(const char *name, symbol_type type)
     strcpy(SYMBOL_TABLE[sym_index].name, name);
 
     SYMBOL_TABLE[sym_index].type = type;
-    SYMBOL_TABLE[sym_index].val = 0;
+    //SYMBOL_TABLE[sym_index].val = 0;
+    SYMBOL_TABLE[sym_index].var = NULL;
     SYMBOL_TABLE[sym_index].declared = false;
     SYMBOL_TABLE[sym_index].initialized = false;
 
@@ -68,10 +69,10 @@ void dump_symbol_table(void)
             printf("keyword");
         else if(!SYMBOL_TABLE[i].declared)
             printf("undeclared variable");
-        else if(!SYMBOL_TABLE[i].initialized)
-            printf("uninitialized variable");
+        //else if(!SYMBOL_TABLE[i].initialized)
+        //    printf("uninitialized variable");
         else
-            printf(" = %d", SYMBOL_TABLE[i].val);
+            printf(" = %d", *(SYMBOL_TABLE[i].var));
 
         printf("\n");
     }
