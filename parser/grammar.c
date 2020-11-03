@@ -33,12 +33,13 @@ const char *tm_strings[] =
 
 static void build_production(char *bp);
 
-static char *consume_token(char *s);
-static char *consume_thing(char *s, char start, char end);
-static char *consume_ident(char *s);
+static prod_tok *consume_token(char *s);
+//static char *consume_token(char *s);
+static prod_tok *consume_thing(char **s, char start, char end);
+static prod_tok *consume_ident(char **s);
 static int search_ident_name(char *s);
 
-static void add_classname(char *name, prod_tok_type type);
+static prod_tok *add_classname(char *name, prod_tok_type type);
 static int search_nonterm_name(char *name);
 static int search_term_name(char *name);
 static void print_production_rule(int i);
@@ -47,17 +48,20 @@ static void productions_to_parse_table(void);
 static void mark_entries_for_nonterminal(nonterminal_type nt);
 static void mark_parse_table(int nt, int alpha, int val);
 
-production_rule production_rules[SOME_BIG_NUMBER];
-int pd_index;
+//production_rule production_rules[SOME_BIG_NUMBER];
+//int pd_index;
+production_rule *production_rules;
 
-char *nonterminal_names[SOME_BIG_NUMBER];
-int ntn_index;
+//char *nonterminal_names[SOME_BIG_NUMBER];
+//int ntn_index;
+char **nonterminal_names;
 
-char *terminal_names[SOME_BIG_NUMBER];
-int tn_index;
+//char *terminal_names[SOME_BIG_NUMBER];
+//int tn_index;
+char **terminal_names;
 
-prod_tok token_buf[SOME_BIG_NUMBER];
-int tbuf_index = 0;
+//prod_tok token_buf[SOME_BIG_NUMBER];
+//int tbuf_index = 0;
 
 grammar gg;
 
@@ -76,12 +80,15 @@ grammar *load_grammar(const char *fname)
     assert(fp);
 
     //initialize indices
-    tbuf_index = 0;
-    ntn_index = 0;
+    //tbuf_index = 0;
+    //ntn_index = 0;
+    nonterminal_names = vector(*nonterminal_names, 0);
     //tn_index = 1;   //terminal 0 is reserved for identifiers
     //terminal_names[0] = NULL;
-    tn_index = 0;
-    pd_index = 0;
+    //tn_index = 0;
+    terminal_names = vector(*terminal_names, 0);
+    //pd_index = 0;
+    production_rules = vector(*production_rules, 0);
 
     char buf[81];
 
@@ -99,7 +106,9 @@ grammar *load_grammar(const char *fname)
 
     //load everything into the grammar structure
     //gg = (grammar){production_rules, nonterminal_names, terminal_names, tn_index, ntn_index, pd_index};
-    gg = (grammar){production_rules, nonterminal_names, terminal_names, tn_index+ident_len, ntn_index, pd_index};
+    //gg = (grammar){production_rules, nonterminal_names, terminal_names, tn_index+ident_len, ntn_index, pd_index};
+    gg = (grammar){production_rules, nonterminal_names, terminal_names, vector_len(terminal_names)+ident_len,
+        vector_len(nonterminal_names), vector_len(production_rules)};
 
     productions_to_parse_table();
 
@@ -111,64 +120,119 @@ grammar *load_grammar(const char *fname)
 
 static void build_production(char *bp)
 {
-    printf("building production %s\n", bp);
+    /*printf("building production %s\n", bp);
 
+    //tbuf_index = 0;
     int first_token = tbuf_index;
+    
 
-    production_rules[pd_index].rhs = calloc(80, sizeof(prod_tok *));
+    vector_inc(&production_rules);
+    //production_rules[pd_index].rhs = calloc(80, sizeof(prod_tok *));
+    vector_last(production_rules).rhs = calloc(80, sizeof(prod_tok *));
 
     //scan the production text into tokens, load them into the token buffer
+    bp = consume_token(bp);
     while(*bp)
-        bp = consume_token(bp);
+        bp = consume_token(NULL);
 
     //load token into production's lhs
-    production_rules[pd_index].lhs = token_buf[first_token].nonterm;
+    vector_last(production_rules).lhs = token_buf[first_token].nonterm;
+    //vector_last(production_rules).lhs = token_buf[0].nonterm;
 
     //load tokens into production's rhs
     int r = 0;
     for(int i=first_token+1; i<tbuf_index; i++)
+    //for(int i=1; i<tbuf_index; i++)
     {
-        production_rules[pd_index].rhs[r] = &token_buf[i];
+        vector_last(production_rules).rhs[r] = &token_buf[i];
         r++;
     }
     //grammar[pd_index].rhs[r] = NULL;
 
-    pd_index++;
+    //pd_index++;*/
+
+    printf("building production %s\n", bp);
+
+    //tbuf_index = 0;
+    //int first_token = tbuf_index;
+    
+
+    vector_inc(&production_rules);
+    //production_rules[pd_index].rhs = calloc(80, sizeof(prod_tok *));
+    vector_last(production_rules).rhs = calloc(80, sizeof(prod_tok *));
+
+    //scan the production text into tokens, load them into the token buffer
+    /*bp = consume_token(bp);
+    while(*bp)
+        bp = consume_token(NULL);*/
+
+    //load token into production's lhs
+    vector_last(production_rules).lhs = consume_token(bp)->nonterm;
+    //vector_last(production_rules).lhs = token_buf[0].nonterm;
+
+    //load tokens into production's rhs
+    //int r=0;
+    prod_tok **rhs_tok = vector_last(production_rules).rhs;
+    while(1)
+    {
+        prod_tok *p = consume_token(NULL);
+        if(!p)
+            break;
+        //vector_last(production_rules).rhs[r] = p;
+        *rhs_tok++ = p;
+        //r++;
+    }
+
+    
 }
 
-static char *consume_token(char *s)
+//static char *consume_token(char *s)
+static prod_tok *consume_token(char *s)
 {
+    static char *sp;
+    if(s)
+        sp = s;
+    if(*sp == '\0')
+        return NULL;
+
+    prod_tok *t;
+
+    //
+    while(*sp==' ' || *sp=='\t' || *sp==':' || *sp=='=')
+        sp++;
     
-    switch(*s)
+    switch(*sp)
     {
-        case '<':   s = consume_thing(s, '<', '>'); break;  //nonterminal,
-        case '"':   s = consume_thing(s, '"', '"'); break;   //
-        case '{':   s = consume_thing(s, '{', '}'); break;  //semact
+        case '<':   t = consume_thing(&sp, '<', '>'); break;  //nonterminal,
+        case '"':   t = consume_thing(&sp, '"', '"'); break;   //
+        case '{':   t = consume_thing(&sp, '{', '}'); break;  //semact
 
         case '+': case '*': case '?':
-            add_classname((char[]){*s, '\0'}, EXPR);
-            s++; break;
+            t = add_classname((char[]){*sp, '\0'}, EXPR);
+            sp++; break;
 
-        case ' ': case '\t': case ':': case '=':
-            s++; break;
+        //case ' ': case '\t': case ':': case '=':
+        //    sp++; break;
 
         default:
-            if(search_ident_name(s) != -1)
-                s = consume_ident(s);
+            if(search_ident_name(sp) != -1)
+                t = consume_ident(&sp);
             else
-                {printf("found bad char in grammar:\n%s\n", s); assert(0);}
+                {printf("found bad char in grammar:\n%s\n", sp); assert(0);}
             break;
     }
 
-    return s;
+    //return sp;
+    //return &token_buf[tbuf_index-1];
+    return t;
 }
 
-static char *consume_thing(char *s, char start, char end)
+static prod_tok *consume_thing(char **s, char start, char end)
 {
-    assert(*s == start);
-    s++;
+    assert(**s == start);
+    (*s)++;
 
-    char *cn_end = strchr(s+1, end);    //was just (s, end)
+    char *cn_end = strchr((*s)+1, end);    //was just (s, end)
     assert(cn_end);
     *cn_end = '\0';
 
@@ -180,9 +244,13 @@ static char *consume_thing(char *s, char start, char end)
         case '"': type = TERMINAL; break;
         default: assert(0);
     }
-    add_classname(s, type); //save the string
 
-    return cn_end+1;
+    prod_tok *t = add_classname(*s, type);
+    *s = cn_end+1;
+    return t; //save the string
+
+    //return cn_end+1;
+
 }
 
 static int search_ident_name(char *s)
@@ -211,61 +279,86 @@ static int search_ident_name(char *s)
     return index;
 }
 
-static char *consume_ident(char *s)
+static prod_tok *consume_ident(char **s)
 {
     char *end;
-    for(end=s; !(*end==' ' || *end=='\t' || *end=='*' || *end=='+' || *end=='?' || *end=='\0'); end++);
+    for(end=*s; !(*end==' ' || *end=='\t' || *end=='*' || *end=='+' || *end=='?' || *end=='\0'); end++);
 
     char temp = *end;
     *end = '\0';
-    add_classname(s, IDENT);  //save the string
+    prod_tok *t = add_classname(*s, IDENT);  //save the string
     *end = temp;
 
-    return end;
+    //return end;
+    *s = end;
+    return t;
 }
 
-static void add_classname(char *name, prod_tok_type type)
+static prod_tok *add_classname(char *name, prod_tok_type type)
 {
+    prod_tok *t = malloc(sizeof(*t));
+    t->str = malloc(strlen(name)+1);
+    assert(t->str);
+    strcpy(t->str, name);
+    t->type = type;
+
     //add name to the token buffer
-    token_buf[tbuf_index].str = malloc(strlen(name)+1);
+    /*token_buf[tbuf_index].str = malloc(strlen(name)+1);
     assert(token_buf[tbuf_index].str);
     strcpy(token_buf[tbuf_index].str, name);
-    token_buf[tbuf_index].type = type;
+    token_buf[tbuf_index].type = type;*/
 
     //if the token is a nonterm or term, it gets added to those lists
     if(type == NONTERMINAL)
     {
         if(search_nonterm_name(name) == -1)
         {
-            nonterminal_names[ntn_index] = malloc(strlen(name)+1);
+            /*nonterminal_names[ntn_index] = malloc(strlen(name)+1);
             assert(nonterminal_names[ntn_index]);
             strcpy(nonterminal_names[ntn_index], name);
 
+            ntn_index++;*/
 
-            ntn_index++;
+            vector_inc(&nonterminal_names);
+            assert(nonterminal_names);
+
+            vector_last(nonterminal_names) = malloc(strlen(name)+1);
+            assert(vector_last(nonterminal_names));
+            strcpy(vector_last(nonterminal_names), name);
         }
 
         //nonterminal tokens (in the buffer) don't store their strings -- just an index to the nonterminal list
-        token_buf[tbuf_index].nonterm = search_nonterm_name(name);
+        //token_buf[tbuf_index].nonterm = search_nonterm_name(name);
+        t->nonterm = search_nonterm_name(name);
     }
     else if(type == TERMINAL)
     {
         if(search_term_name(name) == -1)
         {
-            terminal_names[tn_index] = malloc(strlen(name)+1);
+            /*terminal_names[tn_index] = malloc(strlen(name)+1);
             assert(terminal_names[tn_index]);
             strcpy(terminal_names[tn_index], name);
 
-            tn_index++;
+            tn_index++;*/
+
+            vector_inc(&terminal_names);
+
+            vector_last(terminal_names) = malloc(strlen(name)+1);
+            assert(vector_last(terminal_names));
+            strcpy(vector_last(terminal_names), name);
         }
     }
 
-    tbuf_index++;
+    //tbuf_index++;
+    //return &token_buf[tbuf_index-1];
+
+    return t;
 }
 
 static int search_nonterm_name(char *name)
 {
-    for(int i=0; i<ntn_index; i++)
+    //for(int i=0; i<ntn_index; i++)
+    for(int i=0; i<vector_len(nonterminal_names); i++)
     {
         if(strcmp(nonterminal_names[i], name)==0)
             return i;
@@ -276,7 +369,8 @@ static int search_nonterm_name(char *name)
 static int search_term_name(char *name)
 {
     //for(int i=1; i<tn_index; i++)   //start at 1 to skip the NULL entry for idents
-    for(int i=0; i<tn_index; i++)
+    //for(int i=0; i<tn_index; i++)
+    for(int i=0; i<vector_len(terminal_names); i++)
     {
         if(strcmp(terminal_names[i], name)==0)
             return i;
@@ -287,13 +381,15 @@ static int search_term_name(char *name)
 void dump_classnames(void)
 {
     printf("\nnonterminals:\n-----------------\n");
-    for(int i=0; i<ntn_index; i++)
+    //for(int i=0; i<ntn_index; i++)
+    for(int i=0; i<vector_len(nonterminal_names); i++)
     {
       printf("%s %d\n", nonterminal_names[i], i);
     }
 
     printf("\nterminals:\n-----------------\n");
-    for(int i=0; i<tn_index; i++)
+    //for(int i=0; i<tn_index; i++)
+    for(int i=0; i<vector_len(terminal_names); i++)
     {
       printf("%s %d\n", terminal_names[i], i);
     }

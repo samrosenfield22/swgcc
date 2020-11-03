@@ -4,6 +4,7 @@
 #define GRAMMAR_H_
 
 #include "../lexer/lexer.h"
+#include "../ds/vector.h"
 #include "recdesc_types.h"
 
 extern grammar gg;
