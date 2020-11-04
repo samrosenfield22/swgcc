@@ -29,8 +29,6 @@ node *node_create(bool is_nonterminal, int type, const char *str, symbol *sym)
     n->type = type;
     n->sym = sym;
 
-    //for(int i=0; i<NODE_CHILDREN_CT; i++)
-    //    n->children[i] = NULL;
     n->children = vector(node *, 0);
     n->children[0] = NULL;
 
@@ -48,13 +46,6 @@ node *node_create(bool is_nonterminal, int type, const char *str, symbol *sym)
 
 void node_add_child(node *root, node *child)
 {
-	//root->children[root->next_child] = child;
-	//root->next_child++;
-
-	/*node **c;
-	for(c = root->children; *c; c++);
-	*c = child;*/
-	//vector_last(root->children) = child;
 	vector_inc(&(root->children));
 	vector_last(root->children) = child;
 }
@@ -80,7 +71,6 @@ void ptree_traverse_dfs_recursive(node *pt, bool (*filter)(node *n), void (*acti
 			//prev = pt;
 		}
 
-		//for(int ci=0; pt->children[ci]; ci++)
 		for(int ci=0; ci<vector_len(pt->children); ci++)
 		{
 			ptree_traverse_dfs_recursive(pt->children[ci], filter, action, depth+1, node_then_children);
@@ -98,7 +88,6 @@ void ptree_traverse_dfs_recursive(node *pt, bool (*filter)(node *n), void (*acti
 //returns the first one that matches, or NULL
 node *node_has_direct_child(node *pt, bool (*filter)(node *n))
 {
-	//for(int ci=0; pt->children[ci]; ci++)
 	for(int ci=0; ci<vector_len(pt->children); ci++)
 	{
 		if(filter(pt->children[ci]))

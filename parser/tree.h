@@ -7,7 +7,6 @@
 #include "recdesc_types.h"
 #include "../ds/vector.h"
 
-//#define NODE_CHILDREN_CT (20)
 
 //parse tree node
 typedef struct node_s node;
@@ -17,7 +16,6 @@ struct node_s
 	bool is_nonterminal;
 	int type;	//either a nonterminal index, or a type of thing (nonterminal, semantic, ident...)
 
-    //node *children[NODE_CHILDREN_CT];
     node **children;
     char *str;
 

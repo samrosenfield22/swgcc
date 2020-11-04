@@ -162,7 +162,6 @@ node *parse_nonterm(nonterminal_type nt)
 	//printf("\tlookahead at lex tok %d (%s)\n", lex_tok-lex_tokens, lex_tok->str);
 
 	node *root = node_create(true, nt, NULL, NULL);
-	//int ci = 0;
 
 	//look in the parse table, get the next production to apply
 	int next_production = parse_table_lookup(nt);
@@ -176,20 +175,17 @@ node *parse_nonterm(nonterminal_type nt)
 		switch(tok->type)
 		{
 			case NONTERMINAL:
-				//if(!consume_nonterm(root, &ci, tok, next_tok))
 				if(!consume_nonterm(root, tok, next_tok))
 					BAIL_IF_PARSER_FAILED
 				break;
 
 			case TERMINAL:
 			case IDENT:
-				//if(!consume_term_or_ident(root, &ci, tok))
 				if(!consume_term_or_ident(root, tok))
 					PARSER_FAILURE;
 				break;
 
-			//case SEMACT:	root->children[ci++] = node_create(false, tok->type, tok->str, NULL); break;
-			case SEMACT:	node_add_child(root, node_create(false, tok->type, tok->str, NULL)); /*i++;*/ break;
+			case SEMACT:	node_add_child(root, node_create(false, tok->type, tok->str, NULL)); break;
 			case EXPR: 		break;
 		}
 	}
@@ -223,9 +219,7 @@ bool consume_nonterm(node *root, prod_tok *tok, prod_tok *next_tok)
 			return true;
 
 		skip_first_check:
-		//root->children[(*ci)++] = parse_nonterm(tok->nonterm);
 		node_add_child(root, parse_nonterm(tok->nonterm));
-		//(*ci)++;
 		if(PARSER_STATUS != P_OK)
 			return false;
 	} while(repeat);
@@ -233,7 +227,6 @@ bool consume_nonterm(node *root, prod_tok *tok, prod_tok *next_tok)
 	return true;
 }
 
-//bool consume_term_or_ident(node *root, int *ci, prod_tok *tok)
 bool consume_term_or_ident(node *root, prod_tok *tok)
 {
 	//printf("\t\tconsuming term/ident %s\n", tok->str);
@@ -243,10 +236,8 @@ bool consume_term_or_ident(node *root, prod_tok *tok)
 		return false;
 	}
 
-	symbol *sym = (tok->type==IDENT)? lex_tok->sym : NULL; 
-	//root->children[(*ci)++] = node_create(false, tok->type, lex_tok->str, sym);
+	symbol *sym = (tok->type==IDENT)? lex_tok->sym : NULL;
 	node_add_child(root, node_create(false, tok->type, lex_tok->str, sym));
-	//(*ci)++;
 	next();
 	return true;
 }

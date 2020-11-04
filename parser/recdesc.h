@@ -14,8 +14,6 @@ lextok *chars_to_substrings_lexer(const char *instr);
 node *parse(lextok *lex_tokens_in);
 node *parse_nonterm(nonterminal_type nt);
 
-/*bool consume_nonterm(node *root, int *ci, prod_tok *tok, prod_tok *next_tok);
-bool consume_term_or_ident(node *root, int *ci, prod_tok *tok);*/
 bool consume_nonterm(node *root, prod_tok *tok, prod_tok *next_tok);
 bool consume_term_or_ident(node *root, prod_tok *tok);
 

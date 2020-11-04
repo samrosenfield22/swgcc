@@ -94,10 +94,6 @@ bool filter_node_base(node *n)
 //assuming the lval semact must be child 0
 bool filter_lvalue_parents(node *n)
 {
-	if(!(n->children[1]))
-		return false;
-	printf("%d\n", vector_len(n->children));
-	printf("%p\n", n->children[1]);
 	if(vector_len(n->children) < 2)
 		return false;
 
