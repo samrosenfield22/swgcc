@@ -48,30 +48,15 @@ static void productions_to_parse_table(void);
 static void mark_entries_for_nonterminal(nonterminal_type nt);
 static void mark_parse_table(int nt, int alpha, int val);
 
-//production_rule production_rules[SOME_BIG_NUMBER];
-//int pd_index;
+
+//vectors
 production_rule *production_rules;
-
-//char *nonterminal_names[SOME_BIG_NUMBER];
-//int ntn_index;
 char **nonterminal_names;
-
-//char *terminal_names[SOME_BIG_NUMBER];
-//int tn_index;
 char **terminal_names;
 
-//prod_tok token_buf[SOME_BIG_NUMBER];
-//int tbuf_index = 0;
-
+//main grammar structure
 grammar gg;
 
-/*char *ident_table[] =
-{
-	"char",
-    "num"
-};
-int ident_len = 2;  //for now
-*/
 
 grammar *load_grammar(const char *fname)
 {
@@ -79,15 +64,9 @@ grammar *load_grammar(const char *fname)
     if(!fp) {printf("Failed to load grammar from file %s\n", fname);}
     assert(fp);
 
-    //initialize indices
-    //tbuf_index = 0;
-    //ntn_index = 0;
+    //initialize vector structures
     nonterminal_names = vector(*nonterminal_names, 0);
-    //tn_index = 1;   //terminal 0 is reserved for identifiers
-    //terminal_names[0] = NULL;
-    //tn_index = 0;
     terminal_names = vector(*terminal_names, 0);
-    //pd_index = 0;
     production_rules = vector(*production_rules, 0);
 
     char buf[81];
@@ -120,73 +99,30 @@ grammar *load_grammar(const char *fname)
 
 static void build_production(char *bp)
 {
-    /*printf("building production %s\n", bp);
-
-    //tbuf_index = 0;
-    int first_token = tbuf_index;
-    
-
-    vector_inc(&production_rules);
-    //production_rules[pd_index].rhs = calloc(80, sizeof(prod_tok *));
-    vector_last(production_rules).rhs = calloc(80, sizeof(prod_tok *));
-
-    //scan the production text into tokens, load them into the token buffer
-    bp = consume_token(bp);
-    while(*bp)
-        bp = consume_token(NULL);
-
-    //load token into production's lhs
-    vector_last(production_rules).lhs = token_buf[first_token].nonterm;
-    //vector_last(production_rules).lhs = token_buf[0].nonterm;
-
-    //load tokens into production's rhs
-    int r = 0;
-    for(int i=first_token+1; i<tbuf_index; i++)
-    //for(int i=1; i<tbuf_index; i++)
-    {
-        vector_last(production_rules).rhs[r] = &token_buf[i];
-        r++;
-    }
-    //grammar[pd_index].rhs[r] = NULL;
-
-    //pd_index++;*/
-
     printf("building production %s\n", bp);
 
-    //tbuf_index = 0;
-    //int first_token = tbuf_index;
-    
-
     vector_inc(&production_rules);
-    //production_rules[pd_index].rhs = calloc(80, sizeof(prod_tok *));
-    vector_last(production_rules).rhs = calloc(80, sizeof(prod_tok *));
+    production_rule *prod = &vector_last(production_rules);
+    prod->rhs = calloc(80, sizeof(prod_tok *));
+    //vector_last(production_rules).rhs = vector(prod_tok *, 1);
 
-    //scan the production text into tokens, load them into the token buffer
-    /*bp = consume_token(bp);
-    while(*bp)
-        bp = consume_token(NULL);*/
-
-    //load token into production's lhs
-    vector_last(production_rules).lhs = consume_token(bp)->nonterm;
-    //vector_last(production_rules).lhs = token_buf[0].nonterm;
+    //load first token into production's lhs
+    prod->lhs = consume_token(bp)->nonterm;
 
     //load tokens into production's rhs
-    //int r=0;
-    prod_tok **rhs_tok = vector_last(production_rules).rhs;
+    prod_tok **rhs_tok = prod->rhs;
     while(1)
     {
         prod_tok *p = consume_token(NULL);
         if(!p)
             break;
-        //vector_last(production_rules).rhs[r] = p;
         *rhs_tok++ = p;
-        //r++;
     }
 
     
 }
 
-//static char *consume_token(char *s)
+//consumes tokens until we reach the end of the string
 static prod_tok *consume_token(char *s)
 {
     static char *sp;
@@ -197,7 +133,7 @@ static prod_tok *consume_token(char *s)
 
     prod_tok *t;
 
-    //
+    //skip past whitespace and other chars we don't care about
     while(*sp==' ' || *sp=='\t' || *sp==':' || *sp=='=')
         sp++;
     
@@ -222,8 +158,6 @@ static prod_tok *consume_token(char *s)
             break;
     }
 
-    //return sp;
-    //return &token_buf[tbuf_index-1];
     return t;
 }
 
@@ -247,10 +181,7 @@ static prod_tok *consume_thing(char **s, char start, char end)
 
     prod_tok *t = add_classname(*s, type);
     *s = cn_end+1;
-    return t; //save the string
-
-    //return cn_end+1;
-
+    return t;
 }
 
 static int search_ident_name(char *s)
@@ -289,24 +220,18 @@ static prod_tok *consume_ident(char **s)
     prod_tok *t = add_classname(*s, IDENT);  //save the string
     *end = temp;
 
-    //return end;
     *s = end;
     return t;
 }
 
 static prod_tok *add_classname(char *name, prod_tok_type type)
 {
+    //allocate/initialize the production token
     prod_tok *t = malloc(sizeof(*t));
     t->str = malloc(strlen(name)+1);
     assert(t->str);
     strcpy(t->str, name);
     t->type = type;
-
-    //add name to the token buffer
-    /*token_buf[tbuf_index].str = malloc(strlen(name)+1);
-    assert(token_buf[tbuf_index].str);
-    strcpy(token_buf[tbuf_index].str, name);
-    token_buf[tbuf_index].type = type;*/
 
     //if the token is a nonterm or term, it gets added to those lists
     if(type == NONTERMINAL)
@@ -348,9 +273,6 @@ static prod_tok *add_classname(char *name, prod_tok_type type)
             strcpy(vector_last(terminal_names), name);
         }
     }
-
-    //tbuf_index++;
-    //return &token_buf[tbuf_index-1];
 
     return t;
 }
