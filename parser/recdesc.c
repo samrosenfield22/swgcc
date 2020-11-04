@@ -140,7 +140,7 @@ lextok *chars_to_substrings_lexer(const char *instr)
 node *parse(lextok *lex_tokens_in)
 {
 	PARSER_STATUS = P_OK;
-	
+
 	lex_tokens = lex_tokens_in;
 	lex_tok = lex_tokens;
 
@@ -162,7 +162,7 @@ node *parse_nonterm(nonterminal_type nt)
 	//printf("\tlookahead at lex tok %d (%s)\n", lex_tok-lex_tokens, lex_tok->str);
 
 	node *root = node_create(true, nt, NULL, NULL);
-	int ci = 0;
+	//int ci = 0;
 
 	//look in the parse table, get the next production to apply
 	int next_production = parse_table_lookup(nt);
@@ -176,17 +176,20 @@ node *parse_nonterm(nonterminal_type nt)
 		switch(tok->type)
 		{
 			case NONTERMINAL:
-				if(!consume_nonterm(root, &ci, tok, next_tok))
+				//if(!consume_nonterm(root, &ci, tok, next_tok))
+				if(!consume_nonterm(root, tok, next_tok))
 					BAIL_IF_PARSER_FAILED
 				break;
 
 			case TERMINAL:
 			case IDENT:
-				if(!consume_term_or_ident(root, &ci, tok))
+				//if(!consume_term_or_ident(root, &ci, tok))
+				if(!consume_term_or_ident(root, tok))
 					PARSER_FAILURE;
 				break;
 
-			case SEMACT:	root->children[ci++] = node_create(false, tok->type, tok->str, NULL); break;
+			//case SEMACT:	root->children[ci++] = node_create(false, tok->type, tok->str, NULL); break;
+			case SEMACT:	node_add_child(root, node_create(false, tok->type, tok->str, NULL)); /*i++;*/ break;
 			case EXPR: 		break;
 		}
 	}
@@ -195,7 +198,8 @@ node *parse_nonterm(nonterminal_type nt)
 	return root;
 }
 
-bool consume_nonterm(node *root, int *ci, prod_tok *tok, prod_tok *next_tok)
+//bool consume_nonterm(node *root, int *ci, prod_tok *tok, prod_tok *next_tok)
+bool consume_nonterm(node *root, prod_tok *tok, prod_tok *next_tok)
 {
 	//printf("consuming nonterm %s\n", loaded_grammar->nonterminals[tok->nonterm]);
 	//printf("\tlookahead at lex tok %d (%s)\n", lex_tok-lex_tokens, lex_tok->str);
@@ -219,7 +223,9 @@ bool consume_nonterm(node *root, int *ci, prod_tok *tok, prod_tok *next_tok)
 			return true;
 
 		skip_first_check:
-		root->children[(*ci)++] = parse_nonterm(tok->nonterm);
+		//root->children[(*ci)++] = parse_nonterm(tok->nonterm);
+		node_add_child(root, parse_nonterm(tok->nonterm));
+		//(*ci)++;
 		if(PARSER_STATUS != P_OK)
 			return false;
 	} while(repeat);
@@ -227,7 +233,8 @@ bool consume_nonterm(node *root, int *ci, prod_tok *tok, prod_tok *next_tok)
 	return true;
 }
 
-bool consume_term_or_ident(node *root, int *ci, prod_tok *tok)
+//bool consume_term_or_ident(node *root, int *ci, prod_tok *tok)
+bool consume_term_or_ident(node *root, prod_tok *tok)
 {
 	//printf("\t\tconsuming term/ident %s\n", tok->str);
 	if(!match(tok))
@@ -237,9 +244,9 @@ bool consume_term_or_ident(node *root, int *ci, prod_tok *tok)
 	}
 
 	symbol *sym = (tok->type==IDENT)? lex_tok->sym : NULL; 
-	root->children[(*ci)++] = node_create(false, tok->type, lex_tok->str, sym);
-	//if(lex_tok->is_ident)
-	//	root->children[(*ci)++] = node_create(false, SEMACT, lex_tok->str);	//just for testing
+	//root->children[(*ci)++] = node_create(false, tok->type, lex_tok->str, sym);
+	node_add_child(root, node_create(false, tok->type, lex_tok->str, sym));
+	//(*ci)++;
 	next();
 	return true;
 }

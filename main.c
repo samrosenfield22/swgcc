@@ -87,7 +87,9 @@ int main(void)
             printf("parse failed\n");
             continue;
         }
+
         //ptree_traverse_dfs(parse_tree, NULL, node_print, true);
+        //continue;
 
         if(!check_variable_declarations(parse_tree))
         {
