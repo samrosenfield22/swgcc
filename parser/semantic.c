@@ -35,7 +35,9 @@ bool check_variable_declarations(node *pt)
 {
 	//declare variables, error for redeclared ones
 	SEMANTIC_STATUS = SEM_OK;
-	ptree_traverse_dfs(pt, filter_node_mdecl, check_var_decls, true);
+	//ptree_traverse_dfs(pt, filter_node_mdecl, check_var_decls, true);
+	ref_node = (node){true, 0, NULL, "mdecl", NULL};
+	ptree_traverse_dfs(pt, filter_by_ref_node, check_var_decls, true);
 	SEMANTIC_BAIL_IF_NOT_OK
 
 	//replace the "%s" in push semacts for lvalues with the variable addresses
@@ -46,6 +48,10 @@ bool check_variable_declarations(node *pt)
 	//replace the "%s" in push semacts with literals and variable names
 	SEMANTIC_STATUS = SEM_OK;
 	//ptree_traverse_dfs(pt, filter_node_base_other, amend_push_semact, true);
+	//ptree_traverse_dfs(pt, filter_node_base, amend_push_semact, true);
+	ref_node = (node){true, 0, NULL, "base_id", NULL};
+	ptree_traverse_dfs(pt, filter_node_base, amend_push_semact, true);
+	ref_node = (node){true, 0, NULL, "base_other", NULL};
 	ptree_traverse_dfs(pt, filter_node_base, amend_push_semact, true);
 	SEMANTIC_BAIL_IF_NOT_OK
 
@@ -61,6 +67,7 @@ bool check_variable_declarations(node *pt)
 bool filter_node_mdecl(node *n)
 {
 	return (n->is_nonterminal && strcmp(gg.nonterminals[n->type], "mdecl")==0);
+	//return (n->is_nonterminal && strcmp(n->str, "mdecl")==0);
 }
 
 bool filter_node_base_other(node *n)
@@ -157,9 +164,10 @@ void amend_push_semact(node *pt, int depth)
 
 	//copy it to the semact
 	free(pt->children[1]->str);
-	pt->children[1]->str = malloc(len+1);
+	/*pt->children[1]->str = malloc(len+1);
 	assert(pt->children[1]->str);
-	strcpy(pt->children[1]->str, buf);
+	strcpy(pt->children[1]->str, buf);*/
+	pt->children[1]->str = strdup(buf);
 
 	free(buf);
 }
@@ -190,9 +198,10 @@ void amend_push_lvalues(node *pt, int depth)
 
 	//copy it to the semact
 	free(bidp->children[1]->str);
-	bidp->children[1]->str = malloc(len+1);
+	/*bidp->children[1]->str = malloc(len+1);
 	assert(bidp->children[1]->str);
-	strcpy(bidp->children[1]->str, buf);
+	strcpy(bidp->children[1]->str, buf);*/
+	bidp->children[1]->str = strdup(buf);
 
 	free(buf);
 }

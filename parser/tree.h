@@ -22,6 +22,7 @@ struct node_s
     symbol *sym;	//if the node contains a variable, this points to its symbol in the sym table
 };
 
+extern node ref_node;	//defined in tree.c
 extern const char *t_strings[];
 
 node *node_create(bool is_nonterminal, int type, const char *str, symbol *sym);
@@ -34,6 +35,10 @@ void node_add_child(node *root, node *child);
 
 void ptree_traverse_dfs(node *pt, bool (*filter)(node *n), void (*action)(node *n, int arg), bool node_then_children);
 void ptree_traverse_dfs_recursive(node *pt, bool (*filter)(node *n), void (*action)(node *n, int depth), int depth, bool node_then_children);
+
+node **ptree_filter(node *n, bool (*filter)(node *n), int depth);
+void ptree_filter_recursive(node *n, bool (*filter)(node *n), node **collect, int depth, int max_depth);
+bool filter_by_ref_node(node *n);
 
 void node_print(node *pt, int depth);
 void semact_print(node *pt, int depth);

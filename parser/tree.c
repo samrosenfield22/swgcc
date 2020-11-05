@@ -34,9 +34,10 @@ node *node_create(bool is_nonterminal, int type, const char *str, symbol *sym)
 
     if(str)
     {
-    	n->str = malloc(strlen(str)+1);
+    	/*n->str = malloc(strlen(str)+1);
     	assert(n->str);
-    	strcpy(n->str, str);
+    	strcpy(n->str, str);*/
+    	n->str = strdup(str);
     }
     else
     	n->str = NULL;
@@ -83,6 +84,60 @@ void ptree_traverse_dfs_recursive(node *pt, bool (*filter)(node *n), void (*acti
 				action(pt, depth);
 			//prev = pt;
 		}
+}
+
+/*void ptree_do_to_each(node *n, void (*action)(node *n, int depth))
+{
+	node **collect = ptree_filter(n, NULL, -1);
+	for(int i=0; i<vector_len(collect); i++)
+		action(collect[i], );
+	vector_destroy(collect);
+}*/
+
+node **ptree_filter(node *n, bool (*filter)(node *n), int depth)
+{
+	node **collect = vector(*collect, 0);
+	ptree_filter_recursive(n, filter, collect, 0, depth);
+	return collect;
+}
+
+void ptree_filter_recursive(node *n, bool (*filter)(node *n), node **collect, int depth, int max_depth)
+{
+	if((filter && filter(n)) || (filter == NULL))
+	{
+		vector_inc(&collect);
+		vector_last(collect) = n;
+	}
+
+	if(depth >= max_depth && max_depth != -1)
+		return;
+
+	for(int i=0; i<vector_len(n->children); i++)
+	{
+		ptree_filter_recursive(n->children[i], filter, collect, depth+1, max_depth);
+	}
+}
+
+node ref_node;	//declared extern in tree.h
+bool filter_by_ref_node(node *n)
+{
+	if(n->is_nonterminal != ref_node.is_nonterminal)
+		return false;
+
+	if(n->is_nonterminal)
+	{
+		if(strcmp(gg.nonterminals[n->type], ref_node.str))
+			return false;
+	}
+	else
+	{
+		if(n->type != ref_node.type)
+			return false;
+		if(n->str == NULL || strcmp(n->str, ref_node.str))
+			return false;
+	}
+
+	return true;
 }
 
 //returns the first one that matches, or NULL

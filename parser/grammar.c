@@ -228,9 +228,10 @@ static prod_tok *add_classname(char *name, prod_tok_type type)
 {
     //allocate/initialize the production token
     prod_tok *t = malloc(sizeof(*t));
-    t->str = malloc(strlen(name)+1);
+    /*t->str = malloc(strlen(name)+1);
     assert(t->str);
-    strcpy(t->str, name);
+    strcpy(t->str, name);*/
+    t->str = strdup(name);
     t->type = type;
 
     //if the token is a nonterm or term, it gets added to those lists
@@ -247,9 +248,10 @@ static prod_tok *add_classname(char *name, prod_tok_type type)
             vector_inc(&nonterminal_names);
             assert(nonterminal_names);
 
-            vector_last(nonterminal_names) = malloc(strlen(name)+1);
+            /*vector_last(nonterminal_names) = malloc(strlen(name)+1);
             assert(vector_last(nonterminal_names));
-            strcpy(vector_last(nonterminal_names), name);
+            strcpy(vector_last(nonterminal_names), name);*/
+            vector_last(nonterminal_names) = strdup(name);
         }
 
         //nonterminal tokens (in the buffer) don't store their strings -- just an index to the nonterminal list
@@ -268,9 +270,10 @@ static prod_tok *add_classname(char *name, prod_tok_type type)
 
             vector_inc(&terminal_names);
 
-            vector_last(terminal_names) = malloc(strlen(name)+1);
+            /*vector_last(terminal_names) = malloc(strlen(name)+1);
             assert(vector_last(terminal_names));
-            strcpy(vector_last(terminal_names), name);
+            strcpy(vector_last(terminal_names), name);*/
+            vector_last(terminal_names) = strdup(name);
         }
     }
 
