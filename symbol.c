@@ -42,9 +42,6 @@ symbol *symbol_search(const char *name, symbol_type type)
 
 symbol *symbol_create(const char *name, symbol_type type)
 {
-    /*SYMBOL_TABLE[sym_index].name = malloc(strlen(name)+1);
-    assert(SYMBOL_TABLE[sym_index].name);
-    strcpy(SYMBOL_TABLE[sym_index].name, name);*/
     SYMBOL_TABLE[sym_index].name = strdup(name);
 
     SYMBOL_TABLE[sym_index].type = type;

@@ -228,9 +228,6 @@ static prod_tok *add_classname(char *name, prod_tok_type type)
 {
     //allocate/initialize the production token
     prod_tok *t = malloc(sizeof(*t));
-    /*t->str = malloc(strlen(name)+1);
-    assert(t->str);
-    strcpy(t->str, name);*/
     t->str = strdup(name);
     t->type = type;
 
@@ -239,19 +236,9 @@ static prod_tok *add_classname(char *name, prod_tok_type type)
     {
         if(search_nonterm_name(name) == -1)
         {
-            /*nonterminal_names[ntn_index] = malloc(strlen(name)+1);
-            assert(nonterminal_names[ntn_index]);
-            strcpy(nonterminal_names[ntn_index], name);
-
-            ntn_index++;*/
-
-            vector_inc(&nonterminal_names);
-            assert(nonterminal_names);
-
-            /*vector_last(nonterminal_names) = malloc(strlen(name)+1);
-            assert(vector_last(nonterminal_names));
-            strcpy(vector_last(nonterminal_names), name);*/
-            vector_last(nonterminal_names) = strdup(name);
+            //vector_inc(&nonterminal_names);
+            //vector_last(nonterminal_names) = strdup(name);
+            vector_append(nonterminal_names, strdup(name));
         }
 
         //nonterminal tokens (in the buffer) don't store their strings -- just an index to the nonterminal list
@@ -262,18 +249,9 @@ static prod_tok *add_classname(char *name, prod_tok_type type)
     {
         if(search_term_name(name) == -1)
         {
-            /*terminal_names[tn_index] = malloc(strlen(name)+1);
-            assert(terminal_names[tn_index]);
-            strcpy(terminal_names[tn_index], name);
-
-            tn_index++;*/
-
-            vector_inc(&terminal_names);
-
-            /*vector_last(terminal_names) = malloc(strlen(name)+1);
-            assert(vector_last(terminal_names));
-            strcpy(vector_last(terminal_names), name);*/
-            vector_last(terminal_names) = strdup(name);
+            //vector_inc(&terminal_names);
+            //vector_last(terminal_names) = strdup(name);
+            vector_append(terminal_names, strdup(name));
         }
     }
 

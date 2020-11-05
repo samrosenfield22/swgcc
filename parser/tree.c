@@ -33,12 +33,7 @@ node *node_create(bool is_nonterminal, int type, const char *str, symbol *sym)
     n->children[0] = NULL;
 
     if(str)
-    {
-    	/*n->str = malloc(strlen(str)+1);
-    	assert(n->str);
-    	strcpy(n->str, str);*/
     	n->str = strdup(str);
-    }
     else
     	n->str = NULL;
 
@@ -47,8 +42,9 @@ node *node_create(bool is_nonterminal, int type, const char *str, symbol *sym)
 
 void node_add_child(node *root, node *child)
 {
-	vector_inc(&(root->children));
-	vector_last(root->children) = child;
+	//vector_inc(&(root->children));
+	//vector_last(root->children) = child;
+	vector_append(root->children, child);
 }
 
 /*void ptree_init_names(char **strings)
@@ -105,8 +101,9 @@ void ptree_filter_recursive(node *n, bool (*filter)(node *n), node **collect, in
 {
 	if((filter && filter(n)) || (filter == NULL))
 	{
-		vector_inc(&collect);
-		vector_last(collect) = n;
+		//vector_inc(&collect);
+		//vector_last(collect) = n;
+		vector_append(collect, n);
 	}
 
 	if(depth >= max_depth && max_depth != -1)

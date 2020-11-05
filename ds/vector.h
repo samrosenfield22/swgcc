@@ -57,6 +57,7 @@ size_t vector_elem_size(void *v);						//
 size_t vector_total_size(void *v);						//
 
 #define vector_last(v) v[vector_len(v)-1]
+#define vector_append(v, item)	do {vector_inc(&v); vector_last(v) = item;} while(0)
 
 void vector_dump_internal(void *v, const char *fmt, const char *name);
 

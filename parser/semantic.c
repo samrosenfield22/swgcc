@@ -164,9 +164,6 @@ void amend_push_semact(node *pt, int depth)
 
 	//copy it to the semact
 	free(pt->children[1]->str);
-	/*pt->children[1]->str = malloc(len+1);
-	assert(pt->children[1]->str);
-	strcpy(pt->children[1]->str, buf);*/
 	pt->children[1]->str = strdup(buf);
 
 	free(buf);
@@ -198,9 +195,6 @@ void amend_push_lvalues(node *pt, int depth)
 
 	//copy it to the semact
 	free(bidp->children[1]->str);
-	/*bidp->children[1]->str = malloc(len+1);
-	assert(bidp->children[1]->str);
-	strcpy(bidp->children[1]->str, buf);*/
 	bidp->children[1]->str = strdup(buf);
 
 	free(buf);

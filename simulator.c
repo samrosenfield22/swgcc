@@ -80,9 +80,6 @@ static void generate_instruction(node *n, int depth)
 	printf("generating instruction from semact: %s\n", n->str);
 
     char *subs = strtok(n->str, " ");
-
-	//code[ispec_index].op = malloc(strlen(subs)+1);
-    //strcpy(code[ispec_index].op, subs);
     code[ispec_index].op = strdup(subs);
 
     subs = strtok(NULL, " ");
