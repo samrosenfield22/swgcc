@@ -113,6 +113,7 @@ lextok *chars_to_substrings_lexer(const char *instr)
 			lp->str = malloc(2);
 			lp->str[0] = *c;
 			lp->str[1] = '\0';
+			//lp->str = strdup((char[]){*c, '\0'});
 			if(strchr(ops, *c))
 			{
 					lp->is_ident = false;
@@ -154,7 +155,7 @@ node *parse(lextok *lex_tokens_in)
 
 #define PARSER_FAILURE do {PARSER_STATUS = P_FAIL; return NULL;} while(0)
 //#define BAIL_IF_PARSER_FAILED if(PARSER_STATUS != P_OK) return NULL
-#define BAIL_IF_PARSER_FAILED if(PARSER_STATUS != P_OK) {ptree_traverse_dfs(root, NULL, node_delete, false); return NULL;}
+//#define BAIL_IF_PARSER_FAILED if(PARSER_STATUS != P_OK) {ptree_traverse_dfs(root, NULL, node_delete, false); return NULL;}
 
 node *parse_nonterm(nonterminal_type nt)
 {
@@ -164,19 +165,23 @@ node *parse_nonterm(nonterminal_type nt)
 	node *root = node_create(true, nt, NULL, NULL);
 
 	//look in the parse table, get the next production to apply
-	int next_production = parse_table_lookup(nt);
+	int prod_index = parse_table_lookup(nt);
+	production_rule *prod = &gg.rules[prod_index];
+	assert(prod->lhs == nt);
 	//printf("\tapplying production %d\n", next_production);
-	//if(next_production == -1)
+	//if(prod_index == -1)
 	//	PARSER_FAILURE;
 
-	for(prod_tok **rhs = gg.rules[next_production].rhs; *rhs; rhs++)
+	int tok_ct = vector_len(prod->rhs);
+	for(int i=0; i<tok_ct; i++)
 	{
-		prod_tok *tok = *rhs, *next_tok = *(rhs+1);
+		prod_tok *tok = prod->rhs[i];
+		prod_tok *next_tok = (i+1<tok_ct)? prod->rhs[i+1] : NULL;
 		switch(tok->type)
 		{
 			case NONTERMINAL:
 				if(!consume_nonterm(root, tok, next_tok))
-					BAIL_IF_PARSER_FAILED
+					PARSER_FAILURE;
 				break;
 
 			case TERMINAL:
@@ -261,7 +266,6 @@ int parse_table_lookup(nonterminal_type nt)
 	if(col == -1)
 		col = 0;
 
-	//return parse_table[table_entry(nt, col)];
 	int index = nt*gg.alphabet_len + col;
 	return gg.parse_table[index];
 }

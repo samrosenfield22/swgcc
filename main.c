@@ -54,10 +54,10 @@ char *read_stmtlist(void)
 
 int main(void)
 {
-    
+    symbol_table_initialize();
     lexer_initialize();
 
-    //symbol_table_initialize();
+    
 
     grammar *g = load_grammar("parser/c_grammar.txt");
     dump_classnames();

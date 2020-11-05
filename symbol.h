@@ -5,6 +5,8 @@
 
 #include <stdbool.h>
 
+#include "ds/vector.h"
+
 typedef enum symbol_type_e
 {
     SYM_ANY,
@@ -17,10 +19,8 @@ typedef struct symbol_s
 {
     symbol_type type;
     char *name;
-    //int val;
-
     int *var;
-
+    
     bool declared;
     bool initialized;
 } symbol;

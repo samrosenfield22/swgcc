@@ -158,11 +158,6 @@ void *vector_nth(void *v, size_t index)
 	return v + index*(vector_elem_size(v));
 }
 
-/*void *vector_last(void *v)
-{
-	return vector_nth(v, vector_len(v)-1);
-}*/
-
 size_t vector_len(void *v)
 {
 	CHECK(v, return 0);

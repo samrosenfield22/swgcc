@@ -103,23 +103,24 @@ static void build_production(char *bp)
 
     vector_inc(&production_rules);
     production_rule *prod = &vector_last(production_rules);
-    prod->rhs = calloc(80, sizeof(prod_tok *));
-    //vector_last(production_rules).rhs = vector(prod_tok *, 1);
+    //prod->rhs = calloc(80, sizeof(prod_tok *));
+    prod->rhs = vector(prod_tok *, 0);
 
     //load first token into production's lhs
     prod->lhs = consume_token(bp)->nonterm;
 
     //load tokens into production's rhs
-    prod_tok **rhs_tok = prod->rhs;
+    //prod_tok **rhs_tok = prod->rhs;
     while(1)
     {
         prod_tok *p = consume_token(NULL);
         if(!p)
             break;
-        *rhs_tok++ = p;
+        //*rhs_tok++ = p;
+        vector_append(prod->rhs, p);
     }
 
-    
+    //vector_append(prod->rhs, NULL);    
 }
 
 //consumes tokens until we reach the end of the string
@@ -235,24 +236,15 @@ static prod_tok *add_classname(char *name, prod_tok_type type)
     if(type == NONTERMINAL)
     {
         if(search_nonterm_name(name) == -1)
-        {
-            //vector_inc(&nonterminal_names);
-            //vector_last(nonterminal_names) = strdup(name);
             vector_append(nonterminal_names, strdup(name));
-        }
 
         //nonterminal tokens (in the buffer) don't store their strings -- just an index to the nonterminal list
-        //token_buf[tbuf_index].nonterm = search_nonterm_name(name);
         t->nonterm = search_nonterm_name(name);
     }
     else if(type == TERMINAL)
     {
         if(search_term_name(name) == -1)
-        {
-            //vector_inc(&terminal_names);
-            //vector_last(terminal_names) = strdup(name);
             vector_append(terminal_names, strdup(name));
-        }
     }
 
     return t;
@@ -322,13 +314,15 @@ static void print_production_rule(int i)
         nonterminal_names[gg.rules[i].lhs]);
 
     //char *tokname;
-    for(prod_tok **ptp = production_rules[i].rhs; *ptp; ptp++)
+    //for(prod_tok **ptp = production_rules[i].rhs; *ptp; ptp++)
+    for(int i=0; i<vector_len(production_rules[i].rhs); i++)
     {
-        if((*ptp)->type == NONTERMINAL)
-            printf("<%s> ", gg.nonterminals[(*ptp)->nonterm]);
+        prod_tok *ptp = production_rules[i].rhs[i];
+        if((ptp)->type == NONTERMINAL)
+            printf("<%s> ", gg.nonterminals[(ptp)->nonterm]);
             //tokname = gg.nonterminals[(*ptp)->nonterm];
         else
-            printf("%s ", (*ptp)->str);
+            printf("%s ", (ptp)->str);
             //tokname = (*ptp)->str;
 
         //printf("(%s)(%s) ", tokname, tm_strings[(*ptp)->type]);
