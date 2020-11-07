@@ -147,13 +147,25 @@ node *parse(lextok *lex_tokens_in)
 
 	node *tree = parse_nonterm(grammar_start_symbol);
 
-	if(lex_tok->str != NULL)
-		return false;
+	if(PARSER_STATUS==P_FAIL || lex_tok->str != NULL)
+	{
+		ptree_traverse_dfs(tree, NULL, node_print, true);
+		printf("\n^^^ parse tree before failure\n\n");
+		//clean up
+		return NULL;
+	}
 	else
 		return tree;
+
+	/*if(lex_tok->str != NULL)
+		return false;
+	else
+		return tree;*/
 }
 
-#define PARSER_FAILURE do {PARSER_STATUS = P_FAIL; return NULL;} while(0)
+//#define PARSER_FAILURE do {PARSER_STATUS = P_FAIL; return NULL;} while(0)
+#define PARSER_FAILURE do {PARSER_STATUS = P_FAIL; return root;} while(0)
+
 //#define BAIL_IF_PARSER_FAILED if(PARSER_STATUS != P_OK) return NULL
 //#define BAIL_IF_PARSER_FAILED if(PARSER_STATUS != P_OK) {ptree_traverse_dfs(root, NULL, node_delete, false); return NULL;}
 
@@ -237,7 +249,7 @@ bool consume_term_or_ident(node *root, prod_tok *tok)
 	//printf("\t\tconsuming term/ident %s\n", tok->str);
 	if(!match(tok))
 	{
-		//printf("failed to match token \'%s\' (type %s)\n", tok->str, t_strings[tok->type]);
+		printf("failed to match token \'%s\' (type %s)\n", tok->str, t_strings[tok->type]);
 		return false;
 	}
 

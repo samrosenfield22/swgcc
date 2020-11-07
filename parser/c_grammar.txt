@@ -12,7 +12,7 @@
 
 <assign> ::= <base_id> {lval} <assign_id_split>?
 <assign> ::= <base_other> <more>*
-<assign_id_split> ::= <more>
+<assign_id_split> ::= <more>*
 <assign_id_split> ::= <assign_id>
 
 <assign_id> ::= "=" <assign> {=}
@@ -34,10 +34,6 @@
 <more>		::= <mshift>
 <more>		::= <msum>
 <more>		::= <mprod>
-<more>		::= <m>
-<more>		::= <m>
-<more>		::= <m>
-<more>		::= <m>
 
 
 <logical>     ::= <bitwise> <mlogical>*
