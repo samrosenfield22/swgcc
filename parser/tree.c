@@ -29,7 +29,8 @@ node *node_create(bool is_nonterminal, int type, const char *str, symbol *sym)
     n->type = type;
     n->sym = sym;
     n->children = vector(node *, 0);
-    n->str = str? strdup(str) : NULL;
+    //n->str = str? strdup(str) : NULL;
+    n->str = strdup(str);
 
     return n;
 }
@@ -85,15 +86,16 @@ void ptree_traverse_dfs_recursive(node *pt, bool (*filter)(node *n), void (*acti
 node **ptree_filter(node *n, bool (*filter)(node *n), int depth)
 {
 	node **collect = vector(*collect, 0);
-	ptree_filter_recursive(n, filter, collect, 0, depth);
+	ptree_filter_recursive(n, filter, &collect, 0, depth);
 	return collect;
 }
 
-void ptree_filter_recursive(node *n, bool (*filter)(node *n), node **collect, int depth, int max_depth)
+void ptree_filter_recursive(node *n, bool (*filter)(node *n), node ***collect, int depth, int max_depth)
 {
 	if((filter && filter(n)) || (filter == NULL))
 	{
-		vector_append(collect, n);
+		printf("\tappending node (%s)\n", (n->str)? n->str : gg.nonterminals[n->type]);
+		vector_append((*collect), n);
 	}
 
 	if(depth >= max_depth && max_depth != -1)
@@ -108,6 +110,9 @@ void ptree_filter_recursive(node *n, bool (*filter)(node *n), node **collect, in
 node ref_node;	//declared extern in tree.h
 bool filter_by_ref_node(node *n)
 {
+	if(n==NULL)
+		return false;
+	
 	if(n->is_nonterminal != ref_node.is_nonterminal)
 		return false;
 
@@ -163,5 +168,6 @@ void semact_print(node *pt, int depth)
 
 void node_delete(node *pt, int dummy)
 {
+	vector_destroy(pt->children);
 	free(pt);
 }

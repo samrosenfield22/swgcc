@@ -37,7 +37,7 @@ void ptree_traverse_dfs(node *pt, bool (*filter)(node *n), void (*action)(node *
 void ptree_traverse_dfs_recursive(node *pt, bool (*filter)(node *n), void (*action)(node *n, int depth), int depth, bool node_then_children);
 
 node **ptree_filter(node *n, bool (*filter)(node *n), int depth);
-void ptree_filter_recursive(node *n, bool (*filter)(node *n), node **collect, int depth, int max_depth);
+void ptree_filter_recursive(node *n, bool (*filter)(node *n), node ***collect, int depth, int max_depth);
 bool filter_by_ref_node(node *n);
 
 void node_print(node *pt, int depth);

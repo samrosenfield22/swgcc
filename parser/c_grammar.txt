@@ -10,10 +10,10 @@
 <comma>       	::= <assign> <mcomma>*
 <mcomma>      	::= "," <assign> {,}
 
-<assign> ::= <base_id> <assign_id_split>?
+<assign> ::= <base_id> {lval} <assign_id_split>?
 <assign> ::= <base_other> <more>*
 <assign_id_split> ::= <more>
-<assign_id_split> ::= {lval} <assign_id>
+<assign_id_split> ::= <assign_id>
 
 <assign_id> ::= "=" <assign> {=}
 <assign_id> ::= "+=" <assign> {+=}

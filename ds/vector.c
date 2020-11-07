@@ -65,7 +65,6 @@ bool vector_resize(void *vptr, size_t new_len)
 	}
 	else
 	{
-		printf("realloc'ing -------------------------------\n");
 		size_t new_alloc_len = next_power_of_two(new_len);
 		size_t new_alloc_size = (new_alloc_len * vhdr->elem_size) + sizeof(vector_hdr);
 		vector_hdr *new_v = realloc(vhdr, new_alloc_size);
