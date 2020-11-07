@@ -31,14 +31,69 @@ enum semantic_status_type
 
 bool check_variable_declarations(node *pt)
 {
+
+	//make list of all decl base_ids (vars that are getting declared)
+	ref_node = (node){.is_nonterminal=true, .type=0, .str="mdecl", .children=NULL, .sym=NULL};
+	node **decl_ids = ptree_filter(pt, filter_by_ref_node, -1);
+	for(int i=0; i<vector_len(decl_ids); i++)
+		decl_ids[i] = decl_ids[i]->children[0];
+
+	//make list of all base_ids
+	ref_node = (node){.is_nonterminal=true, .type=0, .str="base_id", .children=NULL, .sym=NULL};
+	node **all_bids = ptree_filter(pt, filter_by_ref_node, -1);
+
+	printf("\nevery var: ");
+	for(int i=0; i<vector_len(all_bids); i++)
+		printf("%s ", all_bids[i]->children[0]->str);
+
+	//remove all decl vars from the list of all base_ids
+	//(this gives us a list of all variables that should have already been declared)
+	for(int i=0; i<vector_len(decl_ids); i++)
+	{
+		for(int j=0; j<vector_len(all_bids); j++)
+		{
+			if(decl_ids[i] == all_bids[j])
+			{
+				printf("deleting node %s (decl #%d, all ids #%d)\n", decl_ids[i]->children[0]->str, i, j);
+				vector_delete(&all_bids, j);
+				printf("%d base_ids left\n\n", vector_len(all_bids));
+			}
+		}
+	}
+
+	//check if all those vars are already declared
+	for(int i=0; i<vector_len(all_bids); i++)
+	{
+		if(all_bids[i]->children[0]->sym->declared == false)
+		{
+			printf("undeclared variable %s\n", all_bids[i]->children[0]->str);
+			return false;
+		}
+	}
+
+	/*printf("\ndecl vars: ");
+	for(int i=0; i<vector_len(decl_ids); i++)
+		printf("%s ", decl_ids[i]->children[0]->str);
+	printf("\nalready decld vars: ");
+	for(int i=0; i<vector_len(all_bids); i++)
+		printf("%s ", all_bids[i]->children[0]->str);
+	printf("\n");*/
+	//return false;
+
+
+
 	//declare new variables, error for redeclared ones
 	SEMANTIC_STATUS = SEM_OK;
-	ref_node = (node){.is_nonterminal=true, .type=0, .str="mdecl", .children=NULL, .sym=NULL};
-	ptree_traverse_dfs(pt, filter_by_ref_node, declare_new_vars, true);
+	//ref_node = (node){.is_nonterminal=true, .type=0, .str="mdecl", .children=NULL, .sym=NULL};
+	//ptree_traverse_dfs(pt, filter_by_ref_node, declare_new_vars, true);
+	for(int i=0; i<vector_len(decl_ids); i++)
+		declare_new_vars(decl_ids[i], 0);
 	SEMANTIC_BAIL_IF_NOT_OK
 
 
-	node **flattened = ptree_filter(pt, filter_assign_toks, -1);
+
+
+	node **flattened = ptree_filter(pt, filter_assign_toks, -1);	//keep only base_id, base_other, more, "=" 
 	for(int i=0; i<vector_len(flattened); i++)
 	{
 		//grab all base_ids
@@ -78,7 +133,7 @@ bool check_variable_declarations(node *pt)
 	return true;
 }
 
-//keep base_id, "=", more
+//keep base_id, base_other, "=", more
 bool filter_assign_toks(node *n)
 {
 	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "base_id")==0)
@@ -96,8 +151,9 @@ bool filter_assign_toks(node *n)
 //only gets called for mdecl nonterminals
 void declare_new_vars(node *pt, int depth)
 {
-	node *decl_var = pt->children[0]->children[0];	//child 0 is a base_id, its child 0 is the variable
+	//node *decl_var = pt->children[0]->children[0];	//child 0 is a base_id, its child 0 is the variable
 														//n->0->0 is dependent on the specific grammar
+	node *decl_var = pt->children[0];
 	node_print(decl_var, 0);
 	if(decl_var->sym->declared)
 	{

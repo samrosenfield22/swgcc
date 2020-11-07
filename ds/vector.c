@@ -112,8 +112,9 @@ bool vector_insert(void *v, size_t index)
 	return true;
 }
 
-bool vector_delete(void *v, size_t index)
+bool vector_delete(void *vv, size_t index)
 {
+	void *v = *(void **)vv;
 	CHECK(v, return false);
 	CHECK(index < vector_len(v), return false);
 
@@ -123,7 +124,7 @@ bool vector_delete(void *v, size_t index)
 	size_t copy_size = (vector_len(v)-index-1) * vector_elem_size(v);
 	memmove(copy_to, copy_from, copy_size);
 
-	if(!vector_dec(&v))
+	if(!vector_dec(vv))
 		return false;
 
 	return true;

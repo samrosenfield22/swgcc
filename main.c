@@ -57,6 +57,16 @@ int main(void)
     symbol_table_initialize();
     lexer_initialize();
 
+    /*int *nums = vector(*nums, 0);
+    vector_append(nums, 5);
+    vector_append(nums, 6);
+    vector_append(nums, 4);
+    vector_append(nums, 3);
+    vector_delete(&nums, 0);
+    for(int i=0; i<vector_len(nums); i++)
+        printf("%d\n", nums[i]);
+    return 0;*/
+
     
 
     grammar *g = load_grammar("parser/c_grammar.txt");
