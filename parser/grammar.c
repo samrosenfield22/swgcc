@@ -84,10 +84,8 @@ grammar *load_grammar(const char *fname)
     }
 
     //load everything into the grammar structure
-    //gg = (grammar){production_rules, nonterminal_names, terminal_names, tn_index, ntn_index, pd_index};
-    //gg = (grammar){production_rules, nonterminal_names, terminal_names, tn_index+ident_len, ntn_index, pd_index};
-    gg = (grammar){production_rules, nonterminal_names, terminal_names, vector_len(terminal_names)+ident_len,
-        vector_len(nonterminal_names), vector_len(production_rules)};
+    gg = (grammar){production_rules, nonterminal_names, terminal_names, vector_len(terminal_names)+ident_len};
+        //vector_len(nonterminal_names), vector_len(production_rules)};
 
     productions_to_parse_table();
 
@@ -293,11 +291,11 @@ void dump_classnames(void)
 
 void dump_productions(grammar *g)
 {
-    printf("grammar length:\t%d\n", g->grammar_len);
+    printf("grammar length:\t%d\n", vector_len(g->rules)/*g->grammar_len*/);
     printf("alphabet length:\t%d\n", g->alphabet_len);
-    printf("nonterm length:\t%d\n", g->nonterm_len);
+    printf("nonterm length:\t%d\n", vector_len(g->nonterminals)/*g->nonterm_len*/);
 
-    for(int i=0; i<g->grammar_len; i++)
+    for(int i=0; i<vector_len(g->rules)/*g->grammar_len*/; i++)
     {
         printf("production %d:\n\t", i);
         //printf("(%s)(nonterminal %d) ::= ", nonterminal_names[production_rules[i].lhs], production_rules[i].lhs);
@@ -337,20 +335,20 @@ bool *production_marked;
 static void productions_to_parse_table(void)
 {
 	//init parse table structure
-	int table_entries = gg.alphabet_len * gg.nonterm_len;
+	int table_entries = gg.alphabet_len * vector_len(gg.nonterminals);//gg.nonterm_len;
 	parse_table = malloc(table_entries * sizeof(*parse_table));
 	assert(parse_table);
 	for(int i=0; i<table_entries; i++)
 		parse_table[i] = -1;
 
 	//init array that tracks which productions have already been marked in the parse table
-	production_marked = malloc(gg.grammar_len * sizeof(*production_marked));
+	production_marked = malloc(vector_len(gg.rules) /*gg.grammar_len*/ * sizeof(*production_marked));
 	assert(production_marked);
-	for(int i=0; i<gg.grammar_len; i++)
+	for(int i=0; i<vector_len(gg.rules)/*gg.grammar_len*/; i++)
 		production_marked[i] = false;
 
 	//mark entries for each production
-	for(int i=0; i<gg.grammar_len; i++)
+	for(int i=0; i<vector_len(gg.rules)/*gg.grammar_len*/; i++)
 		mark_entries_for_nonterminal(i);
 
   gg.parse_table = parse_table;
@@ -373,7 +371,7 @@ static void mark_entries_for_nonterminal(nonterminal_type nt)
 	int alpha_col;
 
 	//iterate through all productions for this nonterminal
-	for(int i=0; i<gg.grammar_len; i++)
+	for(int i=0; i<vector_len(gg.rules)/*gg.grammar_len*/; i++)
 	{
 		if(gg.rules[i].lhs != nt)
 			continue;
@@ -499,7 +497,7 @@ void dump_parse_table(int *pt)
 		printf("%s\t", gg.terminals[i-ident_len]);
 	putchar('\n');
 
-	for(int i=0; i<gg.nonterm_len; i++)
+	for(int i=0; i<vector_len(gg.nonterminals)/*gg.nonterm_len*/; i++)
 	{
 		int cct = printf("%s", gg.nonterminals[i]);
 		for(int i=cct; i<16; i++)

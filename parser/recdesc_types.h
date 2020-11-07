@@ -61,8 +61,8 @@ typedef struct grammar_s
 {
     production_rule *rules;
     char **nonterminals, **terminals;
-    int alphabet_len, nonterm_len, grammar_len;
-		int *parse_table;
+    int alphabet_len;//, nonterm_len, grammar_len;
+	int *parse_table;
 } grammar;
 
 #endif //RECDESC_TYPES_H

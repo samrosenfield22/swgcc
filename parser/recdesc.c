@@ -86,21 +86,7 @@ lextok *lex_tok;
 //the lhs of the first production is the start symbol
 #define grammar_start_symbol (0)
 
-//this gets created/populated by the lexer
-//maybe a table that matches a regex to its associated ident, i.e.
 /*
-struct
-{
-	char *regex;
-	nfa *model;
-	lextok default_tok;
-}
-{"* | + | ? | ...", 			NULL, (lextok){NULL, false, 0}};
-{"[A-Za-z][A-Za-z0-9]*", 	NULL, (lextok){NULL, true, 0}};		//id
-{"[0-9]+", 								NULL, (lextok){NULL, true, 1}};		//num
-{"0x[A-Fa-f0-9]+", 				NULL, (lextok){NULL, true, 2}};		//hex
-//where the 0,1,2 (the ident_id values) are indices to a table char* [] = {"id", "num", "hex", ...};
-*/
 lextok *chars_to_substrings_lexer(const char *instr)
 {
 		lextok *l = calloc(strlen(instr)+1, sizeof(*l));
@@ -136,7 +122,7 @@ lextok *chars_to_substrings_lexer(const char *instr)
 		lp->str = NULL;
 		return l;
 }
-
+*/
 
 node *parse(lextok *lex_tokens_in)
 {
@@ -178,11 +164,15 @@ node *parse_nonterm(nonterminal_type nt)
 
 	//look in the parse table, get the next production to apply
 	int prod_index = parse_table_lookup(nt);
+	if(prod_index == -1)
+	{
+		printf("parse error: unexpected \'%s\'\n", lex_tok->str);
+		PARSER_FAILURE;
+	}
 	production_rule *prod = &gg.rules[prod_index];
 	assert(prod->lhs == nt);
 	//printf("\tapplying production %d\n", next_production);
-	//if(prod_index == -1)
-	//	PARSER_FAILURE;
+	
 
 	int tok_ct = vector_len(prod->rhs);
 	for(int i=0; i<tok_ct; i++)
@@ -249,7 +239,7 @@ bool consume_term_or_ident(node *root, prod_tok *tok)
 	//printf("\t\tconsuming term/ident %s\n", tok->str);
 	if(!match(tok))
 	{
-		printf("failed to match token \'%s\' (type %s)\n", tok->str, t_strings[tok->type]);
+		//printf("failed to match token \'%s\' (type %s)\n", tok->str, t_strings[tok->type]);
 		return false;
 	}
 

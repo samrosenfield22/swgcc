@@ -27,8 +27,6 @@ enum semantic_status_type
 	SEM_USING_UNDECLD_VAR
 } SEMANTIC_STATUS = SEM_OK;
 
-//bool SEMANTIC_OK = true;
-
 #define SEMANTIC_BAIL_IF_NOT_OK	if(SEMANTIC_STATUS != SEM_OK) {semantic_print_failure(); return false;}
 
 bool check_variable_declarations(node *pt)
@@ -163,4 +161,3 @@ static void semantic_print_failure(void)
 	puts(failure_messages[SEMANTIC_STATUS]);
 }
 
-//ptree_traverse_dfs(parse_tree, do_action_if_filter, true)

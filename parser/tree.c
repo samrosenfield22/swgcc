@@ -94,7 +94,6 @@ void ptree_filter_recursive(node *n, bool (*filter)(node *n), node ***collect, i
 {
 	if((filter && filter(n)) || (filter == NULL))
 	{
-		printf("\tappending node (%s)\n", (n->str)? n->str : gg.nonterminals[n->type]);
 		vector_append((*collect), n);
 	}
 
@@ -112,7 +111,7 @@ bool filter_by_ref_node(node *n)
 {
 	if(n==NULL)
 		return false;
-	
+
 	if(n->is_nonterminal != ref_node.is_nonterminal)
 		return false;
 

@@ -3,14 +3,14 @@
 <stmt>			::= <decl> ";"
 
 <decl> ::= type <mdecl> <moredecl>*
-<mdecl> ::= <base_id> {lval} <decl_assign>?
+<mdecl> ::= <base_id> <decl_assign>?
 <moredecl> ::= "," <mdecl>
 <decl_assign> ::= "=" <assign> {=}
 
 <comma>       	::= <assign> <mcomma>*
 <mcomma>      	::= "," <assign> {,}
 
-<assign> ::= <base_id> {lval} <assign_id_split>?
+<assign> ::= <base_id> <assign_id_split>?
 <assign> ::= <base_other> <more>*
 <assign_id_split> ::= <more>*
 <assign_id_split> ::= <assign_id>

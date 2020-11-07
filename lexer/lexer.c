@@ -139,9 +139,10 @@ lextok *lexer(const char *str)
         //create a token for the match
         regex_action_pair *pair = &regex_table[longest_match];
         memcpy(tp, &pair->default_tok, sizeof(*tp));
-        tp->str = malloc(strlen(lexeme_buf)+1);
-        assert(tp->str);
-        strcpy(tp->str, lexeme_buf);
+        //tp->str = malloc(strlen(lexeme_buf)+1);
+        //assert(tp->str);
+        //strcpy(tp->str, lexeme_buf);
+        tp->str = strdup(lexeme_buf);
         if(pair->action)
             pair->action(tp);
             //pair->action(lexeme_buf, tp, pair->default_tok);
@@ -157,11 +158,12 @@ lextok *lexer(const char *str)
 
 void lex_tokens_dump(lextok *lt)
 {
+    printf("\n--- lexer ---\n");
     for(lextok *l=lt; l->str; l++)
     {
         printf("%s ", l->str);
         if(l->is_ident)
-            printf("(ident %d, val = %d)", l->ident_id, l->val);
+            printf("(%s, val = %d)", ident_table[l->ident_id], l->val);
         putchar('\n');
     }
 }
