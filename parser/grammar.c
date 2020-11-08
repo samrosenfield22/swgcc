@@ -98,6 +98,8 @@ grammar *load_grammar(const char *fname)
 static void build_production(char *bp)
 {
     printf("building production %s\n", bp);
+    if(bp[0] == ';')    //bnf comment
+        return;
 
     vector_inc(&production_rules);
     production_rule *prod = &vector_last(production_rules);
@@ -306,19 +308,21 @@ void dump_productions(grammar *g)
     }
 }
 
-static void print_production_rule(int i)
+static void print_production_rule(int n)
 {
     printf("<%s> ::= ",
-        nonterminal_names[gg.rules[i].lhs]);
+        nonterminal_names[gg.rules[n].lhs]);
 
     //char *tokname;
     //for(prod_tok **ptp = production_rules[i].rhs; *ptp; ptp++)
-    for(int i=0; i<vector_len(production_rules[i].rhs); i++)
+    for(int i=0; i<vector_len(production_rules[n].rhs); i++)
     {
-        prod_tok *ptp = production_rules[i].rhs[i];
+        prod_tok *ptp = production_rules[n].rhs[i];
         if((ptp)->type == NONTERMINAL)
             printf("<%s> ", gg.nonterminals[(ptp)->nonterm]);
             //tokname = gg.nonterminals[(*ptp)->nonterm];
+        else if(ptp->type == SEMACT)
+            printf("{%s} ", ptp->str);
         else
             printf("%s ", (ptp)->str);
             //tokname = (*ptp)->str;

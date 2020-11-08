@@ -1,39 +1,42 @@
+; grammar for the c programming language, sort of
+; by default, the token on the lhs of the first production is the start symbol
 
+<stmtlist>		::= <stmt>
+<stmtlist>		::= "{" <stmt>* "}"
 <stmt>			::= <comma> ";"
 <stmt>			::= <decl> ";"
+<stmt>			::= <if>
+<stmt>			::= <while>
+<stmt>			::= <dowhile>
+<stmt>			::= <for>
 
-<decl> ::= type <mdecl> <moredecl>*
-<mdecl> ::= <base_id> <decl_assign>?
-<moredecl> ::= "," <mdecl>
-<decl_assign> ::= "=" <assign> {=}
+<decl>			::= type <mdecl> <moredecl>*
+<moredecl>		::= "," <mdecl>
+<mdecl>			::= <base_id> <decl_assign>?
+<decl_assign>	::= "=" <assign> {=}
 
 <comma>       	::= <assign> <mcomma>*
 <mcomma>      	::= "," <assign> {,}
 
-<assign> ::= <base_id> <assign_id_split>?
-<assign> ::= <base_other> <more>*
-<assign_id_split> ::= <more>*
-<assign_id_split> ::= <assign_id>
+<if>			::= "if" "(" <comma> ")" <stmtlist> <else>?
+<else>			::= "else" <stmtlist>
+<while>			::= "while" "(" <comma> ")" <stmtlist>
+<dowhile>		::= "do" <stmtlist> "while" "(" <comma> ")"
+<for>			::= "for" "(" <stmt> ";" <comma> ";" <comma> ")" <stmtlist>
 
-<assign_id> ::= "=" <assign> {=}
-<assign_id> ::= "+=" <assign> {+=}
-<assign_id> ::= "-=" <assign> {-=}
-<assign_id> ::= "*=" <assign> {*=}
-<assign_id> ::= "/=" <assign> {/=}
-<assign_id> ::= "%=" <assign> {%=}
-<assign_id> ::= "<<=" <assign> {<<=}
-<assign_id> ::= ">>=" <assign> {>>=}
-<assign_id> ::= "&=" <assign> {&=}
-<assign_id> ::= "|=" <assign> {|=}
-<assign_id> ::= "^=" <assign> {^=}
 
-<more>		::= <mlogical>
-<more>		::= <mbitwise>
-<more>		::= <mequality>
-<more>		::= <mrelational>
-<more>		::= <mshift>
-<more>		::= <msum>
-<more>		::= <mprod>
+<assign>		::= <logical> <massign>*
+<massign> ::= "=" <logical> {=}
+<massign> ::= "+=" <logical> {+=}
+<massign> ::= "-=" <logical> {-=}
+<massign> ::= "*=" <logical> {*=}
+<massign> ::= "/=" <logical> {/=}
+<massign> ::= "%=" <logical> {%=}
+<massign> ::= "<<=" <logical> {<<=}
+<massign> ::= ">>=" <logical> {>>=}
+<massign> ::= "&=" <logical> {&=}
+<massign> ::= "|=" <logical> {|=}
+<massign> ::= "^=" <logical> {^=}
 
 
 <logical>     ::= <bitwise> <mlogical>*
@@ -63,10 +66,21 @@
 <msum>			::= "+" <prod> {+}
 <msum>			::= "-" <prod> {-}
 
-<prod>        ::= <base> <mprod>*
-<mprod>       ::= "*" <base> {*}
-<mprod>       ::= "/" <base> {/}
-<mprod>       ::= "%" <base> {%}
+<prod>        ::= <misc2> <mprod>*
+<mprod>       ::= "*" <misc2> {*}
+<mprod>       ::= "/" <misc2> {/}
+<mprod>       ::= "%" <misc2> {%}
+
+<misc2>			::= "++" <misc1> {++pre}
+<misc2>			::= "--" <misc1> {--pre}
+<misc2>			::= "!" <misc1> {!}
+<misc2>			::= "~" <misc1> {~}
+<misc2>			::= "&" <misc1> {&addr}
+<misc2>			::= <misc1>
+
+<misc1>			::= <base> <m_misc1>?
+<m_misc1>		::= "++" {++post}
+<m_misc1>		::= "--" {--post}
 
 <base>			::= <base_id>
 <base>			::= <base_other>

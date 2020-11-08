@@ -47,7 +47,7 @@ regex_action_pair regex_table[] =
     {"num", "[0-9]+", NULL, LEXTOK_IDENT(1), make_decimal},
     {"num", "0x[0-9A-Fa-f]+", NULL, LEXTOK_IDENT(1), make_hex},
     {"num", "0b(0|1)+", NULL, LEXTOK_IDENT(1), make_bin},
-    {"whatever", "; | { | } | = | , | \\&\\& | \\|\\| | \\^ | \\& | \\| | \\^ | == | != | < | > | <= | >= | << | >> | \\+ | - | \\* | \\/ | \\% | \\( | \\) | \\+= | -= | \\*= | \\/= | %= | <<= | >>= | \\&= | \\|= | \\^=",
+    {"whatever", "; | { | } | = | , | \\&\\& | \\|\\| | \\^ | \\& | \\| | \\^ | == | != | < | > | <= | >= | << | >> | \\+ | - | \\* | \\/ | \\% | \\( | \\) | \\+= | -= | \\*= | \\/= | %= | <<= | >>= | \\&= | \\|= | \\^= | ++ | -- | ~",
     NULL, LEXTOK_TERM, NULL}
     //still missing ? (ternary), +=, -=, *=...
     //{"\\+ | - | \\* | \\/ | \\% | \\&\\& | \\|\\| | \\^ | \\| | \\&", NULL, make_op},
@@ -201,11 +201,21 @@ static void make_decimal(lextok *tp)
 static void make_hex(lextok *tp)
 {
     tp->val = strtol(tp->str, NULL, 16);
+
+    free(tp->str);
+    char buf[21];
+    snprintf(buf, 20, "%d", tp->val);
+    tp->str = strdup(buf);
 }
 
 static void make_bin(lextok *tp)
 {
     tp->val = strtol((tp->str)+2, NULL, 2);
+
+    free(tp->str);
+    char buf[21];
+    snprintf(buf, 20, "%d", tp->val);
+    tp->str = strdup(buf);
 }
 
 //or maybe just a general make_symbol?

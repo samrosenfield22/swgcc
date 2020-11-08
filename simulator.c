@@ -32,6 +32,15 @@ int log_or_op(void);
 int comma_op(void);
 int assign_op(void);
 
+int preinc_op(void);
+int predec_op(void);
+int addr_op(void);
+int log_not_op(void);
+int bin_not_op(void);
+int postinc_op(void);
+int postdec_op(void);
+
+
 typedef struct intermediate_spec_s
 {
     //ptree_tok_type type;
@@ -97,17 +106,36 @@ struct op_entry
     int (*func)(void);
 } op_table[] =
 {
-    {"+",       add_op},
-    {"-",    sub_op},
-    {"*",    mult_op},
-    {"/",    div_op},
-    {"%",    mod_op},
-    {"<<",    shl_op},
-    {">>",    shr_op},
-    {"=",    assign_op}
-    //{"",    _op},
+    {"+",   add_op},
+    {"-",   sub_op},
+    {"*",   mult_op},
+    {"/",   div_op},
+    {"%",   mod_op},
+    {"<<",  shl_op},
+    {">>",  shr_op},
+    {"=",   assign_op},
+    {"<=",  leq_op},
+    {">=",    geq_op},
+    {"==",    eq_op},
+    {"!=",    neq_op},
+    {"|",    bw_or_op},
+    {"&",    bw_and_op},
+    {"^",    bw_xor_op},
+    {"||",    log_or_op},
+    {"&&",    log_and_op},
 
+    {"++pre",    preinc_op},
+    {"--pre",    predec_op},
+    {"&addr",    addr_op},
+    {"!",    log_not_op},
+    {"~",    bin_not_op},
+
+    {"++post",    postinc_op},
+    {"--post",    postdec_op}
+    //{"",    _op},
+    
 };
+
 
 int run_intermediate_code(void)
 {
@@ -151,33 +179,58 @@ int sim_stack_pop(void)
 }
 
 //all binary operators follow the same semantic action format
-#define def_bin_op(name,op)     \
-  int name##_op(void)      \
-  {                             \
-      int b = sim_stack_pop();  \
-      int a = sim_stack_pop();  \
-      sim_stack_push(a op b);   \
-      return 0;                 \
-  }
+#define def_binary_op(name,op)     \
+    int name##_op(void)      \
+    {                             \
+        int b = sim_stack_pop();  \
+        int a = sim_stack_pop();  \
+        sim_stack_push(a op b);   \
+        return 0;                 \
+    }
 
-def_bin_op(add,+)
-def_bin_op(sub,-)
-def_bin_op(mult,*)
-def_bin_op(div,/)
-def_bin_op(mod,%)
-def_bin_op(shl,<<)
-def_bin_op(shr,>>)
-def_bin_op(leq,<=)
-def_bin_op(geq,>=)
-def_bin_op(eq,==)
-def_bin_op(neq,!=)
-def_bin_op(bw_or,|)
-def_bin_op(bw_and,&)
-def_bin_op(bw_xor,^)
-def_bin_op(log_or,||)
-def_bin_op(log_and,&&)
-//def_bin_op(comma, ,)
-//def_bin_op(,)
+#define def_unary_prefix_op(name,op)     \
+    int name##_op(void)      \
+    {                             \
+        int a = sim_stack_pop();  \
+        sim_stack_push((int)op(a));     \
+        return 0;                 \
+    }
+
+#define def_unary_postfix_op(name,op)     \
+    int name##_op(void)      \
+    {                             \
+        int a = sim_stack_pop();  \
+        sim_stack_push((a)op);     \
+        return 0;                 \
+    }
+
+def_binary_op(add, +)
+def_binary_op(sub, -)
+def_binary_op(mult, *)
+def_binary_op(div, /)
+def_binary_op(mod, %)
+def_binary_op(shl, <<)
+def_binary_op(shr, >>)
+def_binary_op(leq, <=)
+def_binary_op(geq, >=)
+def_binary_op(eq, ==)
+def_binary_op(neq, !=)
+def_binary_op(bw_or, |)
+def_binary_op(bw_and, &)
+def_binary_op(bw_xor, ^)
+def_binary_op(log_or, ||)
+def_binary_op(log_and, &&)
+//def_binary_op(comma, ,)
+//def_binary_op(,)
+
+def_unary_prefix_op(preinc, ++)
+def_unary_prefix_op(predec, --)
+def_unary_prefix_op(addr, &)
+def_unary_prefix_op(log_not, !)
+def_unary_prefix_op(bin_not, ~)
+
+def_unary_postfix_op(postinc, ++)
+def_unary_postfix_op(postdec, --)
 
 int comma_op(void)
 {
