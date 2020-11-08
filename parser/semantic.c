@@ -13,7 +13,7 @@ bool filter_assign_toks(node *n);
 
 void declare_new_vars(node *pt, int depth);
 
-void amend_push_instr(node *pt, int arg);
+void amend_push_instr(node *pt, int arg, const char *instr);
 void amend_lval(node *pt);
 void amend_rval(node *pt);
 void amend_num(node *pt);
@@ -92,8 +92,15 @@ bool check_variable_declarations(node *pt)
 
 
 
-
+	//there's no "more" nonterminal !!!!!!!
 	node **flattened = ptree_filter(pt, filter_assign_toks, -1);	//keep only base_id, base_other, more, "=" 
+	printf("--- flattened ---\n");
+	for(int i=0; i<vector_len(flattened); i++)
+	{
+		node_print(flattened[i], 0);
+	}
+	printf("-------------------\n\n");
+
 	for(int i=0; i<vector_len(flattened); i++)
 	{
 		//grab all base_ids
@@ -108,8 +115,23 @@ bool check_variable_declarations(node *pt)
 			}
 
 			//if the base_id is right before a "=", it's a lval
-			ref_node = (node){.is_nonterminal=false, .type=TERMINAL, .str="=", .children=NULL, .sym=NULL};
-			if(i+1<vector_len(flattened) && filter_by_ref_node(flattened[i+1]))
+			//ref_node = (node){.is_nonterminal=false, .type=TERMINAL, .str="=", .children=NULL, .sym=NULL};
+			//if(i+1<vector_len(flattened) && filter_by_ref_node(flattened[i+1]))
+			//if(i+1<vector_len(flattened) && strcmp(flattened[i+1]->str, "=")==0)
+			if(i+1<vector_len(flattened) && flattened[i+1]->is_nonterminal &&
+				(strcmp(gg.nonterminals[flattened[i+1]->type], "decl_assign")==0 ||
+				 strcmp(gg.nonterminals[flattened[i+1]->type], "massign")==0))
+			{
+				amend_lval(flattened[i]);
+			}
+			else if(i+1<vector_len(flattened) && 
+				(strcmp(flattened[i+1]->str, "++") || strcmp(flattened[i+1]->str, "--")))
+			{
+				amend_lval(flattened[i]);
+			}
+			else if(i>0 && 
+				(strcmp(flattened[i-1]->str, "++") || strcmp(flattened[i-1]->str, "--")
+				|| strcmp(flattened[i-1]->str, "&")))	//not great, this will get confused w binary and
 			{
 				amend_lval(flattened[i]);
 			}
@@ -140,9 +162,16 @@ bool filter_assign_toks(node *n)
 		return true;
 	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "base_other")==0)
 		return true;
-	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "more")==0)
+
+	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "decl_assign")==0)
 		return true;
-	if(!(n->is_nonterminal) && n->type==TERMINAL && strcmp(n->str, "=")==0)
+	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "massign")==0)
+		return true;
+
+	//if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "more")==0)
+	//	return true;
+	//if(!(n->is_nonterminal) && n->type==TERMINAL && strcmp(n->str, "=")==0)
+	if(!(n->is_nonterminal) && n->type==TERMINAL)
 		return true;
 
 	return false;
@@ -169,32 +198,25 @@ void declare_new_vars(node *pt, int depth)
 	}
 }
 
-void amend_push_instr(node *pt, int arg)
+void amend_push_instr(node *pt, int arg, const char *instr)
 {
-	//if(strcmp(pt->children[1]->str, "push"))
-	//	assert(0);
-
 	//compose the ammended string
-	int len = 5 + 10;	//5 for "push ", 2^32 has 10 digits
-	char *buf = malloc(len+1);
-	assert(buf);
-	sprintf(buf, "push %d", arg);
+	char buf[strlen(instr) + 12];	//2^32 has 10 digits, plus 1 for the space, 1 for '\0'
+	sprintf(buf, "%s %d", instr, arg);
 
 	//copy it to the semact
 	free(pt->children[1]->str);
 	pt->children[1]->str = strdup(buf);
-
-	free(buf);
 }
 
 void amend_lval(node *pt)
 {
-	amend_push_instr(pt, (int)(pt->children[0]->sym->var));
+	amend_push_instr(pt, (int)(pt->children[0]->sym->var), "push");
 }
 
 void amend_rval(node *pt)
 {
-	amend_push_instr(pt, *(int*)(pt->children[0]->sym->var));
+	amend_push_instr(pt, (int)(pt->children[0]->sym->var), "pushp");
 }
 
 void amend_num(node *pt)
@@ -202,7 +224,7 @@ void amend_num(node *pt)
 	if(pt->children[0]->type == TERMINAL)	//could be a "("
 		return;
 	int num = atoi(pt->children[0]->str);
-	amend_push_instr(pt, num);
+	amend_push_instr(pt, num, "push");
 }
 
 

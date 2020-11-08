@@ -157,7 +157,7 @@ node *parse(lextok *lex_tokens_in)
 
 node *parse_nonterm(nonterminal_type nt)
 {
-	printf("\nparsing nonterminal: %s\n", gg.nonterminals[nt]);
+	//printf("\nparsing nonterminal: %s\n", gg.nonterminals[nt]);
 	//printf("\tlookahead at lex tok %d (%s)\n", lex_tok-lex_tokens, lex_tok->str);
 
 	node *root = node_create(true, nt, NULL, NULL);

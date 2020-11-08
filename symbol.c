@@ -59,7 +59,7 @@ void dump_symbol_table(void)
     printf("symbol table\n------------------\n");
     for(int i=0; i<vector_len(SYMBOL_TABLE); i++)
     {
-        printf("symbol %d (%p):\t\'%s\'\t", i, &SYMBOL_TABLE[i], SYMBOL_TABLE[i]->name);
+        printf("symbol %d (%d):\t\'%s\'\t", i, SYMBOL_TABLE[i]->var, SYMBOL_TABLE[i]->name);
         if(SYMBOL_TABLE[i]->type==SYM_TYPE_KW)
             printf("type");
         else if(SYMBOL_TABLE[i]->type==SYM_OTHER_KW)

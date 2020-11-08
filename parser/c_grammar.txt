@@ -25,18 +25,18 @@
 <for>			::= "for" "(" <stmt> ";" <comma> ";" <comma> ")" <stmtlist>
 
 
-<assign>		::= <logical> <massign>*
-<massign> ::= "=" <logical> {=}
-<massign> ::= "+=" <logical> {+=}
-<massign> ::= "-=" <logical> {-=}
-<massign> ::= "*=" <logical> {*=}
-<massign> ::= "/=" <logical> {/=}
-<massign> ::= "%=" <logical> {%=}
-<massign> ::= "<<=" <logical> {<<=}
-<massign> ::= ">>=" <logical> {>>=}
-<massign> ::= "&=" <logical> {&=}
-<massign> ::= "|=" <logical> {|=}
-<massign> ::= "^=" <logical> {^=}
+<assign>		::= <logical> <massign>?
+<massign> ::= "=" <assign> {=}
+<massign> ::= "+=" <assign> {+=}
+<massign> ::= "-=" <assign> {-=}
+<massign> ::= "*=" <assign> {*=}
+<massign> ::= "/=" <assign> {/=}
+<massign> ::= "%=" <assign> {%=}
+<massign> ::= "<<=" <assign> {<<=}
+<massign> ::= ">>=" <assign> {>>=}
+<massign> ::= "&=" <assign> {&=}
+<massign> ::= "|=" <assign> {|=}
+<massign> ::= "^=" <assign> {^=}
 
 
 <logical>     ::= <bitwise> <mlogical>*

@@ -149,6 +149,8 @@ int run_intermediate_code(void)
 
         if(strcmp(instr->op, "push")==0)
             sim_stack_push(instr->arg);
+        else if(strcmp(instr->op, "pushp")==0)
+            sim_stack_push(*(int*)instr->arg);
         else if(strcmp(instr->op, "pop")==0)
             sim_stack_pop();    //what do with result?
         else
@@ -188,21 +190,27 @@ int sim_stack_pop(void)
         return 0;                 \
     }
 
-#define def_unary_prefix_op(name,op)     \
+#define def_unary_prefix_op(name,op,by_val)     \
     int name##_op(void)      \
     {                             \
         int a = sim_stack_pop();  \
-        sim_stack_push((int)op(a));     \
+        if(by_val)                      \
+            sim_stack_push((int)op(*(int*)a));     \
+        else                                \
+            sim_stack_push((int)op(a));     \
         return 0;                 \
     }
 
 #define def_unary_postfix_op(name,op)     \
     int name##_op(void)      \
     {                             \
-        int a = sim_stack_pop();  \
-        sim_stack_push((a)op);     \
+        int *a = (int*)sim_stack_pop();  \
+        sim_stack_push((*a)op);     \
         return 0;                 \
     }
+
+#define BY_VALUE true
+#define BY_REFERENCE false
 
 def_binary_op(add, +)
 def_binary_op(sub, -)
@@ -223,11 +231,11 @@ def_binary_op(log_and, &&)
 //def_binary_op(comma, ,)
 //def_binary_op(,)
 
-def_unary_prefix_op(preinc, ++)
-def_unary_prefix_op(predec, --)
-def_unary_prefix_op(addr, &)
-def_unary_prefix_op(log_not, !)
-def_unary_prefix_op(bin_not, ~)
+def_unary_prefix_op(preinc, ++, BY_VALUE)
+def_unary_prefix_op(predec, --, BY_VALUE)
+def_unary_prefix_op(addr, , BY_REFERENCE)  //uhhh
+def_unary_prefix_op(log_not, !, BY_VALUE)
+def_unary_prefix_op(bin_not, ~, BY_VALUE)
 
 def_unary_postfix_op(postinc, ++)
 def_unary_postfix_op(postdec, --)
