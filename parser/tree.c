@@ -10,6 +10,8 @@
 
 char **nt_strings;
 
+int *branch_list, *branch_ct;
+
 const char *t_strings[] =
 {
 	[0] = "SHOULDNTSEETHIS",
@@ -47,7 +49,7 @@ void node_add_child(node *root, node *child)
 
 void ptree_traverse_dfs(node *pt, bool (*filter)(node *n), void (*action)(node *n, int arg), bool node_then_children)
 {
-		ptree_traverse_dfs_recursive(pt, filter, action, 0, node_then_children);
+	ptree_traverse_dfs_recursive(pt, filter, action, 0, node_then_children);
 }
 
 void ptree_traverse_dfs_recursive(node *pt, bool (*filter)(node *n), void (*action)(node *n, int depth), int depth, bool node_then_children)
@@ -142,21 +144,82 @@ node *node_has_direct_child(node *pt, bool (*filter)(node *n))
 	return NULL;
 }
 
+void ptree_print(node *pt)
+{
+	branch_list = vector(*branch_list, 0);
+	branch_ct = vector(*branch_ct, 0);
+	ptree_traverse_dfs(pt, NULL, node_print_pretty, true);
+	vector_destroy(branch_list);
+	vector_destroy(branch_ct);
+}
+
+void node_print_pretty(node *pt, int depth)
+{
+	if(pt->children && (vector_len(pt->children)>1))
+	{
+		vector_append(branch_list, depth-1);
+		vector_append(branch_ct, vector_len(pt->children));
+	}
+
+	if(depth) printf(" ");
+	for(int i=0; i<depth-1; i++)
+	{
+		//printf("\t");
+		//if(vector_search(branch_list, i) != -1)
+		//	printf("|");
+
+		if(vector_search(branch_list, i) == -1)
+			printf("   ");
+		else
+			printf("  |");
+	}
+
+	int d = vector_search(branch_list, depth-2);
+	if(depth)
+	{
+		if(d != -1)
+			printf("--");
+		else
+			printf("  ");
+	}
+
+	node_print(pt, depth);
+
+	if(d != -1)
+	{
+		branch_ct[d]--;
+		if(branch_ct[d] == 0)
+		{
+			vector_delete(&branch_list, d);
+			vector_delete(&branch_ct, d);
+		}
+	}
+}
+
 void node_print(node *pt, int depth)
 {
-	for(int i=0; i<depth; i++)
-	{
-		printf("  ");
-	}
-		if(pt->is_nonterminal == true)
-			printf("(%s) ", gg.nonterminals[pt->type]);
-			//printf("nootnoot ");
-		else
-			printf("(%s) ", t_strings[pt->type]);
+	//print node type
+	if(pt->is_nonterminal == true)
+		printf("(%s) ", gg.nonterminals[pt->type]);
+	else
+		printf("(%s) ", t_strings[pt->type]);
 
+	//print node data
+	//if(pt->str)
+	//	printf("%s", pt->str);
+	if(!pt->is_nonterminal && pt->type == SEMACT)
+		printf("%s", pt->str);
+	else
+		ptree_traverse_dfs(pt, NULL, node_print_str, false);
+
+	putchar('\n');
+}
+
+void node_print_str(node *pt, int depth)
+{
+	if(!(pt->is_nonterminal) && pt->type != SEMACT)
 		if(pt->str)
-			printf("%s", pt->str);
-		putchar('\n');
+			printf("%s ", pt->str);
 }
 
 void semact_print(node *pt, int depth)

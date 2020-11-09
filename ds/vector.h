@@ -49,6 +49,7 @@ bool vector_dec(void *v);
 bool vector_insert(void *v, size_t index);
 bool vector_delete(void *v, size_t index);
 bool vector_swap(void *v, size_t a, size_t b);
+int vector_search(void *v, int term);
 void *vector_nth(void *v, size_t index);
 //void *vector_last(void *v);
 size_t vector_len(void *v);								//returns the vector length (number of elements)

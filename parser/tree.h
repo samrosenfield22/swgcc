@@ -40,7 +40,11 @@ node **ptree_filter(node *n, bool (*filter)(node *n), int depth);
 void ptree_filter_recursive(node *n, bool (*filter)(node *n), node ***collect, int depth, int max_depth);
 bool filter_by_ref_node(node *n);
 
+void ptree_print(node *pt);
 void node_print(node *pt, int depth);
+void node_print_pretty(node *pt, int depth);
+void node_print_str(node *pt, int depth);
+
 void semact_print(node *pt, int depth);
 void node_delete(node *pt, int dummy);
 

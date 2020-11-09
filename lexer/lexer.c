@@ -166,6 +166,8 @@ void lex_tokens_dump(lextok *lt)
             printf("(%s, val = %d)", ident_table[l->ident_id], l->val);
         putchar('\n');
     }
+
+    printf("------------------\n\n");
 }
 
 /*static void make_identifier(const char *l, lextok *tp, lextok *default_tok)

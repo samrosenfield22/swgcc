@@ -151,6 +151,18 @@ bool vector_swap(void *v, size_t a, size_t b)
 	return true;
 }
 
+int vector_search(void *v, int term)
+{
+	//printf("\tsearching v of len %d\n", vector_len(v));
+	for(int i=0; i<vector_len(v); i++)
+	{
+		//printf("\tcomparing %d,%d\n", *(int*)vector_nth(v,i), term);
+		if(*(int*)vector_nth(v,i) == term)
+			return i;
+	}
+	return -1;
+}
+
 //usually using native array indexing (thing[n]) is a better choice
 void *vector_nth(void *v, size_t index)
 {

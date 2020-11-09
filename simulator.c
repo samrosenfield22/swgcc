@@ -149,7 +149,7 @@ int run_intermediate_code(void)
 
         if(strcmp(instr->op, "push")==0)
             sim_stack_push(instr->arg);
-        else if(strcmp(instr->op, "pushp")==0)
+        else if(strcmp(instr->op, "pushv")==0)
             sim_stack_push(*(int*)instr->arg);
         else if(strcmp(instr->op, "pop")==0)
             sim_stack_pop();    //what do with result?

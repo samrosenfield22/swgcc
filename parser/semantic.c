@@ -42,9 +42,10 @@ bool check_variable_declarations(node *pt)
 	ref_node = (node){.is_nonterminal=true, .type=0, .str="base_id", .children=NULL, .sym=NULL};
 	node **all_bids = ptree_filter(pt, filter_by_ref_node, -1);
 
-	printf("\nevery var: ");
+	/*printf("\nevery var: ");
 	for(int i=0; i<vector_len(all_bids); i++)
 		printf("%s ", all_bids[i]->children[0]->str);
+	printf("\n");*/
 
 	//remove all decl vars from the list of all base_ids
 	//(this gives us a list of all variables that should have already been declared)
@@ -54,9 +55,9 @@ bool check_variable_declarations(node *pt)
 		{
 			if(decl_ids[i] == all_bids[j])
 			{
-				printf("deleting node %s (decl #%d, all ids #%d)\n", decl_ids[i]->children[0]->str, i, j);
+				//printf("deleting node %s (decl #%d, all ids #%d)\n", decl_ids[i]->children[0]->str, i, j);
 				vector_delete(&all_bids, j);
-				printf("%d base_ids left\n\n", vector_len(all_bids));
+				//printf("%d base_ids left\n\n", vector_len(all_bids));
 			}
 		}
 	}
@@ -94,7 +95,7 @@ bool check_variable_declarations(node *pt)
 
 	//there's no "more" nonterminal !!!!!!!
 	node **flattened = ptree_filter(pt, filter_assign_toks, -1);	//keep only base_id, base_other, more, "=" 
-	printf("--- flattened ---\n");
+	printf("\n--- flattened ---\n");
 	for(int i=0; i<vector_len(flattened); i++)
 	{
 		node_print(flattened[i], 0);
@@ -183,7 +184,7 @@ void declare_new_vars(node *pt, int depth)
 	//node *decl_var = pt->children[0]->children[0];	//child 0 is a base_id, its child 0 is the variable
 														//n->0->0 is dependent on the specific grammar
 	node *decl_var = pt->children[0];
-	node_print(decl_var, 0);
+	//node_print(decl_var, 0);
 	if(decl_var->sym->declared)
 	{
 		SEMANTIC_STATUS = SEM_REDECLARED_VAR;
@@ -216,7 +217,7 @@ void amend_lval(node *pt)
 
 void amend_rval(node *pt)
 {
-	amend_push_instr(pt, (int)(pt->children[0]->sym->var), "pushp");
+	amend_push_instr(pt, (int)(pt->children[0]->sym->var), "pushv");
 }
 
 void amend_num(node *pt)
