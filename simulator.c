@@ -30,7 +30,6 @@ int bw_xor_op(void);
 int log_and_op(void);
 int log_or_op(void);
 int comma_op(void);
-int assign_op(void);
 
 int preinc_op(void);
 int predec_op(void);
@@ -39,6 +38,18 @@ int log_not_op(void);
 int bin_not_op(void);
 int postinc_op(void);
 int postdec_op(void);
+
+int assign_eq_op(void);
+int assign_add_op(void);
+int assign_sub_op(void);
+int assign_mult_op(void);
+int assign_div_op(void);
+int assign_mod_op(void);
+int assign_shl_op(void);
+int assign_shr_op(void);
+int assign_and_op(void);
+int assign_or_op(void);
+int assign_xor_op(void);
 
 
 typedef struct intermediate_spec_s
@@ -113,7 +124,6 @@ struct op_entry
     {"%",   mod_op},
     {"<<",  shl_op},
     {">>",  shr_op},
-    {"=",   assign_op},
     {"<=",  leq_op},
     {">=",    geq_op},
     {"==",    eq_op},
@@ -131,7 +141,20 @@ struct op_entry
     {"~",    bin_not_op},
 
     {"++post",    postinc_op},
-    {"--post",    postdec_op}
+    {"--post",    postdec_op},
+
+    {"=",   assign_eq_op},
+    {"+=",    assign_add_op},
+    {"-=",    assign_sub_op},
+    {"*=",    assign_mult_op},
+    {"/=",    assign_div_op},
+    {"%=",    assign_mod_op},
+    {"<<=",    assign_shl_op},
+    {">>=",    assign_shr_op},
+    {"&=",    assign_and_op},
+    {"|=",    assign_or_op},
+    {"^=",    assign_xor_op}
+    
     //{"",    _op},
     
 };
@@ -209,6 +232,16 @@ int sim_stack_pop(void)
         return 0;                 \
     }
 
+#define def_assign_op(name,op)              \
+    int assign_##name##_op(void)            \
+    {                                       \
+        int b = sim_stack_pop();            \
+        int *lv = (int*)sim_stack_pop();    \
+        *lv op b;                           \
+        sim_stack_push(*lv);                  \
+        return 0;                           \
+    }
+
 #define BY_VALUE true
 #define BY_REFERENCE false
 
@@ -240,6 +273,21 @@ def_unary_prefix_op(bin_not, ~, BY_VALUE)
 def_unary_postfix_op(postinc, ++)
 def_unary_postfix_op(postdec, --)
 
+def_assign_op(eq, =)
+def_assign_op(add, +=)
+def_assign_op(sub, -=)
+def_assign_op(mult, *=)
+def_assign_op(div, /=)
+def_assign_op(mod, %=)
+def_assign_op(shl, <<=)
+def_assign_op(shr, >>=)
+def_assign_op(and, &=)
+def_assign_op(or, |=)
+def_assign_op(xor, ^=)
+
+
+
+
 int comma_op(void)
 {
     int b = sim_stack_pop();
@@ -248,7 +296,7 @@ int comma_op(void)
     return 0;
 }
 
-int assign_op(void)
+/*int assign_op(void)
 {
     int b = sim_stack_pop();
     int *lv = (int*)sim_stack_pop();
@@ -265,4 +313,4 @@ int assign_op(void)
     sim_stack_push(b);
     
     return 0;
-}
+}*/

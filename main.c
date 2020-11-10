@@ -52,8 +52,30 @@ char *read_stmtlist(void)
     return strbuf;
 }
 
+#define vdump(v)    do {for(int i=0; i<vector_len(v); i++) {printf("%d ", v[i]);} printf("\n");} while(0)
 int main(void)
 {
+
+    /*int *a = vector(*a, 0);
+    int *b = vector(*b, 0);
+    vector_append(a, 1);
+    vector_append(a, 2);
+    vector_append(a, 3);
+    vector_append(b, 2);
+    vector_append(b, 3);
+    vector_append(b, 4);
+    vdump(a);
+    vdump(b);
+    printf("\n\n");
+
+    int *isc, *ao, *bo;
+    vector_intersect(&isc, &ao, &bo, a, b);
+    printf("isect:\t"); vdump(isc);
+    printf("a only:\t"); vdump(ao);
+    printf("b only:\t"); vdump(bo);
+    return 0;*/
+
+
     symbol_table_initialize();
     lexer_initialize();
     
@@ -90,6 +112,8 @@ int main(void)
         //ptree_traverse_dfs(parse_tree, NULL, node_print, true);
         //continue;
 
+        ptree_print(parse_tree);
+
         if(!check_variable_declarations(parse_tree))
         {
             printf("semantic fail\n");
@@ -97,7 +121,7 @@ int main(void)
         }
 
         //ptree_traverse_dfs(parse_tree, NULL, node_print, true);
-        ptree_print(parse_tree);
+        
 
         printf("\n--- semacts ---\n");
         ptree_traverse_dfs(parse_tree, NULL, semact_print, true);

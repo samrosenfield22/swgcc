@@ -148,13 +148,26 @@ void ptree_print(node *pt)
 {
 	branch_list = vector(*branch_list, 0);
 	branch_ct = vector(*branch_ct, 0);
-	ptree_traverse_dfs(pt, NULL, node_print_pretty, true);
+	//ptree_traverse_dfs(pt, NULL, node_print_pretty, true);
+	node_print_pretty(pt, 0);
 	vector_destroy(branch_list);
 	vector_destroy(branch_ct);
 }
 
 void node_print_pretty(node *pt, int depth)
 {
+	const bool compress_tree = false;
+
+	//compress the tree by skipping nodes that only have 1 child
+	if(compress_tree)
+	{
+		if(vector_len(pt->children) == 1)
+		{
+			node_print_pretty(pt->children[0], depth);
+			return;
+		}
+	}
+
 	if(pt->children && (vector_len(pt->children)>1))
 	{
 		vector_append(branch_list, depth-1);
@@ -164,10 +177,6 @@ void node_print_pretty(node *pt, int depth)
 	if(depth) printf(" ");
 	for(int i=0; i<depth-1; i++)
 	{
-		//printf("\t");
-		//if(vector_search(branch_list, i) != -1)
-		//	printf("|");
-
 		if(vector_search(branch_list, i) == -1)
 			printf("   ");
 		else
@@ -194,6 +203,9 @@ void node_print_pretty(node *pt, int depth)
 			vector_delete(&branch_ct, d);
 		}
 	}
+
+	for(int i=0; i<vector_len(pt->children); i++)
+		node_print_pretty(pt->children[i], depth+1);
 }
 
 void node_print(node *pt, int depth)

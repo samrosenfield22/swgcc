@@ -130,6 +130,51 @@ bool vector_delete(void *vv, size_t index)
 	return true;
 }
 
+void *vector_copy(void *v)
+{
+	vector_hdr *vhdr = vec_header(v);
+	void *copy = vector_create_internal(vhdr->elem_size, vhdr->len);
+	memcpy(copy, v, vhdr->elem_size * vhdr->len);
+	return copy;
+}
+
+//int *anotb, *bnota, *aandb;
+//vector_intersect(&aandb, &anotb, &bnota, a, b);
+void vector_intersect(void *isect, void *a_only, void *b_only, void *a, void *b)
+{
+	if(vector_elem_size(a) != vector_elem_size(b))
+		return;
+	void *ao = vector_copy(a);
+	void *bo = vector_copy(b);
+	void *isc = vector_create_internal(vector_elem_size(a), 0);
+
+	for(int ai=0; ai<vector_len(ao); ai++)
+	{
+		void *a_item = vector_nth(ao, ai);
+		int bi = vector_search(bo, *(int*)a_item);
+		if(bi != -1)
+		{
+			//printf("--- match! a(%d)=%d, b(%d)=%d\n", ai, *(int*)a_item, bi, *(int*)vector_nth(bo, bi));
+			
+			//append the item to the intersect vector
+			vector_inc(&isc);
+			//printf("intersect len is now %d\n", vector_len(isc));
+			*(int*)vector_nth(isc, vector_len(isc)-1) = *(int*)a_item;
+			/*for(int i=0; i<vector_len(isc); i++)
+				printf("%d ", *(int*)vector_nth(isc, i));
+			printf("\n");*/
+
+			vector_delete(&ao, ai);
+			vector_delete(&bo, bi);
+			ai--; bi--;
+		}
+	}
+
+	if(a_only) *(void**)a_only = ao;	else vector_destroy(ao);
+	if(b_only) *(void**)b_only = bo;	else vector_destroy(bo);
+	if(isect) *(void**)isect = isc;		else vector_destroy(isc);
+} 
+
 bool vector_swap(void *v, size_t a, size_t b)
 {
 	CHECK(v, return false);

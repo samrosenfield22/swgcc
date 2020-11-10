@@ -71,20 +71,38 @@
 <mprod>       ::= "/" <misc2> {/}
 <mprod>       ::= "%" <misc2> {%}
 
-<misc2>			::= "++" <misc1> {++pre}
-<misc2>			::= "--" <misc1> {--pre}
+<misc2>			::= <misc1>
+<misc2>			::= <misc2_lval>
+<misc2>			::= <misc2_context>
 <misc2>			::= "!" <misc1> {!}
 <misc2>			::= "~" <misc1> {~}
-<misc2>			::= "&" <misc1> {&addr}
-<misc2>			::= <misc1>
+<misc2_context>	::= "&" <misc1> {&addr}
+<misc2_context>	::= "++" <misc1> {++pre}
+<misc2_context>	::= "--" <misc1> {--pre}
+<misc2_lval>	::= "*" <misc1> {*deref}
 
-<misc1>			::= <base> <m_misc1>?
+;<misc1>			::= <base>
+
+<misc1>			::= <misc1_context>
+<misc1>			::= <base_num>
+<misc1_context>	::= <base_id> <m_misc1>?
+<misc1_context>	::= <base_expr> <m_misc1>?
 <m_misc1>		::= "++" {++post}
 <m_misc1>		::= "--" {--post}
 
 <base>			::= <base_id>
-<base>			::= <base_other>
+<base>			::= <base_num>
+<base>			::= <base_expr>
+
+;<base>			::= <base_num>
+;<base>			::= <base_expr>
+
+;<base_expr>		::= <base_other>
+;<base_num>		::= <base_other>
 
 <base_id>		::= id {push %s}
-<base_other>	::= num {push %s}
-<base_other>	::= "(" <comma> ")"
+<base_num>		::= num {push %s}
+<base_expr>		::= "(" <comma> ")"
+
+;<base_other>	::= num {push %s}
+;<base_other>		::= "(" <comma> ")"

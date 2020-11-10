@@ -13,6 +13,11 @@ bool filter_assign_toks(node *n);
 
 void declare_new_vars(node *pt, int depth);
 
+bool is_lval(node *n);
+bool is_lval_context_parent(node *n);
+node **get_lval_contexts(node *pt);
+
+
 void amend_push_instr(node *pt, int arg, const char *instr);
 void amend_lval(node *pt);
 void amend_rval(node *pt);
@@ -49,7 +54,8 @@ bool check_variable_declarations(node *pt)
 
 	//remove all decl vars from the list of all base_ids
 	//(this gives us a list of all variables that should have already been declared)
-	for(int i=0; i<vector_len(decl_ids); i++)
+	//vector_intersect();
+	/*for(int i=0; i<vector_len(decl_ids); i++)
 	{
 		for(int j=0; j<vector_len(all_bids); j++)
 		{
@@ -60,14 +66,16 @@ bool check_variable_declarations(node *pt)
 				//printf("%d base_ids left\n\n", vector_len(all_bids));
 			}
 		}
-	}
+	}*/
+	node **prev_decld_ids;
+	vector_intersect(NULL, &prev_decld_ids, NULL, all_bids, decl_ids);
 
 	//check if all those vars are already declared
-	for(int i=0; i<vector_len(all_bids); i++)
+	for(int i=0; i<vector_len(prev_decld_ids); i++)
 	{
-		if(all_bids[i]->children[0]->sym->declared == false)
+		if(prev_decld_ids[i]->children[0]->sym->declared == false)
 		{
-			printf("undeclared variable %s\n", all_bids[i]->children[0]->str);
+			printf("undeclared variable %s\n", prev_decld_ids[i]->children[0]->str);
 			return false;
 		}
 	}
@@ -92,6 +100,69 @@ bool check_variable_declarations(node *pt)
 	SEMANTIC_BAIL_IF_NOT_OK
 
 
+	//lvals
+	//if it's in a lval context, but it's not an lval, error
+	//if it's an lval, but it's not in a lval context
+	node **lvals = ptree_filter(pt, is_lval, -1);
+	node **lval_contexts = get_lval_contexts(pt);
+	printf("lvals:\n");
+	for(int i=0; i<vector_len(lvals); i++)
+		node_print(lvals[i], 0);
+	printf("\nlval contexts:\n");
+	for(int i=0; i<vector_len(lval_contexts); i++)
+	{
+		node_print(lval_contexts[i], 0);
+		printf("(%d children)\n", vector_len(lval_contexts[i]));
+	}
+	//exit(0);
+
+	node **lvals_in_context, **rvals_in_lval_context, **lvals_out_of_context;
+	vector_intersect(&lvals_in_context, &lvals_out_of_context, &rvals_in_lval_context, lvals, lval_contexts);
+	printf("rvals in lval context:\n");
+	vector_foreach(rvals_in_lval_context, i)
+	{
+		printf("error: unexpected expression in lval context ");
+		node_print(rvals_in_lval_context[i], 0);
+		printf("\n");
+	}
+	if(vector_len(rvals_in_lval_context))
+		return false;
+
+	printf("lvals in context:\n");
+	vector_foreach(lvals_in_context, i)
+	{
+		node_print(lvals_in_context[i], 0);
+		printf("\n");
+
+		if(strcmp(gg.nonterminals[lvals_in_context[i]->type], "base_id")==0)
+			amend_lval(lvals_in_context[i]);	//this only takes care of variables
+		else if(strcmp(gg.nonterminals[lvals_in_context[i]->type], "misc2_lval")==0)
+		{
+			vector_delete(&lvals_in_context[i]->children, 0);	//delete the '*' node
+			//printf("--- lval in context that isn't a variable ---\n");
+			//return 0;
+		}
+	}
+
+	vector_foreach(lvals_out_of_context, i)
+	{
+		amend_rval(lvals_out_of_context[i]);
+	}
+
+
+	//amend semacts for all int literals
+	ref_node = (node){.is_nonterminal=true, .type=0, .str="base_num", .children=NULL, .sym=NULL};
+	node **int_lits = ptree_filter(pt, filter_by_ref_node, -1);
+	vector_foreach(int_lits, i)
+	{
+		amend_num(int_lits[i]);
+	}
+
+	//exit(0);
+
+	return true;
+
+	///////////////////////////////////////////////////
 
 	//there's no "more" nonterminal !!!!!!!
 	node **flattened = ptree_filter(pt, filter_assign_toks, -1);	//keep only base_id, base_other, more, "=" 
@@ -154,6 +225,74 @@ bool check_variable_declarations(node *pt)
 	
 
 	return true;
+}
+
+//vars, (lval), s.lval, s->a, *expr, a[n]
+bool is_lval(node *n)
+{
+	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "base_id")==0)
+		return true;
+	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "base_expr")==0)
+		return (is_lval(n->children[1]));
+	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "misc2_lval")==0)
+		return true;
+	
+	return false;
+}
+
+//&expr, ++expr/expr++, expr.n, expr = ..., expr += ...
+bool is_lval_context_parent(node *n)
+{
+	//&expr, ++/--expr
+	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "misc2_context")==0)
+		return true;
+
+	//expr++/--
+	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "misc1_context")==0 &&
+		vector_len(n->children) == 2)
+		return true;
+
+	//type id = ...
+	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "mdecl")==0 &&
+		vector_len(n->children) == 2)
+		return true;
+
+	//expr = ..., expr += ...
+	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "assign")==0 &&
+		vector_len(n->children) == 2)
+		return true;
+
+	return false;
+}
+
+node **get_lval_contexts(node *pt)
+{
+	node **context_parents = ptree_filter(pt, is_lval_context_parent, -1);
+	for(int i=0; i<vector_len(context_parents); i++)
+	{
+		if(strcmp(gg.nonterminals[context_parents[i]->type], "mdecl")==0 ||
+			strcmp(gg.nonterminals[context_parents[i]->type], "assign")==0 ||
+			strcmp(gg.nonterminals[context_parents[i]->type], "misc1_context")==0 )
+			context_parents[i] = context_parents[i]->children[0];
+		else //misc2_context
+			context_parents[i] = context_parents[i]->children[1];
+	}
+
+	//
+	vector_foreach(context_parents, i)
+	{
+		while(1)
+		{
+			if(vector_len(context_parents[i]->children) == 1)
+				context_parents[i] = context_parents[i]->children[0];
+			else if(strcmp(gg.nonterminals[context_parents[i]->type], "base_expr")==0)
+				context_parents[i] = context_parents[i]->children[1];
+			else
+				break;
+		}
+	}
+
+	return context_parents;
 }
 
 //keep base_id, base_other, "=", more

@@ -48,6 +48,8 @@ bool vector_inc(void *v);
 bool vector_dec(void *v);
 bool vector_insert(void *v, size_t index);
 bool vector_delete(void *v, size_t index);
+void *vector_copy(void *v);
+void vector_intersect(void *vunion, void *a_only, void *b_only, void *a, void *b);
 bool vector_swap(void *v, size_t a, size_t b);
 int vector_search(void *v, int term);
 void *vector_nth(void *v, size_t index);
@@ -59,6 +61,7 @@ size_t vector_total_size(void *v);						//
 
 #define vector_last(v) v[vector_len(v)-1]
 #define vector_append(v, item)	do {vector_inc(&v); vector_last(v) = item;} while(0)
+#define vector_foreach(v, i)	for(int i=0; i<vector_len(v); i++)
 
 void vector_dump_internal(void *v, const char *fmt, const char *name);
 
