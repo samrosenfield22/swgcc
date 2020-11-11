@@ -74,12 +74,12 @@
 <misc2>			::= <misc1>
 <misc2>			::= <misc2_lval>
 <misc2>			::= <misc2_context>
-<misc2>			::= "!" <misc1> {!}
-<misc2>			::= "~" <misc1> {~}
+<misc2>			::= "!" <misc2> {!}
+<misc2>			::= "~" <misc2> {~}
 <misc2_context>	::= "&" <misc1> {&addr}
 <misc2_context>	::= "++" <misc1> {++pre}
 <misc2_context>	::= "--" <misc1> {--pre}
-<misc2_lval>	::= "*" <misc1> {*deref}
+<misc2_lval>	::= "*" <misc2> {*deref}
 
 ;<misc1>			::= <base>
 

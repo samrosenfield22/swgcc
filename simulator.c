@@ -34,6 +34,7 @@ int comma_op(void);
 int preinc_op(void);
 int predec_op(void);
 int addr_op(void);
+int deref_op(void);
 int log_not_op(void);
 int bin_not_op(void);
 int postinc_op(void);
@@ -137,6 +138,7 @@ struct op_entry
     {"++pre",    preinc_op},
     {"--pre",    predec_op},
     {"&addr",    addr_op},
+    {"*deref",  deref_op},
     {"!",    log_not_op},
     {"~",    bin_not_op},
 
@@ -267,6 +269,7 @@ def_binary_op(log_and, &&)
 def_unary_prefix_op(preinc, ++, BY_VALUE)
 def_unary_prefix_op(predec, --, BY_VALUE)
 def_unary_prefix_op(addr, , BY_REFERENCE)  //uhhh
+def_unary_prefix_op(deref, , BY_VALUE)
 def_unary_prefix_op(log_not, !, BY_VALUE)
 def_unary_prefix_op(bin_not, ~, BY_VALUE)
 

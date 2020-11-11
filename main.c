@@ -121,7 +121,7 @@ int main(void)
         }
 
         //ptree_traverse_dfs(parse_tree, NULL, node_print, true);
-        
+        ptree_print(parse_tree);
 
         printf("\n--- semacts ---\n");
         ptree_traverse_dfs(parse_tree, NULL, semact_print, true);

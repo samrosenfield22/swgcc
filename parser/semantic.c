@@ -138,7 +138,8 @@ bool check_variable_declarations(node *pt)
 			amend_lval(lvals_in_context[i]);	//this only takes care of variables
 		else if(strcmp(gg.nonterminals[lvals_in_context[i]->type], "misc2_lval")==0)
 		{
-			vector_delete(&lvals_in_context[i]->children, 0);	//delete the '*' node
+			assert(lvals_in_context[i]->children[2]->type==SEMACT);
+			vector_delete(&lvals_in_context[i]->children, 2);	//delete the '*' node
 			//printf("--- lval in context that isn't a variable ---\n");
 			//return 0;
 		}
@@ -146,7 +147,8 @@ bool check_variable_declarations(node *pt)
 
 	vector_foreach(lvals_out_of_context, i)
 	{
-		amend_rval(lvals_out_of_context[i]);
+		if(strcmp(gg.nonterminals[lvals_out_of_context[i]->type], "base_id")==0)
+			amend_rval(lvals_out_of_context[i]);
 	}
 
 
