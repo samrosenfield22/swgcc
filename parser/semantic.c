@@ -34,6 +34,14 @@ enum semantic_status_type
 
 #define SEMANTIC_BAIL_IF_NOT_OK	if(SEMANTIC_STATUS != SEM_OK) {semantic_print_failure(); return false;}
 
+bool all_semantic_checks(node *pt)
+{
+	if(!check_variable_declarations(pt))	return false;
+	if(!handle_lvals(pt))	return false;
+
+	return true;
+}
+
 bool check_variable_declarations(node *pt)
 {
 
@@ -47,26 +55,6 @@ bool check_variable_declarations(node *pt)
 	ref_node = (node){.is_nonterminal=true, .type=0, .str="base_id", .children=NULL, .sym=NULL};
 	node **all_bids = ptree_filter(pt, filter_by_ref_node, -1);
 
-	/*printf("\nevery var: ");
-	for(int i=0; i<vector_len(all_bids); i++)
-		printf("%s ", all_bids[i]->children[0]->str);
-	printf("\n");*/
-
-	//remove all decl vars from the list of all base_ids
-	//(this gives us a list of all variables that should have already been declared)
-	//vector_intersect();
-	/*for(int i=0; i<vector_len(decl_ids); i++)
-	{
-		for(int j=0; j<vector_len(all_bids); j++)
-		{
-			if(decl_ids[i] == all_bids[j])
-			{
-				//printf("deleting node %s (decl #%d, all ids #%d)\n", decl_ids[i]->children[0]->str, i, j);
-				vector_delete(&all_bids, j);
-				//printf("%d base_ids left\n\n", vector_len(all_bids));
-			}
-		}
-	}*/
 	node **prev_decld_ids;
 	vector_intersect(NULL, &prev_decld_ids, NULL, all_bids, decl_ids);
 
@@ -80,17 +68,6 @@ bool check_variable_declarations(node *pt)
 		}
 	}
 
-	/*printf("\ndecl vars: ");
-	for(int i=0; i<vector_len(decl_ids); i++)
-		printf("%s ", decl_ids[i]->children[0]->str);
-	printf("\nalready decld vars: ");
-	for(int i=0; i<vector_len(all_bids); i++)
-		printf("%s ", all_bids[i]->children[0]->str);
-	printf("\n");*/
-	//return false;
-
-
-
 	//declare new variables, error for redeclared ones
 	SEMANTIC_STATUS = SEM_OK;
 	//ref_node = (node){.is_nonterminal=true, .type=0, .str="mdecl", .children=NULL, .sym=NULL};
@@ -99,6 +76,11 @@ bool check_variable_declarations(node *pt)
 		declare_new_vars(decl_ids[i], 0);
 	SEMANTIC_BAIL_IF_NOT_OK
 
+	return true;
+}
+
+bool handle_lvals(node *pt)
+{
 
 	//lvals
 	//if it's in a lval context, but it's not an lval, error
@@ -160,71 +142,6 @@ bool check_variable_declarations(node *pt)
 		amend_num(int_lits[i]);
 	}
 
-	//exit(0);
-
-	return true;
-
-	///////////////////////////////////////////////////
-
-	//there's no "more" nonterminal !!!!!!!
-	node **flattened = ptree_filter(pt, filter_assign_toks, -1);	//keep only base_id, base_other, more, "=" 
-	printf("\n--- flattened ---\n");
-	for(int i=0; i<vector_len(flattened); i++)
-	{
-		node_print(flattened[i], 0);
-	}
-	printf("-------------------\n\n");
-
-	for(int i=0; i<vector_len(flattened); i++)
-	{
-		//grab all base_ids
-		ref_node = (node){.is_nonterminal=true, .type=0, .str="base_id", .children=NULL, .sym=NULL};
-		if(filter_by_ref_node(flattened[i]))
-		{
-			//check for use of undeclared vars
-			if(flattened[i]->children[0]->sym->declared == false)
-			{
-				SEMANTIC_STATUS = SEM_USING_UNDECLD_VAR;
-				SEMANTIC_BAIL_IF_NOT_OK
-			}
-
-			//if the base_id is right before a "=", it's a lval
-			//ref_node = (node){.is_nonterminal=false, .type=TERMINAL, .str="=", .children=NULL, .sym=NULL};
-			//if(i+1<vector_len(flattened) && filter_by_ref_node(flattened[i+1]))
-			//if(i+1<vector_len(flattened) && strcmp(flattened[i+1]->str, "=")==0)
-			if(i+1<vector_len(flattened) && flattened[i+1]->is_nonterminal &&
-				(strcmp(gg.nonterminals[flattened[i+1]->type], "decl_assign")==0 ||
-				 strcmp(gg.nonterminals[flattened[i+1]->type], "massign")==0))
-			{
-				amend_lval(flattened[i]);
-			}
-			else if(i+1<vector_len(flattened) && 
-				(strcmp(flattened[i+1]->str, "++") || strcmp(flattened[i+1]->str, "--")))
-			{
-				amend_lval(flattened[i]);
-			}
-			else if(i>0 && 
-				(strcmp(flattened[i-1]->str, "++") || strcmp(flattened[i-1]->str, "--")
-				|| strcmp(flattened[i-1]->str, "&")))	//not great, this will get confused w binary and
-			{
-				amend_lval(flattened[i]);
-			}
-			else
-			{
-				amend_rval(flattened[i]);
-			}
-		}
-		
-	}
-
-	//update semacts for numbers
-	ref_node = (node){.is_nonterminal=true, .type=0, .str="base_other", .children=NULL, .sym=NULL};
-	for(int i=0; i<vector_len(flattened); i++)
-	{
-		if(filter_by_ref_node(flattened[i]))
-			amend_num(flattened[i]);
-	}
-	
 
 	return true;
 }

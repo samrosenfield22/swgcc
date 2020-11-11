@@ -114,7 +114,7 @@ int main(void)
 
         ptree_print(parse_tree);
 
-        if(!check_variable_declarations(parse_tree))
+        if(!all_semantic_checks(parse_tree))
         {
             printf("semantic fail\n");
             continue;

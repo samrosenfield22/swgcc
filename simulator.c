@@ -9,6 +9,8 @@
 
 static bool filter_semact(node *n);
 static void generate_instruction(node *n, int depth);
+static void dump_intermediate(void);
+static void resolve_jump_addresses(void);
 
 void sim_stack_push(int n);
 int sim_stack_pop(void);
@@ -59,8 +61,9 @@ typedef struct intermediate_spec_s
     char *op;
     int arg;
 } intermediate_spec;
-intermediate_spec code[1000];
-int ispec_index = 0;
+//intermediate_spec code[1000];
+//int ispec_index = 0;
+intermediate_spec *code = NULL;
 
 unsigned char SIM_MEM[0x10000];
 #define SIM_STACK_OFFSET    (0x0000)
@@ -74,14 +77,15 @@ int ip;
 
 void generate_intermediate_code(node *n)
 {
-    ispec_index = 0;
+    //ispec_index = 0;
+    if(code) vector_destroy(code);
+    code = vector(*code, 0);
 
     ptree_traverse_dfs(n, filter_semact, generate_instruction, true);
 
-    //generate_intermediate_code_recursive(n);
     //dump_intermediate();
-    //resolve_jump_addresses();
-    //return code;
+    resolve_jump_addresses();
+    dump_intermediate();
 }
 
 unsigned char *get_new_var(size_t bytes) //or a ptr to a type (in a type table?)
@@ -98,18 +102,65 @@ static bool filter_semact(node *n)
 
 static void generate_instruction(node *n, int depth)
 {
-	printf("generating instruction from semact: %s\n", n->str);
+    vector_inc(&code);
 
     char *subs = strtok(n->str, " ");
-    code[ispec_index].op = strdup(subs);
+    //code[ispec_index].op = strdup(subs);
+    vector_last(code).op = strdup(subs);
+
+    
 
     subs = strtok(NULL, " ");
     if(subs)
-        code[ispec_index].arg = strtol(subs, NULL, 10);
+    {
+        vector_last(code).arg = strtol(subs, NULL, 10);
+        //code[ispec_index].arg = strtol(subs, NULL, 10);
+        //printf(", arg=%d)\n", vector_last(code).arg);
+    }
+    //else
+    //    printf(")\n");
 
-    printf("instruction %d\n\top: %s\n\targ: %d\n\n", ispec_index, code[ispec_index].op, code[ispec_index].arg);
+    //printf("instruction %d\n\top: %s\n\targ: %d\n\n", ispec_index, code[ispec_index].op, code[ispec_index].arg);
 
-	ispec_index++;
+	//ispec_index++;
+}
+
+static void dump_intermediate(void)
+{
+    vector_foreach(code,i)
+    {
+        printf("instruction %d (op: %s, arg %d)\n", i, code[i].op, code[i].arg);
+    }
+}
+
+void resolve_jump_addresses(void)
+{
+    printf("------------------------\nresolving jump addresse (%d total instrs)\n", vector_len(code));
+    for(int i=0; i<vector_len(code); i++)
+    {
+        printf("\t%d %s\n", i, code[i].op);
+        if(strcmp(code[i].op, "pushaddr")==0)
+        {
+            //printf("found pushaddr\n");
+            //exit(0);
+            //find the matching jump label
+            for(int j=i+1; j<vector_len(code); j++)
+            {
+                if(strcmp(code[j].op, "jumplabel")==0)
+                {
+                    printf("pushaddr at %d, jumplabel at %d\n", i, j);
+                    exit(0);
+                    /*free(code[i].op);
+                    char buf[41];
+                    snprintf(buf, 40, "push %d", j);
+                    code[i].op = strdup(buf);*/
+                    code[i].arg = j;
+
+                    vector_delete(&code, j);
+                }
+            }
+        }
+    }
 }
 
 struct op_entry
@@ -161,15 +212,19 @@ struct op_entry
     
 };
 
+//if (expr) {push jumpaddr} {jumpz semact} stmtlist {jmp label}
+//if (expr) {jz semact} stmtlist {jumplabel}
 
 int run_intermediate_code(void)
 {
     sp = sim_stack;
     ip = 0;
 
-    //for(int i=0; i<ispec_index; i++)
-    for(ip=0; ip<ispec_index; ip++)
+
+    //for(ip=0; ip<ispec_index; ip++)
+    for(ip=0; ip<vector_len(code); ip++)
     {
+        //intermediate_spec *instr = &code[ip];
         intermediate_spec *instr = &code[ip];
 
         if(strcmp(instr->op, "push")==0)

@@ -183,7 +183,9 @@ static node *parse_base(void)
             ri++;
             root->children[ci++] = pn_create(PRIM, '[');
             root->children[ci++] = parse_range();
-            assert(rp[ri] == ']');
+            while(rp[ri] != ']')
+                root->children[ci++] = parse_range();
+            //assert(rp[ri] == ']');
             root->children[ci++] = pn_create(PRIM, ']');
             index_advance();
             break;
