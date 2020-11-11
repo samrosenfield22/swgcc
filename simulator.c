@@ -54,6 +54,8 @@ int assign_and_op(void);
 int assign_or_op(void);
 int assign_xor_op(void);
 
+int jz_op(void);
+
 
 typedef struct intermediate_spec_s
 {
@@ -205,7 +207,9 @@ struct op_entry
     {">>=",    assign_shr_op},
     {"&=",    assign_and_op},
     {"|=",    assign_or_op},
-    {"^=",    assign_xor_op}
+    {"^=",    assign_xor_op},
+
+    {"jz",      jz_op}
     
     //{"",    _op},
     
@@ -219,12 +223,14 @@ int run_intermediate_code(void)
     sp = sim_stack;
     ip = 0;
 
+    bool jump_taken;
 
     //for(ip=0; ip<ispec_index; ip++)
-    for(ip=0; ip<vector_len(code); ip++)
+    for(ip=0; ip<vector_len(code); /*ip++*/)
     {
         //intermediate_spec *instr = &code[ip];
         intermediate_spec *instr = &code[ip];
+        jump_taken = false;
 
         if(strcmp(instr->op, "push")==0)
             sim_stack_push(instr->arg);
@@ -238,11 +244,20 @@ int run_intermediate_code(void)
             {
                 if(strcmp(instr->op, op_table[i].op)==0)
                 {
-                    op_table[i].func();
+                    int res = op_table[i].func();
+
+                    //if(op is a jump op)
+                    if(res == 1)    //right now, only the jmp ops return anything (other than 0)
+                                    //1 means a jump was taken -- so we don't increment ip
+                        jump_taken = true;
+
                     break;
                 }
             }
         }
+
+        if(!jump_taken)
+            ip++;
     }
 
     return sim_stack_pop();
@@ -371,3 +386,17 @@ int comma_op(void)
     
     return 0;
 }*/
+
+int jz_op(void)
+{
+    int jaddr = sim_stack_pop();
+    int cond = sim_stack_pop();
+
+    if(cond == 0)
+    {
+        ip = jaddr; //take the jump
+        return 1;
+    }
+    else
+        return 0;
+}
