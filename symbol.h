@@ -29,5 +29,6 @@ void symbol_table_initialize(void);
 symbol *symbol_search(const char *name, symbol_type type);
 symbol *symbol_create(const char *name, symbol_type type);
 void dump_symbol_table(void);
+void dump_symbol_table_oneline(void);
 
 #endif //SYMBOL_H_

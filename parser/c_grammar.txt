@@ -18,11 +18,25 @@
 <comma>       	::= <assign> <mcomma>*
 <mcomma>      	::= "," <assign> {,}
 
-<if>			::= "if" "(" <comma> ")" {pushaddr} {jz} <stmtlist> {jumplabel}
+<if>			::= "if" "(" <comma> ")" {pushaddr 0} {jz} <stmtlist> {jumplabel 0}
 
 ;<if>			::= "if" "(" <comma> ")" <stmtlist> <else>?
 ;<else>			::= "else" <stmtlist>
-<while>			::= "while" "(" <comma> ")" <stmtlist>
+
+;<while>			::= "while" "(" <comma> ")" <stmtlist>
+
+;<while>			::= "while" "(" <comma> {pushaddr} {jz} ")" <stmtlist>
+
+<while>			::= "while" "(" {pushaddr 0} {jmp} {jumplabel 1} <comma> ")" {jumplabel 0} <stmtlist> {pushaddr 1} {jnz}
+
+;jmp loop_cond
+;loop_top
+;stmtlist
+;loop_cond
+;comma
+;jnz loop_top
+
+
 <dowhile>		::= "do" <stmtlist> "while" "(" <comma> ")"
 <for>			::= "for" "(" <stmt> ";" <comma> ";" <comma> ")" <stmtlist>
 

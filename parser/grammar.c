@@ -69,11 +69,11 @@ grammar *load_grammar(const char *fname)
     terminal_names = vector(*terminal_names, 0);
     production_rules = vector(*production_rules, 0);
 
-    char buf[81];
+    char buf[241];
 
     while(1)
     {
-        fgets(buf, 80, fp);
+        fgets(buf, 240, fp);
         if(feof(fp))
             break;
         buf[strlen(buf)-1] = '\0';

@@ -22,6 +22,8 @@ int div_op(void);
 int mod_op(void);
 int shl_op(void);
 int shr_op(void);
+int gt_op(void);
+int lt_op(void);
 int leq_op(void);
 int geq_op(void);
 int eq_op(void);
@@ -54,7 +56,9 @@ int assign_and_op(void);
 int assign_or_op(void);
 int assign_xor_op(void);
 
+int jmp_op(void);
 int jz_op(void);
+int jnz_op(void);
 
 
 typedef struct intermediate_spec_s
@@ -85,9 +89,9 @@ void generate_intermediate_code(node *n)
 
     ptree_traverse_dfs(n, filter_semact, generate_instruction, true);
 
-    //dump_intermediate();
+    printf("before resolving jumps:\n"); dump_intermediate();
     resolve_jump_addresses();
-    dump_intermediate();
+    printf("\n\nafter resolving jumps:\n"); dump_intermediate();
 }
 
 unsigned char *get_new_var(size_t bytes) //or a ptr to a type (in a type table?)
@@ -137,27 +141,72 @@ static void dump_intermediate(void)
 
 void resolve_jump_addresses(void)
 {
-    printf("------------------------\nresolving jump addresse (%d total instrs)\n", vector_len(code));
+    /*
+    intermediate_spec *pushaddrs, *labels;
+    pushaddrs = vector(*pushaddrs, 0);
+    labels = vector(*labels, 0);
+    int *laddrs = vector(*laddrs, 0);
+
     for(int i=0; i<vector_len(code); i++)
     {
-        printf("\t%d %s\n", i, code[i].op);
+        if(strcmp(code[i].op, "pushaddr")==0)
+            vector_append(pushaddrs, code[i]);
+        else if(strcmp(code[i].op, "jumplabel")==0)
+        {
+            vector_append(labels, code[i]);
+            vector_append(laddrs, i);
+        }
+    }
+
+    for(int i=0; i<vector_len(pushaddrs))
+    {
+        for(int j=0; j<vector_len(labels); j++)
+        {
+            if(pushaddrs[i].arg == labels[j].arg)
+            {
+                //update stuff
+
+
+                //delete
+                vector_delete(pushaddrs, i);
+                vector_delete(labels, j);
+                i--; j--;
+            }
+        }
+    }
+
+    vector_destroy(pushaddrs);
+    vector_destroy(labels);
+    */
+
+    printf("------------------------\nresolving jump addresses (%d total instrs)\n", vector_len(code));
+    for(int i=0; i<vector_len(code); i++)
+    {
+        //printf("\t%d %s\n", i, code[i].op);
         if(strcmp(code[i].op, "pushaddr")==0)
         {
             //find the matching jump label
-            for(int j=i+1; j<vector_len(code); j++)
+            int skipped_labels = 0;
+            for(int j=0; j<vector_len(code); j++)
             {
+                
                 if(strcmp(code[j].op, "jumplabel")==0)
                 {
-                    //printf("pushaddr at %d, jumplabel at %d\n", i, j);
-                    //exit(0);
-                    free(code[i].op);
-                    //char buf[41];
-                    //snprintf(buf, 40, "push %d", j);
-                    //code[i].op = strdup(buf);
-                    code[i].op = strdup("push");
-                    code[i].arg = j;
+                    if(code[i].arg==code[j].arg)
+                    {
+                        //printf("pushaddr at %d, jumplabel at %d\n", i, j);
+                        //exit(0);
+                        free(code[i].op);
+                        //char buf[41];
+                        //snprintf(buf, 40, "push %d", j);
+                        //code[i].op = strdup(buf);
+                        code[i].op = strdup("push");
+                        code[i].arg = j - skipped_labels;
 
-                    vector_delete(&code, j);
+                        vector_delete(&code, j);
+                    }
+                    else
+                        skipped_labels++;
                 }
             }
         }
@@ -178,6 +227,8 @@ struct op_entry
     {"<<",  shl_op},
     {">>",  shr_op},
     {"<=",  leq_op},
+    {">",   gt_op},
+    {"<",   lt_op},
     {">=",    geq_op},
     {"==",    eq_op},
     {"!=",    neq_op},
@@ -209,7 +260,9 @@ struct op_entry
     {"|=",    assign_or_op},
     {"^=",    assign_xor_op},
 
-    {"jz",      jz_op}
+    {"jmp",     jmp_op},
+    {"jz",      jz_op},
+    {"jnz",      jnz_op}
     
     //{"",    _op},
     
@@ -225,12 +278,19 @@ int run_intermediate_code(void)
 
     bool jump_taken;
 
+    printf("\n-------------------\nexecution dump:\n");
+
+    printf("before:\t");
+    dump_symbol_table_oneline();
+
     //for(ip=0; ip<ispec_index; ip++)
     for(ip=0; ip<vector_len(code); /*ip++*/)
     {
         //intermediate_spec *instr = &code[ip];
         intermediate_spec *instr = &code[ip];
         jump_taken = false;
+
+        printf("%03d %s\t", ip, instr->op);
 
         if(strcmp(instr->op, "push")==0)
             sim_stack_push(instr->arg);
@@ -255,6 +315,9 @@ int run_intermediate_code(void)
                 }
             }
         }
+
+        dump_symbol_table_oneline();
+        printf("\n");
 
         if(!jump_taken)
             ip++;
@@ -316,6 +379,21 @@ int sim_stack_pop(void)
 #define BY_VALUE true
 #define BY_REFERENCE false
 
+#define def_jump_op(name, cond)             \
+    int name##_op(void)                     \
+    {                                       \
+        int jaddr = sim_stack_pop();        \
+        int arg = sim_stack_pop();          \
+                                            \
+        if(arg cond)                        \
+        {                                   \
+            ip = jaddr;                     \
+            return 1;                       \
+        }                                   \
+        else                                \
+            return 0;                       \
+    }
+
 def_binary_op(add, +)
 def_binary_op(sub, -)
 def_binary_op(mult, *)
@@ -323,6 +401,8 @@ def_binary_op(div, /)
 def_binary_op(mod, %)
 def_binary_op(shl, <<)
 def_binary_op(shr, >>)
+def_binary_op(lt, <)
+def_binary_op(gt, >)
 def_binary_op(leq, <=)
 def_binary_op(geq, >=)
 def_binary_op(eq, ==)
@@ -357,6 +437,8 @@ def_assign_op(and, &=)
 def_assign_op(or, |=)
 def_assign_op(xor, ^=)
 
+def_jump_op(jz, == 0)
+def_jump_op(jnz, != 0)
 
 
 
@@ -387,16 +469,8 @@ int comma_op(void)
     return 0;
 }*/
 
-int jz_op(void)
+int jmp_op(void)
 {
-    int jaddr = sim_stack_pop();
-    int cond = sim_stack_pop();
-
-    if(cond == 0)
-    {
-        ip = jaddr; //take the jump
-        return 1;
-    }
-    else
-        return 0;
+    ip = sim_stack_pop();
+    return 1;
 }

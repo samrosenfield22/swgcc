@@ -76,3 +76,11 @@ void dump_symbol_table(void)
 
     printf("\n\n\n");
 }
+
+void dump_symbol_table_oneline(void)
+{
+    for(int i=0; i<vector_len(SYMBOL_TABLE); i++)
+    {
+        printf("%s=%d   ", SYMBOL_TABLE[i]->name, *SYMBOL_TABLE[i]->var);
+    }
+}
