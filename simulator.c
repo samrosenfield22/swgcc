@@ -141,19 +141,18 @@ void resolve_jump_addresses(void)
         printf("\t%d %s\n", i, code[i].op);
         if(strcmp(code[i].op, "pushaddr")==0)
         {
-            //printf("found pushaddr\n");
-            //exit(0);
             //find the matching jump label
             for(int j=i+1; j<vector_len(code); j++)
             {
                 if(strcmp(code[j].op, "jumplabel")==0)
                 {
-                    printf("pushaddr at %d, jumplabel at %d\n", i, j);
-                    exit(0);
-                    /*free(code[i].op);
-                    char buf[41];
-                    snprintf(buf, 40, "push %d", j);
-                    code[i].op = strdup(buf);*/
+                    //printf("pushaddr at %d, jumplabel at %d\n", i, j);
+                    //exit(0);
+                    free(code[i].op);
+                    //char buf[41];
+                    //snprintf(buf, 40, "push %d", j);
+                    //code[i].op = strdup(buf);
+                    code[i].op = strdup("push");
                     code[i].arg = j;
 
                     vector_delete(&code, j);
