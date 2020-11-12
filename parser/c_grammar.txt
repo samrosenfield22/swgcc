@@ -13,7 +13,20 @@
 <decl>			::= type <mdecl> <moredecl>*
 <moredecl>		::= "," <mdecl>
 <mdecl>			::= <base_id> <decl_assign>?
-<decl_assign>	::= "=" <assign> {=}
+
+<decl_assign>	::= <var_assign>
+<decl_assign>	::= <array_assign>
+
+<var_assign>	::= "=" <assign> {=}
+
+<array_assign>	::= "[" <array_def>
+<array_def>		::= <base_num> "]" <array_init>?
+<array_def>		::= "]" <array_init>
+<array_init>	::= "=" "{" <array_vals> "}"
+<array_vals>	::= <base> <array_more>*
+<array_more>	::= "," <base>
+
+
 
 <comma>       	::= <assign> <mcomma>*
 <mcomma>      	::= "," <assign> {,}
@@ -24,9 +37,9 @@
 ;<else>			::= "else" <stmtlist>
 
 ;<while>			::= "while" "(" <comma> ")" <stmtlist>
-
 ;<while>			::= "while" "(" <comma> {pushaddr} {jz} ")" <stmtlist>
 
+;the comma and stmtlist branches get swapped
 <while>			::= "while" "(" {pushaddr 0} {jmp} {jumplabel 1} <comma> ")" {jumplabel 0} <stmtlist> {pushaddr 1} {jnz}
 
 ;jmp loop_cond
@@ -36,9 +49,18 @@
 ;comma
 ;jnz loop_top
 
+;;; a do-while is a while with the initial "jmp loop_cond" removed
+;loop_top
+;stmtlist
+;loop_cond
+;comma
+;jnz loop_top
 
-<dowhile>		::= "do" <stmtlist> "while" "(" <comma> ")"
-<for>			::= "for" "(" <stmt> ";" <comma> ";" <comma> ")" <stmtlist>
+
+;<dowhile>		::= "do" <stmtlist> "while" "(" <comma> ")"
+<dowhile>		::= "do" {jumplabel 0} <stmtlist> "while" "(" <comma> ")" {pushaddr 0} {jnz}
+
+;<for>			::= "for" "(" <stmt> ";" <comma> ";" <comma> ")" <stmtlist>
 
 
 <assign>		::= <logical> <massign>?

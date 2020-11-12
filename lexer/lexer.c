@@ -26,18 +26,17 @@ static void make_bin(lextok *tp);
 
 typedef struct regex_action_pair_s
 {
-    const char *name;
-    const char *exp;
-    nfa_model *model;
-    lextok default_tok;
-    //void (*action)(const char *l, lextok *tp, lextok *default_tok);
-    void (*action)(lextok *tp);
+    const char *name;           //matches to a user-defined name (such as an identifier or literal)
+    const char *exp;            //regular expression
+    nfa_model *model;           //nfa model for the regular expression (gets populated by lexer_initialize)
+    lextok default_tok;         //default token for initializing a lexeme
+    void (*action)(lextok *tp); //optional action for converting a token (ie converting a hex to dec)
 } regex_action_pair;
 
 #define LEXTOK_IDENT(id)    (lextok){NULL, true, id, 0, NULL}
 #define LEXTOK_TERM         (lextok){NULL, false, 0, 0, NULL}
 
-//regex table for c
+//regex table for all operators and keywords, and rules for identifiers and literals
 regex_action_pair regex_table[] =
 {
     
@@ -46,7 +45,7 @@ regex_action_pair regex_table[] =
     //NULL, LEXTOK_TERM, NULL},
     {"", "== | != | < | > | <= | >=", NULL, LEXTOK_TERM, NULL},
     {"", "\\+= | -= | \\*= | \\/= | %= | <<= | >>= | \\&= | \\|= | \\^= | ++ | --", NULL, LEXTOK_TERM, NULL},
-    {"", "; | { | } | \\( | \\) | = | , ", NULL, LEXTOK_TERM, NULL},
+    {"", "; | { | } | \\[ | \\] | \\( | \\) | = | , ", NULL, LEXTOK_TERM, NULL},
     {"", "\\&\\& | \\|\\| | \\^ | \\& | \\| | \\^ | ~", NULL, LEXTOK_TERM, NULL},
     {"", "<< | >> | \\+ | - | \\* | \\/ | \\%", NULL, LEXTOK_TERM, NULL},
     {"", "if | else | for | while | do", NULL, LEXTOK_TERM, NULL},
@@ -190,11 +189,11 @@ static void make_identifier(lextok *tp)
     //printf("table addr %p\n", tp->sym);
     if(tp->sym)
     {
-        if(tp->sym->type != SYM_IDENTIFIER)
+        if(tp->sym->sym_type != SYM_IDENTIFIER)
             tp->is_ident = false;
     }
     else
-        tp->sym = symbol_create(tp->str, SYM_IDENTIFIER);
+        tp->sym = symbol_create(tp->str, SYM_IDENTIFIER, NULL);
 }
 
 static void make_decimal(lextok *tp)

@@ -156,7 +156,7 @@ void ptree_print(node *pt)
 
 void node_print_pretty(node *pt, int depth)
 {
-	const bool compress_tree = false;
+	const bool compress_tree = true;
 
 	//compress the tree by skipping nodes that only have 1 child
 	if(compress_tree)

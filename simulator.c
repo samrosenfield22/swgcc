@@ -94,12 +94,25 @@ void generate_intermediate_code(node *n)
     printf("\n\nafter resolving jumps:\n"); dump_intermediate();
 }
 
-unsigned char *get_new_var(size_t bytes) //or a ptr to a type (in a type table?)
+void define_var(symbol *sym)
+{
+    //get number of bytes
+    symbol *type = sym->type;
+    size_t bytes = type->tspec->bytes;
+
+    //allocate the var
+    sym->var = (int*)var_addr;
+    //unsigned char *addr = var_addr;
+    var_addr += bytes;
+}
+
+//delet
+/*unsigned char *get_new_var(size_t bytes) //or a ptr to a type (in a type table?)
 {
     unsigned char *addr = var_addr;
     var_addr += bytes;
     return addr;
-}
+}*/
 
 static bool filter_semact(node *n)
 {
@@ -372,7 +385,7 @@ int sim_stack_pop(void)
         int b = sim_stack_pop();            \
         int *lv = (int*)sim_stack_pop();    \
         *lv op b;                           \
-        sim_stack_push(*lv);                  \
+        sim_stack_push(*lv);                \
         return 0;                           \
     }
 

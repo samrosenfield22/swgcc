@@ -9,9 +9,11 @@
 #include "semantic.h"
 
 
-bool filter_assign_toks(node *n);
+//bool filter_assign_toks(node *n);
 
-void declare_new_vars(node *pt, int depth);
+//void declare_new_vars(node *pt, int depth);
+//void declare_new_vars(node *decl);
+void declare_new_vars(const char *typestr, node *mdecl);
 
 bool is_lval(node *n);
 bool is_lval_context_parent(node *n);
@@ -23,6 +25,9 @@ void amend_lval(node *pt);
 void amend_rval(node *pt);
 void amend_num(node *pt);
 
+void update_jump_addr_pairs(node *loop);
+
+static node **get_nonterms(node *tree, char *ntstr);
 static void semantic_print_failure(void);
 
 enum semantic_status_type
@@ -34,44 +39,32 @@ enum semantic_status_type
 
 #define SEMANTIC_BAIL_IF_NOT_OK	if(SEMANTIC_STATUS != SEM_OK) {semantic_print_failure(); return false;}
 
+int jlpair;
 bool all_semantic_checks(node *pt)
 {
 	if(!check_variable_declarations(pt))	return false;
 	if(!handle_lvals(pt))	return false;
 
 	//swap the condition and stmtlist in while loops
-	int jlpair = 0;	//track jump addr/label pairs
+	jlpair = 2;	//track jump addr/label pairs. this is a kludgey solution -- it can't be confused for any
+				//addr/labels w id 0 or 1
 
-	ref_node = (node){.is_nonterminal=true, .type=0, .str="while", .children=NULL, .sym=NULL};
-	node **whiles = ptree_filter(pt, filter_by_ref_node, -1);
+
+	node **whiles = get_nonterms(pt, "while");
 	vector_foreach(whiles, i)
 	{
-		char buf[41];
 		vector_swap(whiles[i]->children, 5, 8);	//swap the comma and stmtlist (nodes 5 and 8)
 
-		assert(strstr(whiles[i]->children[2]->str, "pushaddr"));
-		assert(strstr(whiles[i]->children[7]->str, "jumplabel"));
-		snprintf(buf, 40, "pushaddr %d", jlpair);
-		free(whiles[i]->children[2]->str);
-		whiles[i]->children[2]->str = strdup(buf);
-		snprintf(buf, 40, "jumplabel %d", jlpair);
-		free(whiles[i]->children[7]->str);
-		whiles[i]->children[7]->str = strdup(buf);
-
-		jlpair++;
-
-		assert(strstr(whiles[i]->children[9]->str, "pushaddr"));
-		assert(strstr(whiles[i]->children[4]->str, "jumplabel"));
-		snprintf(buf, 40, "pushaddr %d", jlpair);
-		free(whiles[i]->children[9]->str);
-		whiles[i]->children[9]->str = strdup(buf);
-		snprintf(buf, 40, "jumplabel %d", jlpair);
-		free(whiles[i]->children[4]->str);
-		whiles[i]->children[4]->str = strdup(buf);
-
-		jlpair++;
+		update_jump_addr_pairs(whiles[i]);
 	}
 	vector_destroy(whiles);
+
+	node **dowhiles = get_nonterms(pt, "dowhile");
+	vector_foreach(dowhiles, i)
+	{
+		update_jump_addr_pairs(dowhiles[i]);
+	}
+	vector_destroy(dowhiles);
 
 	return true;
 }
@@ -80,20 +73,27 @@ bool check_variable_declarations(node *pt)
 {
 	//handle declarations for each statement separately
 	//this might be wrong for statements that contain other statements (ex. a if contains a stmtlist)
-	ref_node = (node){.is_nonterminal=true, .type=0, .str="stmt", .children=NULL, .sym=NULL};
-	node **stmts = ptree_filter(pt, filter_by_ref_node, -1);
+	
+	node **stmts = get_nonterms(pt, "stmt");
 
 	vector_foreach(stmts, s)
 	{
-		//make list of all decl base_ids (vars that are getting declared)
-		ref_node = (node){.is_nonterminal=true, .type=0, .str="mdecl", .children=NULL, .sym=NULL};
-		node **decl_ids = ptree_filter(stmts[s], filter_by_ref_node, -1);
+		//node **decls = get_nonterms(stmts[s], "decl");
+		node **mdecls = get_nonterms(stmts[s], "mdecl");
+		node **decl_ids = vector(*decl_ids, 0);
+		for(int i=0; i<vector_len(mdecls); i++)
+		{
+			//vector_append(decl_ids, decls[i]->children[1]->children[0]);	//decl->mdecl->base_id
+			vector_append(decl_ids, mdecls[i]->children[0]);	//mdecl->base_id
+		}
+
+		//make list of decl base_ids (vars that are getting declared)
+		/*node **decl_ids = get_nonterms(stmts[s], "mdecl");
 		for(int i=0; i<vector_len(decl_ids); i++)
-			decl_ids[i] = decl_ids[i]->children[0];
+			decl_ids[i] = decl_ids[i]->children[0];*/
 
 		//make list of all base_ids
-		ref_node = (node){.is_nonterminal=true, .type=0, .str="base_id", .children=NULL, .sym=NULL};
-		node **all_bids = ptree_filter(stmts[s], filter_by_ref_node, -1);
+		node **all_bids = get_nonterms(stmts[s], "base_id");
 
 		node **prev_decld_ids;
 		vector_intersect(NULL, &prev_decld_ids, NULL, all_bids, decl_ids);
@@ -110,10 +110,13 @@ bool check_variable_declarations(node *pt)
 
 		//declare new variables, error for redeclared ones
 		SEMANTIC_STATUS = SEM_OK;
-		//ref_node = (node){.is_nonterminal=true, .type=0, .str="mdecl", .children=NULL, .sym=NULL};
-		//ptree_traverse_dfs(pt, filter_by_ref_node, declare_new_vars, true);
-		for(int i=0; i<vector_len(decl_ids); i++)
-			declare_new_vars(decl_ids[i], 0);
+		//for(int i=0; i<vector_len(decl_ids); i++)
+		//	declare_new_vars(decl_ids[i], 0);
+		char *type = stmts[s]->children[0]->children[0]->str;	//stmt->decl->type->str
+		for(int i=0; i<vector_len(mdecls); i++)
+		{
+			declare_new_vars(type, mdecls[i]);
+		}
 		SEMANTIC_BAIL_IF_NOT_OK
 
 		//clean up
@@ -121,8 +124,6 @@ bool check_variable_declarations(node *pt)
 		vector_destroy(all_bids);
 		vector_destroy(prev_decld_ids);
 	}
-
-	
 	
 	return true;
 }
@@ -144,7 +145,6 @@ bool handle_lvals(node *pt)
 		node_print(lval_contexts[i], 0);
 		printf("(%d children)\n", vector_len(lval_contexts[i]));
 	}
-	//exit(0);
 
 	node **lvals_in_context, **rvals_in_lval_context, **lvals_out_of_context;
 	vector_intersect(&lvals_in_context, &lvals_out_of_context, &rvals_in_lval_context, lvals, lval_contexts);
@@ -183,8 +183,7 @@ bool handle_lvals(node *pt)
 
 
 	//amend semacts for all int literals
-	ref_node = (node){.is_nonterminal=true, .type=0, .str="base_num", .children=NULL, .sym=NULL};
-	node **int_lits = ptree_filter(pt, filter_by_ref_node, -1);
+	node **int_lits = get_nonterms(pt, "base_num");
 	vector_foreach(int_lits, i)
 	{
 		amend_num(int_lits[i]);
@@ -197,19 +196,32 @@ bool handle_lvals(node *pt)
 //vars, (lval), s.lval, s->a, *expr, a[n]
 bool is_lval(node *n)
 {
-	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "base_id")==0)
+	/*if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "base_id")==0)
 		return true;
 	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "base_expr")==0)
 		return (is_lval(n->children[1]));
 	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "misc2_lval")==0)
 		return true;
 	
+	return false;*/
+
+	if(n->is_nonterminal)
+	{
+		if(strcmp(gg.nonterminals[n->type], "base_id")==0)
+			return true;
+		if(strcmp(gg.nonterminals[n->type], "base_expr")==0)
+			return (is_lval(n->children[1]));
+		if(strcmp(gg.nonterminals[n->type], "misc2_lval")==0)
+			return true;
+	}
+
 	return false;
 }
 
 //&expr, ++expr/expr++, expr.n, expr = ..., expr += ...
 bool is_lval_context_parent(node *n)
 {
+	/*
 	//&expr, ++/--expr
 	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "misc2_context")==0)
 		return true;
@@ -228,6 +240,22 @@ bool is_lval_context_parent(node *n)
 	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "assign")==0 &&
 		vector_len(n->children) == 2)
 		return true;
+
+	return false;*/
+
+	if(n->is_nonterminal)
+	{
+		if(strcmp(gg.nonterminals[n->type], "misc2_context")==0)	//&expr, ++/--expr
+			return true;
+
+		if(vector_len(n->children)==2 &&
+		(
+			strcmp(gg.nonterminals[n->type], "misc1_context")==0 ||	//expr++/--
+			strcmp(gg.nonterminals[n->type], "mdecl")==0 ||			//type id = ...
+			strcmp(gg.nonterminals[n->type], "assign")==0			//expr = ..., expr += ...
+		))
+			return true;
+	}
 
 	return false;
 }
@@ -263,7 +291,7 @@ node **get_lval_contexts(node *pt)
 }
 
 //keep base_id, base_other, "=", more
-bool filter_assign_toks(node *n)
+/*bool filter_assign_toks(node *n)
 {
 	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "base_id")==0)
 		return true;
@@ -282,15 +310,16 @@ bool filter_assign_toks(node *n)
 		return true;
 
 	return false;
-}
+}*/
 
 //only gets called for mdecl nonterminals
-void declare_new_vars(node *pt, int depth)
+//void declare_new_vars(node *pt, int depth)
+void declare_new_vars(const char *typestr, node *mdecl)
 {
 	//node *decl_var = pt->children[0]->children[0];	//child 0 is a base_id, its child 0 is the variable
 														//n->0->0 is dependent on the specific grammar
-	node *decl_var = pt->children[0];
-	//node_print(decl_var, 0);
+	//node *decl_var = pt->children[0];
+	node *decl_var = mdecl->children[0]->children[0];	//decl->mdecl->base_id->id
 	if(decl_var->sym->declared)
 	{
 		SEMANTIC_STATUS = SEM_REDECLARED_VAR;
@@ -300,8 +329,13 @@ void declare_new_vars(node *pt, int depth)
 	{
 		//declare and define the variable
 		decl_var->sym->declared = true;
-		decl_var->sym->var = (int*)get_new_var(sizeof(int));
-
+		assign_type_to_symbol(decl_var->sym, typestr);
+		//symbol *typesym = symbol_search(decl->children[0]->str, SYM_TYPESPEC);
+		//decl_var->sym->type = typesym->type;
+		//printf("creating new var of type %s (%d bytes)\n", decl->children[0]->str, typesym->type->bytes);
+		//decl_var->sym->var = (int*)get_new_var(sizeof(int));
+		//decl_var->sym->var = (int*)get_new_var(typesym->type->bytes);
+		define_var(decl_var->sym);
 	}
 }
 
@@ -332,6 +366,48 @@ void amend_num(node *pt)
 		return;
 	int num = atoi(pt->children[0]->str);
 	amend_push_instr(pt, num, "push");
+}
+
+void update_jump_addr_pairs(node *loop)
+{
+	char buf[41];
+	//vector_swap(whiles[i]->children, 5, 8);	//swap the comma and stmtlist (nodes 5 and 8)
+
+	for(int i=0; i<2; i++)
+	{
+		//the the matching 
+		snprintf(buf, 40, "pushaddr %d", i);
+		ref_node = (node){.is_nonterminal=false, .type=SEMACT, .str=buf, .children=NULL, .sym=NULL};
+		node **pa = ptree_filter(loop, filter_by_ref_node, -1);
+
+		snprintf(buf, 40, "jumplabel %d", i);
+		ref_node = (node){.is_nonterminal=false, .type=SEMACT, .str=buf, .children=NULL, .sym=NULL};
+		node **jl = ptree_filter(loop, filter_by_ref_node, -1);
+
+		if(vector_len(pa) == 0)
+			break;
+		assert(vector_len(pa)==1);
+		assert(vector_len(jl)==1);
+
+		snprintf(buf, 40, "pushaddr %d", jlpair);
+		free(pa[0]->str);
+		pa[0]->str = strdup(buf);
+		snprintf(buf, 40, "jumplabel %d", jlpair);
+		free(jl[0]->str);
+		jl[0]->str = strdup(buf);
+
+		jlpair++;
+
+		vector_destroy(pa);
+		vector_destroy(jl);
+
+	}
+}
+
+static node **get_nonterms(node *tree, char *ntstr)
+{
+	ref_node = (node){.is_nonterminal=true, .type=0, .str=ntstr, .children=NULL, .sym=NULL};
+	return ptree_filter(tree, filter_by_ref_node, -1);
 }
 
 
