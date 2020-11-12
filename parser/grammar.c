@@ -171,16 +171,16 @@ static prod_tok *consume_thing(char **s, char start, char end)
     assert(cn_end);
     *cn_end = '\0';
 
-    prod_tok_type type;
+    prod_tok_type ntype;
     switch(start)
     {
-        case '<': type = NONTERMINAL; break;
-        case '{': type = SEMACT; break;
-        case '"': type = TERMINAL; break;
+        case '<': ntype = NONTERMINAL; break;
+        case '{': ntype = SEMACT; break;
+        case '"': ntype = TERMINAL; break;
         default: assert(0);
     }
 
-    prod_tok *t = add_classname(*s, type);
+    prod_tok *t = add_classname(*s, ntype);
     *s = cn_end+1;
     return t;
 }
@@ -225,15 +225,15 @@ static prod_tok *consume_ident(char **s)
     return t;
 }
 
-static prod_tok *add_classname(char *name, prod_tok_type type)
+static prod_tok *add_classname(char *name, prod_tok_type ntype)
 {
     //allocate/initialize the production token
     prod_tok *t = malloc(sizeof(*t));
     t->str = strdup(name);
-    t->type = type;
+    t->ntype = ntype;
 
     //if the token is a nonterm or term, it gets added to those lists
-    if(type == NONTERMINAL)
+    if(ntype == NONTERMINAL)
     {
         if(search_nonterm_name(name) == -1)
             vector_append(nonterminal_names, strdup(name));
@@ -241,7 +241,7 @@ static prod_tok *add_classname(char *name, prod_tok_type type)
         //nonterminal tokens (in the buffer) don't store their strings -- just an index to the nonterminal list
         t->nonterm = search_nonterm_name(name);
     }
-    else if(type == TERMINAL)
+    else if(ntype == TERMINAL)
     {
         if(search_term_name(name) == -1)
             vector_append(terminal_names, strdup(name));
@@ -318,10 +318,10 @@ static void print_production_rule(int n)
     for(int i=0; i<vector_len(production_rules[n].rhs); i++)
     {
         prod_tok *ptp = production_rules[n].rhs[i];
-        if((ptp)->type == NONTERMINAL)
+        if((ptp)->ntype == NONTERMINAL)
             printf("<%s> ", gg.nonterminals[(ptp)->nonterm]);
             //tokname = gg.nonterminals[(*ptp)->nonterm];
-        else if(ptp->type == SEMACT)
+        else if(ptp->ntype == SEMACT)
             printf("{%s} ", ptp->str);
         else
             printf("%s ", (ptp)->str);
@@ -385,9 +385,9 @@ static void mark_entries_for_nonterminal(nonterminal_type nt)
 		//grab the first token of the production's rhs
 		prod_tok **rhs = gg.rules[i].rhs;
 		prod_tok *firsttok = *rhs;
-        while(firsttok->type==SEMACT || firsttok->type==EXPR)
+        while(firsttok->ntype==SEMACT || firsttok->ntype==EXPR)
             firsttok++;
-		switch(firsttok->type)
+		switch(firsttok->ntype)
 		{
 			case SEMACT: case EXPR: assert(0); /*break;*/
 
@@ -408,7 +408,7 @@ static void mark_entries_for_nonterminal(nonterminal_type nt)
 					assert(alpha_col != -1);
 				}*/
 
-        alpha_col = find_parse_table_column(firsttok->str, firsttok->type);
+        alpha_col = find_parse_table_column(firsttok->str, firsttok->ntype);
         assert(alpha_col != -1);
 
 				//parse_table[table_entry(nt, alpha_col)] = i;
@@ -472,15 +472,15 @@ static void mark_parse_table(int nt, int alpha, int val)
 	return -1;	//not found
 }*/
 
-int find_parse_table_column(char *str, prod_tok_type type)
+int find_parse_table_column(char *str, prod_tok_type ntype)
 {
   int index;
-  if(type == IDENT)
+  if(ntype == IDENT)
   {
       index = search_ident_name(str);
       assert(index != -1);
   }
-  else if(type == TERMINAL)
+  else if(ntype == TERMINAL)
   {
       index = search_term_name(str);
       assert(index != -1);

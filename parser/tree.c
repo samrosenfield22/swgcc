@@ -22,16 +22,16 @@ const char *t_strings[] =
 };
 
 
-node *node_create(bool is_nonterminal, int type, const char *str, symbol *sym)
+node *node_create(bool is_nonterminal, int ntype, const char *str, symbol *sym)
 {
     node *n = malloc(sizeof(*n));
     assert(n);
 
 	n->is_nonterminal = is_nonterminal;
-    n->type = type;
+    n->ntype = ntype;
     n->sym = sym;
+    //n->type = NULL;
     n->children = vector(node *, 0);
-    //n->str = str? strdup(str) : NULL;
     n->str = strdup(str);
 
     return n;
@@ -119,12 +119,12 @@ bool filter_by_ref_node(node *n)
 
 	if(n->is_nonterminal)
 	{
-		if(strcmp(gg.nonterminals[n->type], ref_node.str))
+		if(strcmp(gg.nonterminals[n->ntype], ref_node.str))
 			return false;
 	}
 	else
 	{
-		if(n->type != ref_node.type)
+		if(n->ntype != ref_node.ntype)
 			return false;
 		if(n->str == NULL || strcmp(n->str, ref_node.str))
 			return false;
@@ -212,14 +212,14 @@ void node_print(node *pt, int depth)
 {
 	//print node type
 	if(pt->is_nonterminal == true)
-		printf("(%s) ", gg.nonterminals[pt->type]);
+		printf("(%s) ", gg.nonterminals[pt->ntype]);
 	else
-		printf("(%s) ", t_strings[pt->type]);
+		printf("(%s) ", t_strings[pt->ntype]);
 
 	//print node data
 	//if(pt->str)
 	//	printf("%s", pt->str);
-	if(!pt->is_nonterminal && pt->type == SEMACT)
+	if(!pt->is_nonterminal && pt->ntype == SEMACT)
 		printf("%s", pt->str);
 	else
 		ptree_traverse_dfs(pt, NULL, node_print_str, false);
@@ -229,14 +229,14 @@ void node_print(node *pt, int depth)
 
 void node_print_str(node *pt, int depth)
 {
-	if(!(pt->is_nonterminal) && pt->type != SEMACT)
+	if(!(pt->is_nonterminal) && pt->ntype != SEMACT)
 		if(pt->str)
 			printf("%s ", pt->str);
 }
 
 void semact_print(node *pt, int depth)
 {
-	if(!(pt->is_nonterminal) && pt->type == SEMACT)
+	if(!(pt->is_nonterminal) && pt->ntype == SEMACT)
 		puts(pt->str);
 }
 

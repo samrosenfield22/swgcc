@@ -179,7 +179,7 @@ node *parse_nonterm(nonterminal_type nt)
 	{
 		prod_tok *tok = prod->rhs[i];
 		prod_tok *next_tok = (i+1<tok_ct)? prod->rhs[i+1] : NULL;
-		switch(tok->type)
+		switch(tok->ntype)
 		{
 			case NONTERMINAL:
 				if(!consume_nonterm(root, tok, next_tok))
@@ -192,7 +192,7 @@ node *parse_nonterm(nonterminal_type nt)
 					PARSER_FAILURE;
 				break;
 
-			case SEMACT:	node_add_child(root, node_create(false, tok->type, tok->str, NULL)); break;
+			case SEMACT:	node_add_child(root, node_create(false, tok->ntype, tok->str, NULL)); break;
 			case EXPR: 		break;
 		}
 	}
@@ -209,7 +209,7 @@ bool consume_nonterm(node *root, prod_tok *tok, prod_tok *next_tok)
 
 	bool always_do_first = true, repeat = false;
 
-	if(next_tok && next_tok->type == EXPR)
+	if(next_tok && next_tok->ntype == EXPR)
 	{
 		char e_char = *(next_tok->str);
 		assert(e_char=='*' || e_char=='+' || e_char=='?');
@@ -243,8 +243,8 @@ bool consume_term_or_ident(node *root, prod_tok *tok)
 		return false;
 	}
 
-	symbol *sym = (tok->type==IDENT)? lex_tok->sym : NULL;
-	node_add_child(root, node_create(false, tok->type, lex_tok->str, sym));
+	symbol *sym = (tok->ntype==IDENT)? lex_tok->sym : NULL;
+	node_add_child(root, node_create(false, tok->ntype, lex_tok->str, sym));
 	next();
 	return true;
 }
@@ -280,13 +280,13 @@ bool match(prod_tok *tok)
 	else if(!tok)
 		return false;
 		//return (lex_tok->str == NULL);
-	else if(tok->type == TERMINAL)
+	else if(tok->ntype == TERMINAL)
 	{
 		//printf("lex tok is a %s\n", lex_tok->is_ident)
 		if(lex_tok->is_ident) return false;
 		else return (strcmp(tok->str, lex_tok->str) == 0);
 	}
-	else if(tok->type == IDENT)
+	else if(tok->ntype == IDENT)
 		return lex_tok->is_ident;
 	else
 		return false;

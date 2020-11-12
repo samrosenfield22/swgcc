@@ -43,28 +43,9 @@ int jlpair;
 bool all_semantic_checks(node *pt)
 {
 	if(!check_variable_declarations(pt))	return false;
-	if(!handle_lvals(pt))	return false;
-
-	//swap the condition and stmtlist in while loops
-	jlpair = 2;	//track jump addr/label pairs. this is a kludgey solution -- it can't be confused for any
-				//addr/labels w id 0 or 1
-
-
-	node **whiles = get_nonterms(pt, "while");
-	vector_foreach(whiles, i)
-	{
-		vector_swap(whiles[i]->children, 5, 8);	//swap the comma and stmtlist (nodes 5 and 8)
-
-		update_jump_addr_pairs(whiles[i]);
-	}
-	vector_destroy(whiles);
-
-	node **dowhiles = get_nonterms(pt, "dowhile");
-	vector_foreach(dowhiles, i)
-	{
-		update_jump_addr_pairs(dowhiles[i]);
-	}
-	vector_destroy(dowhiles);
+	if(!handle_lvals(pt))					return false;
+	if(!set_conditional_jumps(pt))			return false;
+	//if(!resolve_tree_types(pt))				return false;
 
 	return true;
 }
@@ -164,11 +145,11 @@ bool handle_lvals(node *pt)
 		node_print(lvals_in_context[i], 0);
 		printf("\n");
 
-		if(strcmp(gg.nonterminals[lvals_in_context[i]->type], "base_id")==0)
+		if(strcmp(gg.nonterminals[lvals_in_context[i]->ntype], "base_id")==0)
 			amend_lval(lvals_in_context[i]);	//this only takes care of variables
-		else if(strcmp(gg.nonterminals[lvals_in_context[i]->type], "misc2_lval")==0)
+		else if(strcmp(gg.nonterminals[lvals_in_context[i]->ntype], "misc2_lval")==0)
 		{
-			assert(lvals_in_context[i]->children[2]->type==SEMACT);
+			assert(lvals_in_context[i]->children[2]->ntype==SEMACT);
 			vector_delete(&lvals_in_context[i]->children, 2);	//delete the '*' node
 			//printf("--- lval in context that isn't a variable ---\n");
 			//return 0;
@@ -177,7 +158,7 @@ bool handle_lvals(node *pt)
 
 	vector_foreach(lvals_out_of_context, i)
 	{
-		if(strcmp(gg.nonterminals[lvals_out_of_context[i]->type], "base_id")==0)
+		if(strcmp(gg.nonterminals[lvals_out_of_context[i]->ntype], "base_id")==0)
 			amend_rval(lvals_out_of_context[i]);
 	}
 
@@ -193,6 +174,37 @@ bool handle_lvals(node *pt)
 	return true;
 }
 
+bool set_conditional_jumps(node *pt)
+{
+	//swap the condition and stmtlist in while loops
+	jlpair = 2;	//track jump addr/label pairs. this is a kludgey solution -- it can't be confused for any
+				//addr/labels w id 0 or 1
+
+
+	node **whiles = get_nonterms(pt, "while");
+	vector_foreach(whiles, i)
+	{
+		vector_swap(whiles[i]->children, 5, 8);	//swap the comma and stmtlist (nodes 5 and 8)
+
+		update_jump_addr_pairs(whiles[i]);
+	}
+	vector_destroy(whiles);
+
+	node **dowhiles = get_nonterms(pt, "dowhile");
+	vector_foreach(dowhiles, i)
+	{
+		update_jump_addr_pairs(dowhiles[i]);
+	}
+	vector_destroy(dowhiles);
+
+	return true;
+}
+
+/*bool resolve_tree_types(node *pt)
+{
+
+}*/
+
 //vars, (lval), s.lval, s->a, *expr, a[n]
 bool is_lval(node *n)
 {
@@ -207,11 +219,11 @@ bool is_lval(node *n)
 
 	if(n->is_nonterminal)
 	{
-		if(strcmp(gg.nonterminals[n->type], "base_id")==0)
+		if(strcmp(gg.nonterminals[n->ntype], "base_id")==0)
 			return true;
-		if(strcmp(gg.nonterminals[n->type], "base_expr")==0)
+		if(strcmp(gg.nonterminals[n->ntype], "base_expr")==0)
 			return (is_lval(n->children[1]));
-		if(strcmp(gg.nonterminals[n->type], "misc2_lval")==0)
+		if(strcmp(gg.nonterminals[n->ntype], "misc2_lval")==0)
 			return true;
 	}
 
@@ -245,14 +257,14 @@ bool is_lval_context_parent(node *n)
 
 	if(n->is_nonterminal)
 	{
-		if(strcmp(gg.nonterminals[n->type], "misc2_context")==0)	//&expr, ++/--expr
+		if(strcmp(gg.nonterminals[n->ntype], "misc2_context")==0)	//&expr, ++/--expr
 			return true;
 
 		if(vector_len(n->children)==2 &&
 		(
-			strcmp(gg.nonterminals[n->type], "misc1_context")==0 ||	//expr++/--
-			strcmp(gg.nonterminals[n->type], "mdecl")==0 ||			//type id = ...
-			strcmp(gg.nonterminals[n->type], "assign")==0			//expr = ..., expr += ...
+			strcmp(gg.nonterminals[n->ntype], "misc1_context")==0 ||	//expr++/--
+			strcmp(gg.nonterminals[n->ntype], "mdecl")==0 ||			//type id = ...
+			strcmp(gg.nonterminals[n->ntype], "assign")==0			//expr = ..., expr += ...
 		))
 			return true;
 	}
@@ -265,9 +277,9 @@ node **get_lval_contexts(node *pt)
 	node **context_parents = ptree_filter(pt, is_lval_context_parent, -1);
 	for(int i=0; i<vector_len(context_parents); i++)
 	{
-		if(strcmp(gg.nonterminals[context_parents[i]->type], "mdecl")==0 ||
-			strcmp(gg.nonterminals[context_parents[i]->type], "assign")==0 ||
-			strcmp(gg.nonterminals[context_parents[i]->type], "misc1_context")==0 )
+		if(strcmp(gg.nonterminals[context_parents[i]->ntype], "mdecl")==0 ||
+			strcmp(gg.nonterminals[context_parents[i]->ntype], "assign")==0 ||
+			strcmp(gg.nonterminals[context_parents[i]->ntype], "misc1_context")==0 )
 			context_parents[i] = context_parents[i]->children[0];
 		else //misc2_context
 			context_parents[i] = context_parents[i]->children[1];
@@ -280,7 +292,7 @@ node **get_lval_contexts(node *pt)
 		{
 			if(vector_len(context_parents[i]->children) == 1)
 				context_parents[i] = context_parents[i]->children[0];
-			else if(strcmp(gg.nonterminals[context_parents[i]->type], "base_expr")==0)
+			else if(strcmp(gg.nonterminals[context_parents[i]->ntype], "base_expr")==0)
 				context_parents[i] = context_parents[i]->children[1];
 			else
 				break;
@@ -362,7 +374,7 @@ void amend_rval(node *pt)
 
 void amend_num(node *pt)
 {
-	if(pt->children[0]->type == TERMINAL)	//could be a "("
+	if(pt->children[0]->ntype == TERMINAL)	//could be a "("
 		return;
 	int num = atoi(pt->children[0]->str);
 	amend_push_instr(pt, num, "push");
@@ -377,11 +389,11 @@ void update_jump_addr_pairs(node *loop)
 	{
 		//the the matching 
 		snprintf(buf, 40, "pushaddr %d", i);
-		ref_node = (node){.is_nonterminal=false, .type=SEMACT, .str=buf, .children=NULL, .sym=NULL};
+		ref_node = (node){.is_nonterminal=false, .ntype=SEMACT, .str=buf, .children=NULL, .sym=NULL};
 		node **pa = ptree_filter(loop, filter_by_ref_node, -1);
 
 		snprintf(buf, 40, "jumplabel %d", i);
-		ref_node = (node){.is_nonterminal=false, .type=SEMACT, .str=buf, .children=NULL, .sym=NULL};
+		ref_node = (node){.is_nonterminal=false, .ntype=SEMACT, .str=buf, .children=NULL, .sym=NULL};
 		node **jl = ptree_filter(loop, filter_by_ref_node, -1);
 
 		if(vector_len(pa) == 0)
@@ -406,7 +418,7 @@ void update_jump_addr_pairs(node *loop)
 
 static node **get_nonterms(node *tree, char *ntstr)
 {
-	ref_node = (node){.is_nonterminal=true, .type=0, .str=ntstr, .children=NULL, .sym=NULL};
+	ref_node = (node){.is_nonterminal=true, .ntype=0, .str=ntstr, .children=NULL, .sym=NULL};
 	return ptree_filter(tree, filter_by_ref_node, -1);
 }
 

@@ -22,6 +22,7 @@ static void make_identifier(lextok *tp);
 static void make_decimal(lextok *tp);
 static void make_hex(lextok *tp);
 static void make_bin(lextok *tp);
+static void make_charlit(lextok *tp);
 
 
 typedef struct regex_action_pair_s
@@ -51,10 +52,13 @@ regex_action_pair regex_table[] =
     {"", "if | else | for | while | do", NULL, LEXTOK_TERM, NULL},
 
     {"type", "int|char|short|long", NULL, LEXTOK_IDENT(2), NULL},
-    {"id", "[a-z]+", NULL, LEXTOK_IDENT(0), make_identifier},
+    //{"id", "[a-z]+", NULL, LEXTOK_IDENT(0), make_identifier},
+    {"id", "[A-Za-z]([A-Za-z0-9]|_)*", NULL, LEXTOK_IDENT(0), make_identifier},
     {"num", "[0-9]+", NULL, LEXTOK_IDENT(1), make_decimal},
     {"num", "0x[0-9A-Fa-f]+", NULL, LEXTOK_IDENT(1), make_hex},
-    {"num", "0b(0|1)+", NULL, LEXTOK_IDENT(1), make_bin}
+    {"num", "0b(0|1)+", NULL, LEXTOK_IDENT(1), make_bin},
+    {"num", "\'[ -~]\'", NULL, LEXTOK_IDENT(1), make_charlit}
+    //{"num", "\\'[A-Za-z]\\'", NULL, LEXTOK_IDENT(1), make_charlit}
 };
 
 char *ident_table[] =
@@ -214,6 +218,17 @@ static void make_hex(lextok *tp)
 static void make_bin(lextok *tp)
 {
     tp->val = strtol((tp->str)+2, NULL, 2);
+
+    free(tp->str);
+    char buf[21];
+    snprintf(buf, 20, "%d", tp->val);
+    tp->str = strdup(buf);
+}
+
+static void make_charlit(lextok *tp)
+{
+    char c = tp->str[1];
+    tp->val = c;
 
     free(tp->str);
     char buf[21];

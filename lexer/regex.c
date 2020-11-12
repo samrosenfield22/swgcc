@@ -38,10 +38,12 @@ enum tok_type_e
     SEMACT
 };
 
+#define NODECNT (1000)  //should just be a vector
+
 struct node_s
 {
     tok_type type;
-    node *children[80];
+    node *children[NODECNT];
     //char *str;
     char c;
 };
@@ -183,9 +185,9 @@ static node *parse_base(void)
             ri++;
             root->children[ci++] = pn_create(PRIM, '[');
             root->children[ci++] = parse_range();
-            while(rp[ri] != ']')
-                root->children[ci++] = parse_range();
-            //assert(rp[ri] == ']');
+            //while(rp[ri] != ']')
+            //    root->children[ci++] = parse_range();
+            assert(rp[ri] == ']');
             root->children[ci++] = pn_create(PRIM, ']');
             index_advance();
             break;
@@ -208,32 +210,35 @@ static node *parse_range(void)
     int union_ct = 0;
 
     start = rp[ri];
-    index_advance();
-    if(rp[ri] != '-') assert(0);
+    //index_advance();
+    ri++;   //we could have a ' ' in the range
+    if(rp[ri] != '-') {printf("scanning range, expected -, found %c\n", rp[ri]); assert(0);}
     while(rp[ri] == '-')
     {
-        index_advance();
+        ri++;//index_advance();
         end = rp[ri];
-        printf("\tmaking range from %c to %c\n", start, end);
         for(char c=start; c<=end; c++)
         {
             root->children[ci++] = pn_create(PRIM, c);
             root->children[ci++] = pn_create(CHARTOK, c);
         }
-        //root->children[ci++] = pn_create(PRIM, end);
 
+        printf("range from %c (%d) to %c (%d) (%d)\n", start, start, end, end, end-start);
         union_ct += (end-start);
 
-        index_advance();
+        ri++;//index_advance();
         if(rp[ri] == ']')
             break;
         start = rp[ri];
-        index_advance();
+        ri++;//index_advance();
         union_ct++;
     }
+    assert(rp[ri] == ']');
 
+    printf("\t%d unions\n", union_ct);
     for(int i=0; i<union_ct; i++)
         root->children[ci++] = pn_create(SEMACT, '|');
+    printf("ci = %d\n", ci);
 
     return root;
 }
@@ -253,7 +258,7 @@ static node *pn_create(tok_type type, char c)
     assert(n);
 
     n->type = type;
-    for(int i=0; i<80; i++)
+    for(int i=0; i<NODECNT; i++)
         n->children[i] = NULL;
     //n->str = NULL;
     n->c = c;
@@ -271,7 +276,7 @@ void *nfa_builder_stack;
 
 void nfa_builder_initialize(void)
 {
-    nfa_builder_stack = stack_create(256, nfa_model);
+    nfa_builder_stack = stack_create(512, nfa_model);
 }
 
 nfa_model *ptree_to_nfa(node *n)

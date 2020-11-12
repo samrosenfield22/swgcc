@@ -116,7 +116,7 @@ void define_var(symbol *sym)
 
 static bool filter_semact(node *n)
 {
-	return (!(n->is_nonterminal) && n->type == SEMACT);
+	return (!(n->is_nonterminal) && n->ntype == SEMACT);
 }
 
 static void generate_instruction(node *n, int depth)

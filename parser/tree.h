@@ -14,10 +14,12 @@ struct node_s
 {
     //nonterminal_type type;
 	bool is_nonterminal;
-	int type;	//either a nonterminal index, or a type of thing (nonterminal, semantic, ident...)
+	int ntype;	//either a nonterminal index, or a type of thing (nonterminal, semantic, ident...)
 
     node **children;
     char *str;
+
+    //symbol *type;
 
     symbol *sym;	//if the node contains a variable, this points to its symbol in the sym table
 };

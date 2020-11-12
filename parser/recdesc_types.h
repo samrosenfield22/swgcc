@@ -38,7 +38,7 @@ typedef enum prod_tok_type_e
 //production rule tokens
 typedef struct prod_tok_s
 {
-	prod_tok_type type;
+	prod_tok_type ntype;
 	union
 	{
 		//nonterminal_type nonterm;
