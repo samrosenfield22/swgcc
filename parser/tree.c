@@ -47,34 +47,55 @@ void node_add_child(node *root, node *child)
 	nt_strings = strings;
 }*/
 
-void ptree_traverse_dfs(node *pt, bool (*filter)(node *n), void (*action)(node *n, int arg), bool node_then_children)
+node **ptree_filter(node *n, bool (*filter)(node *n), int depth, bool node_then_children)
 {
-	ptree_traverse_dfs_recursive(pt, filter, action, 0, node_then_children);
+	return ptree_traverse_dfs(n, filter, NULL, -1, node_then_children);
 }
 
-void ptree_traverse_dfs_recursive(node *pt, bool (*filter)(node *n), void (*action)(node *n, int depth), int depth, bool node_then_children)
+void ptree_action(node *n, void (*action)(node *n, int arg), bool node_then_children)
 {
-	//static node *prev;
+	ptree_traverse_dfs(n, NULL, action, -1, node_then_children);
+}
 
-		if(node_then_children)
+node **ptree_traverse_dfs
+	(node *pt, bool (*filter)(node *n), void (*action)(node *n, int arg), int depth, bool node_then_children)
+{
+	node **collect = vector(*collect, 0);
+	ptree_traverse_dfs_recursive(pt, filter, action, &collect, 0, depth, node_then_children);
+	return collect;
+}
+
+void ptree_traverse_dfs_recursive
+	(node *pt, bool (*filter)(node *n), void (*action)(node *n, int depth),
+	node ***collect, int depth, int max_depth, bool node_then_children)
+{
+	if(node_then_children)
+	{
+		if((filter && filter(pt)) || (filter == NULL))
 		{
-			if((filter && filter(pt)) || (filter == NULL))
+			if(action)
 				action(pt, depth);
-			//prev = pt;
+			if(collect)
+				vector_append((*collect), pt);
 		}
+	}
 
+	if(depth < max_depth || max_depth == -1)
 		for(int ci=0; ci<vector_len(pt->children); ci++)
 		{
-			ptree_traverse_dfs_recursive(pt->children[ci], filter, action, depth+1, node_then_children);
-			//prev = &pt->children[ci];
+			ptree_traverse_dfs_recursive(pt->children[ci], filter, action, collect, depth+1, max_depth, node_then_children);
 		}
 
-		if(!node_then_children)
+	if(!node_then_children)
+	{
+		if((filter && filter(pt)) || (filter == NULL))
 		{
-			if((filter && filter(pt)) || (filter == NULL))
+			if(action)
 				action(pt, depth);
-			//prev = pt;
+			if(collect)
+				vector_append((*collect), pt);
 		}
+	}
 }
 
 /*void ptree_do_to_each(node *n, void (*action)(node *n, int depth))
@@ -85,7 +106,9 @@ void ptree_traverse_dfs_recursive(node *pt, bool (*filter)(node *n), void (*acti
 	vector_destroy(collect);
 }*/
 
-node **ptree_filter(node *n, bool (*filter)(node *n), int depth)
+
+
+/*node **ptree_filter(node *n, bool (*filter)(node *n), int depth)
 {
 	node **collect = vector(*collect, 0);
 	ptree_filter_recursive(n, filter, &collect, 0, depth);
@@ -106,7 +129,7 @@ void ptree_filter_recursive(node *n, bool (*filter)(node *n), node ***collect, i
 	{
 		ptree_filter_recursive(n->children[i], filter, collect, depth+1, max_depth);
 	}
-}
+}*/
 
 node ref_node;	//declared extern in tree.h
 bool filter_by_ref_node(node *n)
@@ -222,7 +245,8 @@ void node_print(node *pt, int depth)
 	if(!pt->is_nonterminal && pt->ntype == SEMACT)
 		printf("%s", pt->str);
 	else
-		ptree_traverse_dfs(pt, NULL, node_print_str, false);
+		ptree_action(pt, node_print_str, false);
+		//ptree_traverse_dfs(pt, NULL, node_print_str, false);
 
 	putchar('\n');
 }

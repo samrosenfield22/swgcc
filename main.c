@@ -124,7 +124,8 @@ int main(void)
         ptree_print(parse_tree);
 
         printf("\n--- semacts ---\n");
-        ptree_traverse_dfs(parse_tree, NULL, semact_print, true);
+        //ptree_traverse_dfs(parse_tree, NULL, semact_print, true);
+        ptree_action(parse_tree, semact_print, true);
         printf("----------------\n\n");
 
         generate_intermediate_code(parse_tree);

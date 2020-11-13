@@ -135,7 +135,7 @@ node *parse(lextok *lex_tokens_in)
 
 	if(PARSER_STATUS==P_FAIL || lex_tok->str != NULL)
 	{
-		ptree_traverse_dfs(tree, NULL, node_print, true);
+		ptree_print(tree);
 		printf("\n^^^ parse tree before failure\n\n");
 		//clean up
 		return NULL;

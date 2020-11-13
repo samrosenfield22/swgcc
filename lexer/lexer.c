@@ -91,7 +91,7 @@ static void lexer_build_all_regexes(void)
 //lex_token *lexer(const char *str)
 lextok *lexer(const char *str)
 {
-    char buf[401], lexeme_buf[80];
+    char buf[401], lexeme_buf[240];
     strncpy(buf, str, 400);
     char *bp = buf;
 
@@ -168,7 +168,13 @@ void lex_tokens_dump(lextok *lt)
     {
         printf("%s ", l->str);
         if(l->is_ident)
-            printf("(%s, val = %d)", ident_table[l->ident_id], l->val);
+        {
+            //printf("(%s, val = %d)", ident_table[l->ident_id], l->val);
+            printf("(%s", ident_table[l->ident_id]);
+            if(strcmp(ident_table[l->ident_id], "num")==0)
+                printf(", val = %d", l->val);
+            printf(")");
+        }
         putchar('\n');
     }
 

@@ -87,7 +87,7 @@ void generate_intermediate_code(node *n)
     if(code) vector_destroy(code);
     code = vector(*code, 0);
 
-    ptree_traverse_dfs(n, filter_semact, generate_instruction, true);
+    ptree_traverse_dfs(n, filter_semact, generate_instruction, -1, true);
 
     printf("before resolving jumps:\n"); dump_intermediate();
     resolve_jump_addresses();

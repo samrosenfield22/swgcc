@@ -3,12 +3,15 @@
 
 <stmtlist>		::= <stmt>
 <stmtlist>		::= "{" <stmt>* "}"
-<stmt>			::= <comma> ";"
-<stmt>			::= <decl> ";"
+
+<stmt>			::= <mstmt> ";"
 <stmt>			::= <if>
 <stmt>			::= <while>
 <stmt>			::= <dowhile>
-<stmt>			::= <for>
+<stmt>			::= <forloop>
+
+<mstmt>			::= <comma>
+<mstmt>			::= <decl>
 
 <decl>			::= type <mdecl> <moredecl>*
 <moredecl>		::= "," <mdecl>
@@ -60,7 +63,8 @@
 ;<dowhile>		::= "do" <stmtlist> "while" "(" <comma> ")"
 <dowhile>		::= "do" {jumplabel 0} <stmtlist> "while" "(" <comma> ")" {pushaddr 0} {jnz}
 
-;<for>			::= "for" "(" <stmt> ";" <comma> ";" <comma> ")" <stmtlist>
+;the condition (first comma) and stmtlist get swapped
+<forloop>		::= "for" "(" <mstmt> {pushaddr 0} {jmp} {jumplabel 1} ";" <comma> ";" <comma> {jumplabel 0} ")" <stmtlist> {pushaddr 1} {jnz}
 
 
 <assign>		::= <logical> <massign>?
