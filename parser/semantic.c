@@ -28,7 +28,7 @@ void amend_num(node *pt);
 
 void update_jump_addr_pairs(node *loop);
 
-void *get_zeroth_child(void *n);
+//void *get_zeroth_child(void *n);
 
 static node **get_nonterms(node *tree, char *ntstr);
 static node *get_nonterm_child(node *parent, char *ntstr);
@@ -196,7 +196,14 @@ bool set_conditional_jumps(node *pt)
 	node **forloops = get_nonterms(pt, "forloop");
 	vector_foreach(forloops, i)
 	{
-		vector_swap(forloops[i]->children, 7, 12);	//swap the condition comma and stmtlist (nodes 7 and 12)
+		//vector_swap(forloops[i]->children, 7, 12);	//swap the condition comma and stmtlist (nodes 7 and 12)
+		int comma_i, stmtlist_i;
+		vector_foreach(forloops[i]->children, j)
+		{
+			if(is_nonterm_type(forloops[i]->children[j], "comma"))		comma_i = j;
+			if(is_nonterm_type(forloops[i]->children[j], "stmtlist"))	stmtlist_i = j;
+		}
+		vector_swap(forloops[i]->children, comma_i, stmtlist_i);
 	}
 	vector_destroy(forloops);
 
@@ -445,14 +452,14 @@ void update_jump_addr_pairs(node *loop)
 	}
 }
 
-void *get_zeroth_child(void *n)
+/*void *get_zeroth_child(void *n)
 {
 	node *nn = *(node **)n;
 	if(vector_len(nn->children))
 		return &(nn->children[0]);
 	else
 		return NULL;
-}
+}*/
 
 static node **get_nonterms(node *tree, char *ntstr)
 {

@@ -12,53 +12,54 @@ static void generate_instruction(node *n, int depth);
 static void dump_intermediate(void);
 static void resolve_jump_addresses(void);
 
-void sim_stack_push(int n);
-int sim_stack_pop(void);
+int sim_stack_push(int n);
+int sim_stack_pushv(int n);
+int sim_stack_pop(int);
 
-int add_op(void);
-int sub_op(void);
-int mult_op(void);
-int div_op(void);
-int mod_op(void);
-int shl_op(void);
-int shr_op(void);
-int gt_op(void);
-int lt_op(void);
-int leq_op(void);
-int geq_op(void);
-int eq_op(void);
-int neq_op(void);
-int bw_and_op(void);
-int bw_or_op(void);
-int bw_xor_op(void);
-int log_and_op(void);
-int log_or_op(void);
-int comma_op(void);
+int add_op(int);
+int sub_op(int);
+int mult_op(int);
+int div_op(int);
+int mod_op(int);
+int shl_op(int);
+int shr_op(int);
+int gt_op(int);
+int lt_op(int);
+int leq_op(int);
+int geq_op(int);
+int eq_op(int);
+int neq_op(int);
+int bw_and_op(int);
+int bw_or_op(int);
+int bw_xor_op(int);
+int log_and_op(int);
+int log_or_op(int);
+int comma_op(int);
 
-int preinc_op(void);
-int predec_op(void);
-int addr_op(void);
-int deref_op(void);
-int log_not_op(void);
-int bin_not_op(void);
-int postinc_op(void);
-int postdec_op(void);
+int preinc_op(int);
+int predec_op(int);
+int addr_op(int);
+int deref_op(int);
+int log_not_op(int);
+int bin_not_op(int);
+int postinc_op(int);
+int postdec_op(int);
 
-int assign_eq_op(void);
-int assign_add_op(void);
-int assign_sub_op(void);
-int assign_mult_op(void);
-int assign_div_op(void);
-int assign_mod_op(void);
-int assign_shl_op(void);
-int assign_shr_op(void);
-int assign_and_op(void);
-int assign_or_op(void);
-int assign_xor_op(void);
+int assign_eq_op(int);
+int assign_add_op(int);
+int assign_sub_op(int);
+int assign_mult_op(int);
+int assign_div_op(int);
+int assign_mod_op(int);
+int assign_shl_op(int);
+int assign_shr_op(int);
+int assign_and_op(int);
+int assign_or_op(int);
+int assign_xor_op(int);
 
-int jmp_op(void);
-int jz_op(void);
-int jnz_op(void);
+int jmp_op(int);
+int jz_op(int);
+int jnz_op(int);
 
 
 typedef struct intermediate_spec_s
@@ -71,11 +72,12 @@ typedef struct intermediate_spec_s
 //int ispec_index = 0;
 intermediate_spec *code = NULL;
 
-unsigned char SIM_MEM[0x10000];
+char SIM_MEM[0x10000];
 #define SIM_STACK_OFFSET    (0x0000)
+#define SIM_CODE_OFFSET     (0x1000)
 #define SIM_VARS_OFFSET     (0x8000)    //
 
-unsigned char *var_addr = SIM_MEM + SIM_VARS_OFFSET;
+char *var_addr = SIM_MEM + SIM_VARS_OFFSET;
 
 int sim_stack[256];
 int *sp = sim_stack;
@@ -229,9 +231,13 @@ void resolve_jump_addresses(void)
 struct op_entry
 {
     char *op;
-    int (*func)(void);
+    int (*func)(int);
 } op_table[] =
 {
+    {"push",    sim_stack_push},
+    {"pushv",    sim_stack_pushv},
+    {"pop",    sim_stack_pop},
+
     {"+",   add_op},
     {"-",   sub_op},
     {"*",   mult_op},
@@ -305,19 +311,19 @@ int run_intermediate_code(void)
 
         printf("%03d %s\t", ip, instr->op);
 
-        if(strcmp(instr->op, "push")==0)
+        /*if(strcmp(instr->op, "push")==0)
             sim_stack_push(instr->arg);
         else if(strcmp(instr->op, "pushv")==0)
             sim_stack_push(*(int*)instr->arg);
         else if(strcmp(instr->op, "pop")==0)
-            sim_stack_pop();    //what do with result?
+            sim_stack_pop(0);    //what do with result?
         else
-        {
+        {*/
             for(int i=0; i<sizeof(op_table)/sizeof(op_table[0]); i++)
             {
                 if(strcmp(instr->op, op_table[i].op)==0)
                 {
-                    int res = op_table[i].func();
+                    int res = op_table[i].func(instr->arg);     //the arg is a dummy value unless the func is push(v)
 
                     //if(op is a jump op)
                     if(res == 1)    //right now, only the jmp ops return anything (other than 0)
@@ -327,7 +333,7 @@ int run_intermediate_code(void)
                     break;
                 }
             }
-        }
+        //}
 
         dump_symbol_table_oneline();
         printf("\n");
@@ -336,15 +342,22 @@ int run_intermediate_code(void)
             ip++;
     }
 
-    return sim_stack_pop();
+    return sim_stack_pop(0);
 }
 
-void sim_stack_push(int n)
+int sim_stack_push(int n)
 {
     *sp++ = n;
+    return 0;
 }
 
-int sim_stack_pop(void)
+int sim_stack_pushv(int n)
+{
+    *sp++ = *(int*)n;
+    return 0;
+}
+
+int sim_stack_pop(int d)
 {
     --sp;
     return *sp;
@@ -352,18 +365,18 @@ int sim_stack_pop(void)
 
 //all binary operators follow the same semantic action format
 #define def_binary_op(name,op)     \
-    int name##_op(void)      \
+    int name##_op(int d)      \
     {                             \
-        int b = sim_stack_pop();  \
-        int a = sim_stack_pop();  \
+        int b = sim_stack_pop(0);  \
+        int a = sim_stack_pop(0);  \
         sim_stack_push(a op b);   \
         return 0;                 \
     }
 
 #define def_unary_prefix_op(name,op,by_val)     \
-    int name##_op(void)      \
+    int name##_op(int d)      \
     {                             \
-        int a = sim_stack_pop();  \
+        int a = sim_stack_pop(0);  \
         if(by_val)                      \
             sim_stack_push((int)op(*(int*)a));     \
         else                                \
@@ -372,18 +385,18 @@ int sim_stack_pop(void)
     }
 
 #define def_unary_postfix_op(name,op)     \
-    int name##_op(void)      \
+    int name##_op(int d)      \
     {                             \
-        int *a = (int*)sim_stack_pop();  \
+        int *a = (int*)sim_stack_pop(0);  \
         sim_stack_push((*a)op);     \
         return 0;                 \
     }
 
 #define def_assign_op(name,op)              \
-    int assign_##name##_op(void)            \
+    int assign_##name##_op(int d)            \
     {                                       \
-        int b = sim_stack_pop();            \
-        int *lv = (int*)sim_stack_pop();    \
+        int b = sim_stack_pop(0);            \
+        int *lv = (int*)sim_stack_pop(0);    \
         *lv op b;                           \
         sim_stack_push(*lv);                \
         return 0;                           \
@@ -393,10 +406,10 @@ int sim_stack_pop(void)
 #define BY_REFERENCE false
 
 #define def_jump_op(name, cond)             \
-    int name##_op(void)                     \
+    int name##_op(int d)                     \
     {                                       \
-        int jaddr = sim_stack_pop();        \
-        int arg = sim_stack_pop();          \
+        int jaddr = sim_stack_pop(0);        \
+        int arg = sim_stack_pop(0);          \
                                             \
         if(arg cond)                        \
         {                                   \
@@ -455,10 +468,10 @@ def_jump_op(jnz, != 0)
 
 
 
-int comma_op(void)
+int comma_op(int d)
 {
-    int b = sim_stack_pop();
-    sim_stack_pop();    //throw away value
+    int b = sim_stack_pop(0);
+    sim_stack_pop(0);    //throw away value
     sim_stack_push(b);
     return 0;
 }
@@ -482,8 +495,8 @@ int comma_op(void)
     return 0;
 }*/
 
-int jmp_op(void)
+int jmp_op(int d)
 {
-    ip = sim_stack_pop();
+    ip = sim_stack_pop(0);
     return 1;
 }

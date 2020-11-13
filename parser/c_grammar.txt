@@ -64,7 +64,7 @@
 <dowhile>		::= "do" {jumplabel 0} <stmtlist> "while" "(" <comma> ")" {pushaddr 0} {jnz}
 
 ;the condition (first comma) and stmtlist get swapped
-<forloop>		::= "for" "(" <mstmt> {pushaddr 0} {jmp} {jumplabel 1} ";" <comma> ";" <comma> {jumplabel 0} ")" <stmtlist> {pushaddr 1} {jnz}
+<forloop>		::= "for" "(" <mstmt>? {pushaddr 0} {jmp} {jumplabel 1} ";" <comma>? ";" <comma>? {jumplabel 0} ")" <stmtlist> {pushaddr 1} {jnz}
 
 
 <assign>		::= <logical> <massign>?
