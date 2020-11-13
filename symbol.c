@@ -94,6 +94,13 @@ void dump_symbol_table(void)
     printf("symbol table\n------------------\n");
     for(int i=0; i<vector_len(SYMBOL_TABLE); i++)
     {
+        if(SYMBOL_TABLE[i]->sym_type==SYM_IDENTIFIER)
+        {
+            symbol *sym = SYMBOL_TABLE[i];
+            printf("symbol %d:\t\'%s\' (%s)(@ %d) = %d\n",
+                i, sym->name, sym->type->name, (int)(sym->var), *(sym->var));
+        }
+        /*
         //if(SYMBOL_TABLE[i]->sym_type==SYM_IDENTIFIER)
         printf("symbol %d:\t\'%s\'", i, SYMBOL_TABLE[i]->name);
 
@@ -110,6 +117,7 @@ void dump_symbol_table(void)
         //    printf("uninitialized variable");
 
         printf("\n");
+        */
     }
 
     printf("\n\n\n");

@@ -106,31 +106,6 @@ void ptree_traverse_dfs_recursive
 	vector_destroy(collect);
 }*/
 
-
-
-/*node **ptree_filter(node *n, bool (*filter)(node *n), int depth)
-{
-	node **collect = vector(*collect, 0);
-	ptree_filter_recursive(n, filter, &collect, 0, depth);
-	return collect;
-}
-
-void ptree_filter_recursive(node *n, bool (*filter)(node *n), node ***collect, int depth, int max_depth)
-{
-	if((filter && filter(n)) || (filter == NULL))
-	{
-		vector_append((*collect), n);
-	}
-
-	if(depth >= max_depth && max_depth != -1)
-		return;
-
-	for(int i=0; i<vector_len(n->children); i++)
-	{
-		ptree_filter_recursive(n->children[i], filter, collect, depth+1, max_depth);
-	}
-}*/
-
 node ref_node;	//declared extern in tree.h
 bool filter_by_ref_node(node *n)
 {

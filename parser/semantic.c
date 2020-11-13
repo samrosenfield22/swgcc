@@ -52,14 +52,7 @@ bool all_semantic_checks(node *pt)
 	return true;
 }
 
-/*
 
-goal: get a list of all stmts (that don't contain other stmts), in order
-
-get all mstmts (commas and decls)
-	
-
-*/
 bool check_variable_declarations(node *pt)
 {
 	//handle declarations for each sequence (comma or decl) separately
@@ -69,8 +62,6 @@ bool check_variable_declarations(node *pt)
 
 	vector_foreach(mstmts, s)
 	{
-		//if(strcmp(gg.nonterminals[stmts[s]->children[0]], "mstmt") != 0)
-		//	continue;
 
 		//make list of decl base_ids (vars that are getting declared)
 		node **mdecls = get_nonterms(mstmts[s], "mdecl");
@@ -99,9 +90,6 @@ bool check_variable_declarations(node *pt)
 
 		//declare new variables, error for redeclared ones
 		SEMANTIC_STATUS = SEM_OK;
-		//for(int i=0; i<vector_len(decl_ids); i++)
-		//	declare_new_vars(decl_ids[i], 0);
-
 		node *decl = get_nonterm_child(mstmts[s], "decl");
 		if(decl)
 		{
@@ -112,22 +100,6 @@ bool check_variable_declarations(node *pt)
 			}
 			SEMANTIC_BAIL_IF_NOT_OK
 		}
-		/*
-		//char *type = stmts[s]->children[0]->children[0]->children[0]->str;	//stmt->mstmt->decl->type->str
-		node *mstmt = get_nonterm_child(stmts[s], "mstmt");
-		if(mstmt)
-		{
-			node *decl = get_nonterm_child(mstmt, "decl");	
-			if(decl)
-			{
-				char *type = decl->children[0]->str;
-			}
-		}*/
-		/*for(int i=0; i<vector_len(mdecls); i++)
-		{
-			declare_new_vars(type, mdecls[i]);
-		}
-		SEMANTIC_BAIL_IF_NOT_OK*/
 
 		//clean up
 		vector_destroy(decl_ids);
@@ -217,24 +189,13 @@ bool set_conditional_jumps(node *pt)
 	vector_foreach(whiles, i)
 	{
 		vector_swap(whiles[i]->children, 5, 8);	//swap the comma and stmtlist (nodes 5 and 8)
-
-		//update_jump_addr_pairs(whiles[i]);
 	}
 	vector_destroy(whiles);
-
-	/*node **dowhiles = get_nonterms(pt, "dowhile");
-	vector_foreach(dowhiles, i)
-	{
-		update_jump_addr_pairs(dowhiles[i]);
-	}
-	vector_destroy(dowhiles);*/
 
 	node **forloops = get_nonterms(pt, "forloop");
 	vector_foreach(forloops, i)
 	{
 		vector_swap(forloops[i]->children, 7, 12);	//swap the condition comma and stmtlist (nodes 7 and 12)
-
-		//update_jump_addr_pairs(forloops[i]);
 	}
 	vector_destroy(forloops);
 
@@ -256,15 +217,6 @@ bool set_conditional_jumps(node *pt)
 //vars, (lval), s.lval, s->a, *expr, a[n]
 bool is_lval(node *n)
 {
-	/*if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "base_id")==0)
-		return true;
-	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "base_expr")==0)
-		return (is_lval(n->children[1]));
-	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "misc2_lval")==0)
-		return true;
-	
-	return false;*/
-
 	if(n->is_nonterminal)
 	{
 		if(strcmp(gg.nonterminals[n->ntype], "base_id")==0)
@@ -281,28 +233,6 @@ bool is_lval(node *n)
 //&expr, ++expr/expr++, expr.n, expr = ..., expr += ...
 bool is_lval_context_parent(node *n)
 {
-	/*
-	//&expr, ++/--expr
-	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "misc2_context")==0)
-		return true;
-
-	//expr++/--
-	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "misc1_context")==0 &&
-		vector_len(n->children) == 2)
-		return true;
-
-	//type id = ...
-	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "mdecl")==0 &&
-		vector_len(n->children) == 2)
-		return true;
-
-	//expr = ..., expr += ...
-	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "assign")==0 &&
-		vector_len(n->children) == 2)
-		return true;
-
-	return false;*/
-
 	if(n->is_nonterminal)
 	{
 		if(strcmp(gg.nonterminals[n->ntype], "misc2_context")==0)	//&expr, ++/--expr
