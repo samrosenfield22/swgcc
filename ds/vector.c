@@ -208,6 +208,23 @@ int vector_search(void *v, int term)
 	return -1;
 }
 
+/*void *vector_map(void *v, void *(*map)(void *item))
+{
+	size_t size = vector_elem_size(v);
+	void *out = vector_create_internal(size, vector_len(v));
+
+	//printf("vector w %d items\n", vector_len(v));
+	vector_foreach(v, i)
+	{
+		// *(int*)vector_nth(out, i) = (int)map(*(void**)vector_nth(v, i));
+		//printf("%d\n", *(int*)vector_nth(v,i));
+		void *from = map(vector_nth(v, i));
+		void *to = vector_nth(out, i);
+		memcpy(to, from, size);
+	}
+	return out;
+}*/
+
 //usually using native array indexing (thing[n]) is a better choice
 void *vector_nth(void *v, size_t index)
 {

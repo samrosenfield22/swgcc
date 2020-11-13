@@ -28,8 +28,11 @@ void amend_num(node *pt);
 
 void update_jump_addr_pairs(node *loop);
 
+void *get_zeroth_child(void *n);
+
 static node **get_nonterms(node *tree, char *ntstr);
 static node *get_nonterm_child(node *parent, char *ntstr);
+static bool is_nonterm_type(node *n, const char *ntstr);
 static void semantic_print_failure(void);
 
 enum semantic_status_type
@@ -53,28 +56,24 @@ bool all_semantic_checks(node *pt)
 }
 
 
+
 bool check_variable_declarations(node *pt)
 {
 	//handle declarations for each sequence (comma or decl) separately
-	//this might be wrong for statements that contain other statements (ex. a if contains a stmtlist)
-	
 	node **mstmts = get_nonterms(pt, "mstmt");
 
 	vector_foreach(mstmts, s)
 	{
 
-		//make list of decl base_ids (vars that are getting declared)
+		//get decl base_ids (vars that should get declared)
 		node **mdecls = get_nonterms(mstmts[s], "mdecl");
-		node **decl_ids = vector(*decl_ids, 0);
-		for(int i=0; i<vector_len(mdecls); i++)
-		{
-			//vector_append(decl_ids, decls[i]->children[1]->children[0]);	//decl->mdecl->base_id
-			vector_append(decl_ids, mdecls[i]->children[0]);	//mdecl->base_id
-		}
+		//node **decl_ids = vector_map(mdecls, get_zeroth_child);	//child 0 of a mdecl is a base_id
+		node **decl_ids = vector_map(mdecls, n->children[0], node *);
 
 		//make list of all base_ids
 		node **all_bids = get_nonterms(mstmts[s], "base_id");
 
+		//get the difference between the two vectors -- all ids that are not decl_ids
 		node **prev_decld_ids;
 		vector_intersect(NULL, &prev_decld_ids, NULL, all_bids, decl_ids);
 
@@ -109,7 +108,6 @@ bool check_variable_declarations(node *pt)
 	}
 
 	vector_destroy(mstmts);
-	
 	return true;
 }
 
@@ -121,7 +119,7 @@ bool handle_lvals(node *pt)
 	//if it's an lval, but it's not in a lval context
 	node **lvals = ptree_filter(pt, is_lval, -1, true);
 	node **lval_contexts = get_lval_contexts(pt);
-	printf("lvals:\n");
+	/*printf("lvals:\n");
 	for(int i=0; i<vector_len(lvals); i++)
 		node_print(lvals[i], 0);
 	printf("\nlval contexts:\n");
@@ -129,11 +127,11 @@ bool handle_lvals(node *pt)
 	{
 		node_print(lval_contexts[i], 0);
 		printf("(%d children)\n", vector_len(lval_contexts[i]));
-	}
+	}*/
 
 	node **lvals_in_context, **rvals_in_lval_context, **lvals_out_of_context;
 	vector_intersect(&lvals_in_context, &lvals_out_of_context, &rvals_in_lval_context, lvals, lval_contexts);
-	printf("rvals in lval context:\n");
+	//printf("rvals in lval context:\n");
 	vector_foreach(rvals_in_lval_context, i)
 	{
 		printf("error: unexpected expression in lval context ");
@@ -143,15 +141,17 @@ bool handle_lvals(node *pt)
 	if(vector_len(rvals_in_lval_context))
 		return false;
 
-	printf("lvals in context:\n");
+	//printf("lvals in context:\n");
 	vector_foreach(lvals_in_context, i)
 	{
-		node_print(lvals_in_context[i], 0);
-		printf("\n");
+		//node_print(lvals_in_context[i], 0);
+		//printf("\n");
 
-		if(strcmp(gg.nonterminals[lvals_in_context[i]->ntype], "base_id")==0)
+		//if(strcmp(gg.nonterminals[lvals_in_context[i]->ntype], "base_id")==0)
+		if(is_nonterm_type(lvals_in_context[i], "base_id"))
 			amend_lval(lvals_in_context[i]);	//this only takes care of variables
-		else if(strcmp(gg.nonterminals[lvals_in_context[i]->ntype], "misc2_lval")==0)
+		//else if(strcmp(gg.nonterminals[lvals_in_context[i]->ntype], "misc2_lval")==0)
+		else if(is_nonterm_type(lvals_in_context[i], "misc2_lval"))
 		{
 			assert(lvals_in_context[i]->children[2]->ntype==SEMACT);
 			vector_delete(&lvals_in_context[i]->children, 2);	//delete the '*' node
@@ -162,7 +162,8 @@ bool handle_lvals(node *pt)
 
 	vector_foreach(lvals_out_of_context, i)
 	{
-		if(strcmp(gg.nonterminals[lvals_out_of_context[i]->ntype], "base_id")==0)
+		//if(strcmp(gg.nonterminals[lvals_out_of_context[i]->ntype], "base_id")==0)
+		if(is_nonterm_type(lvals_out_of_context[i], "base_id"))
 			amend_rval(lvals_out_of_context[i]);
 	}
 
@@ -217,7 +218,7 @@ bool set_conditional_jumps(node *pt)
 //vars, (lval), s.lval, s->a, *expr, a[n]
 bool is_lval(node *n)
 {
-	if(n->is_nonterminal)
+	/*if(n->is_nonterminal)
 	{
 		if(strcmp(gg.nonterminals[n->ntype], "base_id")==0)
 			return true;
@@ -225,7 +226,10 @@ bool is_lval(node *n)
 			return (is_lval(n->children[1]));
 		if(strcmp(gg.nonterminals[n->ntype], "misc2_lval")==0)
 			return true;
-	}
+	}*/
+	if(is_nonterm_type(n, "base_id"))		return true;
+	if(is_nonterm_type(n, "base_expr"))		return is_lval(n->children[1]);	//the expr between the ()
+	if(is_nonterm_type(n, "misc2_lval"))	return true;
 
 	return false;
 }
@@ -233,7 +237,7 @@ bool is_lval(node *n)
 //&expr, ++expr/expr++, expr.n, expr = ..., expr += ...
 bool is_lval_context_parent(node *n)
 {
-	if(n->is_nonterminal)
+	/*if(n->is_nonterminal)
 	{
 		if(strcmp(gg.nonterminals[n->ntype], "misc2_context")==0)	//&expr, ++/--expr
 			return true;
@@ -245,6 +249,16 @@ bool is_lval_context_parent(node *n)
 			strcmp(gg.nonterminals[n->ntype], "assign")==0			//expr = ..., expr += ...
 		))
 			return true;
+	}*/
+	if(is_nonterm_type(n, "misc2_context"))		//&expr, ++/--expr
+		return true;
+
+	if(vector_len(n->children)==2)
+	{
+		if(is_nonterm_type(n, "misc1_context") ||	//expr++/--
+			is_nonterm_type(n, "mdecl") ||			//type id = ...
+			is_nonterm_type(n, "assign"))			//expr = ..., expr += ...
+			return true;
 	}
 
 	return false;
@@ -252,7 +266,7 @@ bool is_lval_context_parent(node *n)
 
 bool is_conditional(node *n)
 {
-	if(n->is_nonterminal)
+	/*if(n->is_nonterminal)
 	{
 		if(strcmp(gg.nonterminals[n->ntype], "if")==0 || 
 			strcmp(gg.nonterminals[n->ntype], "while")==0 || 
@@ -262,23 +276,44 @@ bool is_conditional(node *n)
 	}
 
 	return false;
+	*/
+	return (is_nonterm_type(n, "if") || 
+		is_nonterm_type(n, "while") || 
+		is_nonterm_type(n, "dowhile") || 
+		is_nonterm_type(n, "forloop") );
 }
+
 
 node **get_lval_contexts(node *pt)
 {
 	node **context_parents = ptree_filter(pt, is_lval_context_parent, -1, true);
 	for(int i=0; i<vector_len(context_parents); i++)
 	{
-		if(strcmp(gg.nonterminals[context_parents[i]->ntype], "mdecl")==0 ||
+		/*if(strcmp(gg.nonterminals[context_parents[i]->ntype], "mdecl")==0 ||
 			strcmp(gg.nonterminals[context_parents[i]->ntype], "assign")==0 ||
 			strcmp(gg.nonterminals[context_parents[i]->ntype], "misc1_context")==0 )
 			context_parents[i] = context_parents[i]->children[0];
 		else //misc2_context
+			context_parents[i] = context_parents[i]->children[1];*/
+		if(is_nonterm_type(context_parents[i], "misc2_context"))
 			context_parents[i] = context_parents[i]->children[1];
+		else
+			context_parents[i] = context_parents[i]->children[0];
+
+		//step down through all the single-child nodes until we reach the bottom
+		while(1)
+		{
+			if(vector_len(context_parents[i]->children) == 1)
+				context_parents[i] = context_parents[i]->children[0];
+			else if(is_nonterm_type(context_parents[i], "base_expr"))
+				context_parents[i] = context_parents[i]->children[1];
+			else
+				break;
+		}
 	}
 
 	//
-	vector_foreach(context_parents, i)
+	/*vector_foreach(context_parents, i)
 	{
 		while(1)
 		{
@@ -289,7 +324,7 @@ node **get_lval_contexts(node *pt)
 			else
 				break;
 		}
-	}
+	}*/
 
 	return context_parents;
 }
@@ -410,20 +445,38 @@ void update_jump_addr_pairs(node *loop)
 	}
 }
 
+void *get_zeroth_child(void *n)
+{
+	node *nn = *(node **)n;
+	if(vector_len(nn->children))
+		return &(nn->children[0]);
+	else
+		return NULL;
+}
+
 static node **get_nonterms(node *tree, char *ntstr)
 {
 	ref_node = (node){.is_nonterminal=true, .ntype=0, .str=ntstr, .children=NULL, .sym=NULL};
 	return ptree_filter(tree, filter_by_ref_node, -1, true);
 }
 
+//returns the first child that matches
 static node *get_nonterm_child(node *parent, char *ntstr)
 {
 	vector_foreach(parent->children, i)
 	{
-		if(strcmp(gg.nonterminals[parent->children[i]->ntype], ntstr)==0)
+		//if(strcmp(gg.nonterminals[parent->children[i]->ntype], ntstr)==0)
+		if(is_nonterm_type(parent->children[i], ntstr))
 			return parent->children[i];
 	}
 	return NULL;
+}
+
+static bool is_nonterm_type(node *n, const char *ntstr)
+{
+	if(!(n->is_nonterminal))
+		return false;
+	return (strcmp(gg.nonterminals[n->ntype], ntstr)==0);
 }
 
 

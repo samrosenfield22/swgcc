@@ -52,8 +52,8 @@ void *vector_copy(void *v);
 void vector_intersect(void *vunion, void *a_only, void *b_only, void *a, void *b);
 bool vector_swap(void *v, size_t a, size_t b);
 int vector_search(void *v, int term);
+//void *vector_map(void *v, void *(*map)(void *item));
 void *vector_nth(void *v, size_t index);
-//void *vector_last(void *v);
 size_t vector_len(void *v);								//returns the vector length (number of elements)
 size_t vector_internal_len(void *v);					//
 size_t vector_elem_size(void *v);						//
@@ -62,6 +62,23 @@ size_t vector_total_size(void *v);						//
 #define vector_last(v) v[vector_len(v)-1]
 #define vector_append(v, item)	do {vector_inc(&v); vector_last(v) = item;} while(0)
 #define vector_foreach(v, i)	for(int i=0; i<vector_len(v); i++)
+
+//the map must be an expression that uses the identifier "n" to represent each vector item
+//ex. vector_map(nums, n*n, int)	//square each item
+
+//int *b = vector_map(a, n*n, int);
+#define vector_map(vec, map, type)										\
+({																		\
+	type* vout = NULL;													\
+	if(sizeof(type) == vector_elem_size(vec)) {							\
+		vout = vector_create_internal(sizeof(type), vector_len(vec));	\
+		vector_foreach(vec, i) {										\
+			type n = vec[i];											\
+			vout[i] = map;												\
+		}																\
+	}																	\
+	vout;																\
+})
 
 void vector_dump_internal(void *v, const char *fmt, const char *name);
 

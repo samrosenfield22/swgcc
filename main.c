@@ -52,6 +52,16 @@ char *read_stmtlist(void)
     return strbuf;
 }
 
+#include <stdlib.h>
+
+void *double_int(void *n)
+{
+    int a = *(int*)n;
+    int *b = malloc(sizeof(int));
+    *b = 2*a;
+    return b;
+}
+
 #define vdump(v)    do {for(int i=0; i<vector_len(v); i++) {printf("%d ", v[i]);} printf("\n");} while(0)
 int main(void)
 {
@@ -74,6 +84,16 @@ int main(void)
     printf("a only:\t"); vdump(ao);
     printf("b only:\t"); vdump(bo);
     return 0;*/
+
+    int *a = vector(int, 0);
+    vector_append(a, 5);
+    vector_append(a, 6);
+    vector_append(a, 4);
+    vector_append(a, 3);
+    int *b = vector_map(a, n*n, int);
+    vector_foreach(b,i)
+        printf("%d\n", b[i]);
+    //return 0;
 
 
     symbol_table_initialize();
