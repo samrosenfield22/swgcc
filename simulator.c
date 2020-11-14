@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <assert.h>
 
 #include "simulator.h"
 
@@ -81,7 +82,9 @@ char *var_addr = SIM_MEM + SIM_VARS_OFFSET;
 
 int sim_stack[256];
 int *sp = sim_stack;
-int ip;
+//int ip;
+
+intermediate_spec *ip, *ip_start=(intermediate_spec *)(SIM_MEM + SIM_CODE_OFFSET), *ip_end;
 
 void generate_intermediate_code(node *n)
 {
@@ -94,6 +97,15 @@ void generate_intermediate_code(node *n)
     printf("before resolving jumps:\n"); dump_intermediate();
     resolve_jump_addresses();
     printf("\n\nafter resolving jumps:\n"); dump_intermediate();
+
+    intermediate_spec *cp = ip_start;
+    vector_foreach(code, i)
+    {
+        cp->op = strdup(code[i].op);
+        cp->arg = code[i].arg;
+        cp++;
+    }
+    ip_end = cp;
 }
 
 void define_var(symbol *sym)
@@ -144,13 +156,17 @@ static void generate_instruction(node *n, int depth)
     //printf("instruction %d\n\top: %s\n\targ: %d\n\n", ispec_index, code[ispec_index].op, code[ispec_index].arg);
 
 	//ispec_index++;
+
+    
 }
 
 static void dump_intermediate(void)
 {
+    int code_region_offset = (int)(ip_start - (intermediate_spec *)(SIM_MEM+SIM_CODE_OFFSET));
     vector_foreach(code,i)
     {
-        printf("instruction %d (op: %s, arg %d)\n", i, code[i].op, code[i].arg);
+        printf("instruction %d (%d)(op: %s, arg %d)\n",
+            i, i + code_region_offset, code[i].op, code[i].arg);
     }
 }
 
@@ -216,7 +232,8 @@ void resolve_jump_addresses(void)
                         //snprintf(buf, 40, "push %d", j);
                         //code[i].op = strdup(buf);
                         code[i].op = strdup("push");
-                        code[i].arg = j - skipped_labels;
+                        //code[i].arg = j - skipped_labels;
+                        code[i].arg = (int)&(ip_start[j - skipped_labels]);
 
                         vector_delete(&code, j);
                     }
@@ -293,7 +310,7 @@ struct op_entry
 int run_intermediate_code(void)
 {
     sp = sim_stack;
-    ip = 0;
+    //ip = 0;
 
     bool jump_taken;
 
@@ -301,15 +318,16 @@ int run_intermediate_code(void)
 
     printf("before:\t");
     dump_symbol_table_oneline();
+    printf("\n");
 
     //for(ip=0; ip<ispec_index; ip++)
-    for(ip=0; ip<vector_len(code); /*ip++*/)
+    //for(ip=0; ip<vector_len(code); /*ip++*/)
+    for(ip=ip_start; ip<ip_end; )
     {
         //intermediate_spec *instr = &code[ip];
-        intermediate_spec *instr = &code[ip];
         jump_taken = false;
 
-        printf("%03d %s\t", ip, instr->op);
+        printf("%03d %s\t", ip-ip_start, ip->op);
 
         /*if(strcmp(instr->op, "push")==0)
             sim_stack_push(instr->arg);
@@ -321,9 +339,9 @@ int run_intermediate_code(void)
         {*/
             for(int i=0; i<sizeof(op_table)/sizeof(op_table[0]); i++)
             {
-                if(strcmp(instr->op, op_table[i].op)==0)
+                if(strcmp(ip->op, op_table[i].op)==0)
                 {
-                    int res = op_table[i].func(instr->arg);     //the arg is a dummy value unless the func is push(v)
+                    int res = op_table[i].func(ip->arg);     //the arg is a dummy value unless the func is push(v)
 
                     //if(op is a jump op)
                     if(res == 1)    //right now, only the jmp ops return anything (other than 0)
@@ -340,8 +358,16 @@ int run_intermediate_code(void)
 
         if(!jump_taken)
             ip++;
+
+        //make sure we're not out of bounds
+        if(ip > ip_end)
+        {
+            printf("error: ip past end of code\n");
+            assert(0);
+        }
     }
 
+    ip_start = ip;
     return sim_stack_pop(0);
 }
 
@@ -413,7 +439,7 @@ int sim_stack_pop(int d)
                                             \
         if(arg cond)                        \
         {                                   \
-            ip = jaddr;                     \
+            ip = (intermediate_spec *)jaddr;                     \
             return 1;                       \
         }                                   \
         else                                \
@@ -497,6 +523,6 @@ int comma_op(int d)
 
 int jmp_op(int d)
 {
-    ip = sim_stack_pop(0);
+    ip = (intermediate_spec *)sim_stack_pop(0);
     return 1;
 }
