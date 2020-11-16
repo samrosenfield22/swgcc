@@ -91,7 +91,7 @@ void assign_type_to_symbol(symbol *sym, const char *typestr)
 
 void dump_symbol_table(void)
 {
-    printf("symbol table\n------------------\n");
+    printf("\nsymbol table\n------------------\n");
     for(int i=0; i<vector_len(SYMBOL_TABLE); i++)
     {
         if(SYMBOL_TABLE[i]->sym_type==SYM_IDENTIFIER)
@@ -130,5 +130,6 @@ void dump_symbol_table_oneline(void)
     {
         if(SYMBOL_TABLE[i]->sym_type == SYM_IDENTIFIER)
             printf("%s=%d   ", SYMBOL_TABLE[i]->name, *SYMBOL_TABLE[i]->var);
+
     }
 }

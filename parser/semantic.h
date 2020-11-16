@@ -5,6 +5,7 @@
 
 #include "tree.h"
 #include "../simulator.h"
+#include "../utils/printcolor.h"
 
 bool all_semantic_checks(node *pt);
 

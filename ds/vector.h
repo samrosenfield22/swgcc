@@ -80,6 +80,23 @@ size_t vector_total_size(void *v);						//
 	vout;																\
 })
 
+//vector_filter(n, func)
+#define vector_filter(vec, filter)				\
+({												\
+	vector_foreach(vec, i) {					\
+		typeof(*vec) n = vec[i];					\
+		if(!(filter))							\
+			vector_delete(&vec, i--);				\
+	}											\
+})
+
+#define vector_copy_filter(vec, filter)			\
+({												\
+	typeof(*vec) *vc = vector_copy(vec);		\
+	vector_filter(vc, filter);					\
+	vc;											\
+})
+
 void vector_dump_internal(void *v, const char *fmt, const char *name);
 
 

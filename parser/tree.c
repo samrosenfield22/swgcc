@@ -47,10 +47,10 @@ void node_add_child(node *root, node *child)
 	nt_strings = strings;
 }*/
 
-node **ptree_filter(node *n, bool (*filter)(node *n), int depth, bool node_then_children)
+/*node **ptree_filter(node *n, bool (*filter)(node *n), int depth, bool node_then_children)
 {
 	return ptree_traverse_dfs(n, filter, NULL, -1, node_then_children);
-}
+}*/
 
 void ptree_action(node *n, void (*action)(node *n, int arg), bool node_then_children)
 {
@@ -190,7 +190,11 @@ void node_print_pretty(node *pt, int depth)
 			printf("  ");
 	}
 
+	if(!pt->is_nonterminal && pt->ntype == SEMACT)
+		set_text_color(MAGENTA_FONT);
 	node_print(pt, depth);
+	if(!pt->is_nonterminal && pt->ntype == SEMACT)
+		set_text_color(RESET_FONT);
 
 	if(d != -1)
 	{
@@ -208,6 +212,10 @@ void node_print_pretty(node *pt, int depth)
 
 void node_print(node *pt, int depth)
 {
+	bool is_semact = (!pt->is_nonterminal && pt->ntype == SEMACT);
+	//if(is_semact)
+	//	set_text_color(MAGENTA_FONT);
+
 	//print node type
 	if(pt->is_nonterminal == true)
 		printf("(%s) ", gg.nonterminals[pt->ntype]);
@@ -217,13 +225,17 @@ void node_print(node *pt, int depth)
 	//print node data
 	//if(pt->str)
 	//	printf("%s", pt->str);
-	if(!pt->is_nonterminal && pt->ntype == SEMACT)
+	//if(!pt->is_nonterminal && pt->ntype == SEMACT)
+	if(is_semact)
 		printf("%s", pt->str);
 	else
 		ptree_action(pt, node_print_str, false);
 		//ptree_traverse_dfs(pt, NULL, node_print_str, false);
 
 	putchar('\n');
+
+	//if(is_semact)
+	//	set_text_color(RESET_FONT);
 }
 
 void node_print_str(node *pt, int depth)

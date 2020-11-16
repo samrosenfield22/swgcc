@@ -86,6 +86,8 @@ int *sp = sim_stack;
 
 intermediate_spec *ip, *ip_start=(intermediate_spec *)(SIM_MEM + SIM_CODE_OFFSET), *ip_end;
 
+bool jump_taken;
+
 void generate_intermediate_code(node *n)
 {
     //ispec_index = 0;
@@ -312,11 +314,12 @@ int run_intermediate_code(void)
     sp = sim_stack;
     //ip = 0;
 
-    bool jump_taken;
+    jump_taken = false;
+    int res;
 
     printf("\n-------------------\nexecution dump:\n");
 
-    printf("before:\t");
+    printf("before:             ");
     dump_symbol_table_oneline();
     printf("\n");
 
@@ -327,7 +330,10 @@ int run_intermediate_code(void)
         //intermediate_spec *instr = &code[ip];
         jump_taken = false;
 
-        printf("%03d %s\t", ip-ip_start, ip->op);
+        int cursor = printf("%03d %s", ip-ip_start, ip->op);
+        if(strcmp(ip->op, "push")==0 || strcmp(ip->op, "pushv")==0)
+            cursor += printf(" %d", ip->arg);
+        while(cursor < 20) {putchar(' '); cursor++;}
 
         /*if(strcmp(instr->op, "push")==0)
             sim_stack_push(instr->arg);
@@ -341,12 +347,12 @@ int run_intermediate_code(void)
             {
                 if(strcmp(ip->op, op_table[i].op)==0)
                 {
-                    int res = op_table[i].func(ip->arg);     //the arg is a dummy value unless the func is push(v)
+                    res = op_table[i].func(ip->arg);     //the arg is a dummy value unless the func is push(v)
 
                     //if(op is a jump op)
-                    if(res == 1)    //right now, only the jmp ops return anything (other than 0)
+                    //if(res == 1)    //right now, only the jmp ops return anything (other than 0)
                                     //1 means a jump was taken -- so we don't increment ip
-                        jump_taken = true;
+                    //    jump_taken = true;
 
                     break;
                 }
@@ -354,21 +360,30 @@ int run_intermediate_code(void)
         //}
 
         dump_symbol_table_oneline();
-        printf("\n");
+        printf("\t(");
+        for(int *p=sim_stack; p<sp; p++)
+            printf("%d ", *p);
+        printf(")\n");
 
         if(!jump_taken)
             ip++;
+        jump_taken = false;
 
         //make sure we're not out of bounds
         if(ip > ip_end)
         {
-            printf("error: ip past end of code\n");
+            printfcol(RED_FONT, "error: ip past end of code\n");
             assert(0);
         }
     }
 
     ip_start = ip;
-    return sim_stack_pop(0);
+    if(sp != sim_stack)
+    {
+        printf("--- sp not at stack head, it's at %d\n", sp-sim_stack);
+    }
+    //return sim_stack_pop(0);
+    return res;
 }
 
 int sim_stack_push(int n)
@@ -385,6 +400,7 @@ int sim_stack_pushv(int n)
 
 int sim_stack_pop(int d)
 {
+    assert(sp != sim_stack);    //underflow
     --sp;
     return *sp;
 }
@@ -440,10 +456,9 @@ int sim_stack_pop(int d)
         if(arg cond)                        \
         {                                   \
             ip = (intermediate_spec *)jaddr;                     \
-            return 1;                       \
+            jump_taken = true;                       \
         }                                   \
-        else                                \
-            return 0;                       \
+        return 0;                       \
     }
 
 def_binary_op(add, +)
@@ -524,5 +539,6 @@ int comma_op(int d)
 int jmp_op(int d)
 {
     ip = (intermediate_spec *)sim_stack_pop(0);
-    return 1;
+    jump_taken = true;
+    return 0;
 }

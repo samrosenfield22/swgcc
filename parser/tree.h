@@ -6,7 +6,7 @@
 #include "grammar.h"
 #include "recdesc_types.h"
 #include "../ds/vector.h"
-
+#include "../utils/printcolor.h"
 
 //parse tree node
 typedef struct node_s node;
@@ -35,7 +35,7 @@ void node_add_child(node *root, node *child);
 //void ptree_traverse_dfs(node *pt, bool (*filter)(node *n), void (*action)(node *n, int arg), bool node_then_children);
 //void ptree_traverse_dfs_recursive(node *pt, bool (*filter)(node *n), void (*action)(node *n, int depth), int depth, bool node_then_children);
 
-node **ptree_filter(node *n, bool (*filter)(node *n), int depth, bool node_then_children);
+//node **ptree_filter(node *n, bool (*filter)(node *n), int depth, bool node_then_children);
 void ptree_action(node *n, void (*action)(node *n, int arg), bool node_then_children);
 
 node **ptree_traverse_dfs
@@ -55,5 +55,26 @@ void node_print_str(node *pt, int depth);
 
 void semact_print(node *pt, int depth);
 void node_delete(node *pt, int dummy);
+
+//"filter" is an expression where "n" refers to each node
+#define ptree_filter(tree, filter)					\
+({													\
+	node **v = vector(*v, 0);						\
+	node **stack = vector(*v, 0);					\
+	vector_append(stack, tree);						\
+	while(vector_len(stack))						\
+	{												\
+		node *n = vector_last(stack);							\
+		vector_delete(&stack, vector_len(stack)-1);					\
+													\
+		if(filter) {vector_append(v, n);}			\
+													\
+		for(int i=vector_len(n->children)-1; i>=0; i--)					\
+			vector_append(stack, n->children[i]);	\
+	}												\
+													\
+	vector_destroy(stack);							\
+	v;												\
+})
 
 #endif //TREE_H_

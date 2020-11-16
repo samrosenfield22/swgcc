@@ -4,6 +4,7 @@
 #define SIMULATOR_H_
 
 #include "parser/tree.h"
+#include "utils/printcolor.h"
 
 void generate_intermediate_code(node *n);
 int run_intermediate_code(void);

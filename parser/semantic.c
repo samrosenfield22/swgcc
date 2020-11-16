@@ -30,7 +30,7 @@ void update_jump_addr_pairs(node *loop);
 
 //void *get_zeroth_child(void *n);
 
-static node **get_nonterms(node *tree, char *ntstr);
+//static node **get_nonterms(node *tree, char *ntstr);
 static node *get_nonterm_child(node *parent, char *ntstr);
 static bool is_nonterm_type(node *n, const char *ntstr);
 static void semantic_print_failure(void);
@@ -39,14 +39,18 @@ enum semantic_status_type
 {
 	SEM_OK,
 	SEM_REDECLARED_VAR,
-	SEM_USING_UNDECLD_VAR
+	SEM_USING_UNDECLD_VAR,
+	BAD_LVAL
 } SEMANTIC_STATUS = SEM_OK;
 
 #define SEMANTIC_BAIL_IF_NOT_OK	if(SEMANTIC_STATUS != SEM_OK) {semantic_print_failure(); return false;}
 
-int jlpair;
+
 bool all_semantic_checks(node *pt)
 {
+	SEMANTIC_STATUS = SEM_OK;
+	
+	//get_lval_contexts(pt);
 	if(!check_variable_declarations(pt))	return false;
 	if(!handle_lvals(pt))					return false;
 	if(!set_conditional_jumps(pt))			return false;
@@ -60,50 +64,55 @@ bool all_semantic_checks(node *pt)
 bool check_variable_declarations(node *pt)
 {
 	//handle declarations for each sequence (comma or decl) separately
-	node **mstmts = get_nonterms(pt, "mstmt");
+	//node **mstmts = get_nonterms(pt, "mstmt");
+	node **mstmts = ptree_filter(pt, is_nonterm_type(n, "mstmt"));
 
 	vector_foreach(mstmts, s)
 	{
+		//get all vars that should get declared
+		/*node **mdecls = ptree_filter(mstmts[s], is_nonterm_type(n, "mdecl"));
+		node **decl_ids = vector_map(mdecls, n->children[0], node *);	
+		vector_destroy(mdecls);*/
 
-		//get decl base_ids (vars that should get declared)
-		node **mdecls = get_nonterms(mstmts[s], "mdecl");
-		//node **decl_ids = vector_map(mdecls, get_zeroth_child);	//child 0 of a mdecl is a base_id
-		node **decl_ids = vector_map(mdecls, n->children[0], node *);
+		node **decl_parents = ptree_filter(mstmts[s],
+			is_nonterm_type(n, "decl") || is_nonterm_type(n, "mdecl_assign"));
+		//node **decl_ids = vector_map(decl_parents, n->children[1], node *);
+		node **decl_ids = vector_map(decl_parents, get_nonterm_child(n, "base_id"), node *);	
+		vector_destroy(decl_parents);
 
-		//make list of all base_ids
-		node **all_bids = get_nonterms(mstmts[s], "base_id");
 
-		//get the difference between the two vectors -- all ids that are not decl_ids
-		node **prev_decld_ids;
-		vector_intersect(NULL, &prev_decld_ids, NULL, all_bids, decl_ids);
+		//get all vars that should already have been declared
+		node **prev_decld_ids = ptree_filter(mstmts[s],		
+			is_nonterm_type(n, "base_id") && vector_search(decl_ids, (int)n)==-1);
+
+		printfcol(YELLOW_FONT, "decl ids:\n");
+		vector_foreach(decl_ids, i) {printf("%s\n", decl_ids[i]->children[0]->str);}
+		printfcol(YELLOW_FONT, "other ids:\n");
+		vector_foreach(prev_decld_ids, i) {printf("%s\n", prev_decld_ids[i]->children[0]->str);}
 
 		//check if all those vars are already declared
-		for(int i=0; i<vector_len(prev_decld_ids); i++)
+		vector_filter(prev_decld_ids, n->children[0]->sym->declared == false);
+
+		vector_foreach(prev_decld_ids, i)
 		{
-			if(prev_decld_ids[i]->children[0]->sym->declared == false)
-			{
-				printf("undeclared variable %s\n", prev_decld_ids[i]->children[0]->str);
-				return false;
-			}
+			printfcol(RED_FONT, "undeclared variable %s\n", prev_decld_ids[i]->children[0]->str);
+			SEMANTIC_STATUS = SEM_USING_UNDECLD_VAR;
 		}
+		SEMANTIC_BAIL_IF_NOT_OK
 
 		//declare new variables, error for redeclared ones
-		SEMANTIC_STATUS = SEM_OK;
 		node *decl = get_nonterm_child(mstmts[s], "decl");
 		if(decl)
 		{
 			char *type = decl->children[0]->str;	//decl->type->str
-			for(int i=0; i<vector_len(mdecls); i++)
-			{
-				declare_new_vars(type, mdecls[i]);
-			}
-			SEMANTIC_BAIL_IF_NOT_OK
+			vector_foreach(decl_ids, i)
+				declare_new_vars(type, decl_ids[i]);
 		}
+		SEMANTIC_BAIL_IF_NOT_OK
 
 		//clean up
 		vector_destroy(decl_ids);
-		vector_destroy(all_bids);
-		vector_destroy(mdecls);
+		//vector_destroy(all_bids);
 		vector_destroy(prev_decld_ids);
 	}
 
@@ -114,43 +123,29 @@ bool check_variable_declarations(node *pt)
 bool handle_lvals(node *pt)
 {
 
-	//lvals
-	//if it's in a lval context, but it's not an lval, error
-	//if it's an lval, but it's not in a lval context
-	node **lvals = ptree_filter(pt, is_lval, -1, true);
+	//get all lvals and lval contexts
+	node **lvals = ptree_filter(pt, is_lval(n));
 	node **lval_contexts = get_lval_contexts(pt);
-	/*printf("lvals:\n");
-	for(int i=0; i<vector_len(lvals); i++)
-		node_print(lvals[i], 0);
-	printf("\nlval contexts:\n");
-	for(int i=0; i<vector_len(lval_contexts); i++)
-	{
-		node_print(lval_contexts[i], 0);
-		printf("(%d children)\n", vector_len(lval_contexts[i]));
-	}*/
 
 	node **lvals_in_context, **rvals_in_lval_context, **lvals_out_of_context;
 	vector_intersect(&lvals_in_context, &lvals_out_of_context, &rvals_in_lval_context, lvals, lval_contexts);
-	//printf("rvals in lval context:\n");
+	
 	vector_foreach(rvals_in_lval_context, i)
 	{
-		printf("error: unexpected expression in lval context ");
+		set_text_color(RED_FONT);
+		printf("unexpected expression in lval context ");
 		node_print(rvals_in_lval_context[i], 0);
 		printf("\n");
+		SEMANTIC_STATUS = BAD_LVAL;
 	}
-	if(vector_len(rvals_in_lval_context))
-		return false;
+	SEMANTIC_BAIL_IF_NOT_OK
+	//if(vector_len(rvals_in_lval_context))
+	//	return false;
 
-	//printf("lvals in context:\n");
 	vector_foreach(lvals_in_context, i)
 	{
-		//node_print(lvals_in_context[i], 0);
-		//printf("\n");
-
-		//if(strcmp(gg.nonterminals[lvals_in_context[i]->ntype], "base_id")==0)
 		if(is_nonterm_type(lvals_in_context[i], "base_id"))
 			amend_lval(lvals_in_context[i]);	//this only takes care of variables
-		//else if(strcmp(gg.nonterminals[lvals_in_context[i]->ntype], "misc2_lval")==0)
 		else if(is_nonterm_type(lvals_in_context[i], "misc2_lval"))
 		{
 			assert(lvals_in_context[i]->children[2]->ntype==SEMACT);
@@ -162,14 +157,14 @@ bool handle_lvals(node *pt)
 
 	vector_foreach(lvals_out_of_context, i)
 	{
-		//if(strcmp(gg.nonterminals[lvals_out_of_context[i]->ntype], "base_id")==0)
 		if(is_nonterm_type(lvals_out_of_context[i], "base_id"))
 			amend_rval(lvals_out_of_context[i]);
 	}
 
 
 	//amend semacts for all int literals
-	node **int_lits = get_nonterms(pt, "base_num");
+	//node **int_lits = get_nonterms(pt, "base_num");
+	node **int_lits = ptree_filter(pt, is_nonterm_type(n, "base_num"));
 	vector_foreach(int_lits, i)
 	{
 		amend_num(int_lits[i]);
@@ -179,6 +174,7 @@ bool handle_lvals(node *pt)
 	return true;
 }
 
+int jlpair;
 bool set_conditional_jumps(node *pt)
 {
 	//swap the condition and stmtlist in while loops
@@ -186,14 +182,16 @@ bool set_conditional_jumps(node *pt)
 				//addr/labels w id 0 or 1
 
 
-	node **whiles = get_nonterms(pt, "while");
+	//node **whiles = get_nonterms(pt, "while");
+	node **whiles = ptree_filter(pt, is_nonterm_type(n, "while"));
 	vector_foreach(whiles, i)
 	{
 		vector_swap(whiles[i]->children, 5, 8);	//swap the comma and stmtlist (nodes 5 and 8)
 	}
 	vector_destroy(whiles);
 
-	node **forloops = get_nonterms(pt, "forloop");
+	//node **forloops = get_nonterms(pt, "forloop");
+	node **forloops = ptree_filter(pt, is_nonterm_type(n, "forloop"));
 	vector_foreach(forloops, i)
 	{
 		//vector_swap(forloops[i]->children, 7, 12);	//swap the condition comma and stmtlist (nodes 7 and 12)
@@ -207,7 +205,8 @@ bool set_conditional_jumps(node *pt)
 	}
 	vector_destroy(forloops);
 
-	node **all_conditionals = ptree_filter(pt, is_conditional, -1, false);	//get the deepest ones first
+	//node **all_conditionals = ptree_filter(pt, is_conditional, -1, false);	//get the deepest ones first
+	node **all_conditionals = ptree_traverse_dfs(pt, is_conditional, NULL, -1, false);
 	vector_foreach(all_conditionals, i)
 	{
 		update_jump_addr_pairs(all_conditionals[i]);
@@ -225,15 +224,6 @@ bool set_conditional_jumps(node *pt)
 //vars, (lval), s.lval, s->a, *expr, a[n]
 bool is_lval(node *n)
 {
-	/*if(n->is_nonterminal)
-	{
-		if(strcmp(gg.nonterminals[n->ntype], "base_id")==0)
-			return true;
-		if(strcmp(gg.nonterminals[n->ntype], "base_expr")==0)
-			return (is_lval(n->children[1]));
-		if(strcmp(gg.nonterminals[n->ntype], "misc2_lval")==0)
-			return true;
-	}*/
 	if(is_nonterm_type(n, "base_id"))		return true;
 	if(is_nonterm_type(n, "base_expr"))		return is_lval(n->children[1]);	//the expr between the ()
 	if(is_nonterm_type(n, "misc2_lval"))	return true;
@@ -242,72 +232,129 @@ bool is_lval(node *n)
 }
 
 //&expr, ++expr/expr++, expr.n, expr = ..., expr += ...
+
+/*				child #
+misc2_context	1
+misc1_context	0
+assign 			0
+decl 			1
+mdecl_assign	1
+*/
+/*
+an lval context parent is a node that is a parent of an lval context
+in the production
+<decl>			::= type <base_id> <declspec>?
+<declspec>		::= <decl_assign> <mdecl_assign>*
+<decl_assign>	::= "=" <assign> {=}
+the base_id in the decl is in a lval context (it's being assign to), if the decl contains the declspec
+(i.e. int a=5; a is an lval context because it's followed by an assignment)
+*/
 bool is_lval_context_parent(node *n)
 {
-	/*if(n->is_nonterminal)
-	{
-		if(strcmp(gg.nonterminals[n->ntype], "misc2_context")==0)	//&expr, ++/--expr
-			return true;
-
-		if(vector_len(n->children)==2 &&
-		(
-			strcmp(gg.nonterminals[n->ntype], "misc1_context")==0 ||	//expr++/--
-			strcmp(gg.nonterminals[n->ntype], "mdecl")==0 ||			//type id = ...
-			strcmp(gg.nonterminals[n->ntype], "assign")==0			//expr = ..., expr += ...
-		))
-			return true;
-	}*/
 	if(is_nonterm_type(n, "misc2_context"))		//&expr, ++/--expr
 		return true;
 
 	if(vector_len(n->children)==2)
 	{
 		if(is_nonterm_type(n, "misc1_context") ||	//expr++/--
-			is_nonterm_type(n, "mdecl") ||			//type id = ...
+			//is_nonterm_type(n, "mdecl") ||			//type id = ...
 			is_nonterm_type(n, "assign"))			//expr = ..., expr += ...
 			return true;
 	}
+
+	if(vector_len(n->children)==3 && is_nonterm_type(n, "decl"))
+	{
+		node *dspec = get_nonterm_child(n, "declspec");
+		if(dspec && get_nonterm_child(dspec, "decl_assign"))
+			return true;
+	}
+
+	if(vector_len(n->children)==4 && is_nonterm_type(n, "mdecl_assign"))	//type id = ..., id = ...
+		if(get_nonterm_child(n, "decl_assign"))
+			return true;
 
 	return false;
 }
 
 bool is_conditional(node *n)
 {
-	/*if(n->is_nonterminal)
-	{
-		if(strcmp(gg.nonterminals[n->ntype], "if")==0 || 
-			strcmp(gg.nonterminals[n->ntype], "while")==0 || 
-			strcmp(gg.nonterminals[n->ntype], "dowhile")==0 || 
-			strcmp(gg.nonterminals[n->ntype], "forloop")==0 )
-			return true;
-	}
-
-	return false;
-	*/
 	return (is_nonterm_type(n, "if") || 
 		is_nonterm_type(n, "while") || 
 		is_nonterm_type(n, "dowhile") || 
 		is_nonterm_type(n, "forloop") );
 }
 
-
+//get the <base_id> inside the lval context (for each element of the vector)
+//&expr, ++expr/expr++, expr.n, expr = ..., expr += ...
 node **get_lval_contexts(node *pt)
 {
-	node **context_parents = ptree_filter(pt, is_lval_context_parent, -1, true);
+	/*
+	printf("all ids and terminal symbols:\n");
+	node **flattened = ptree_filter(pt,
+		is_nonterm_type(n, "base_id") || is_nonterm_type(n, "base_num") || (!(n->is_nonterminal) && n->ntype == TERMINAL));
+	vector_foreach(flattened, i)
+	{
+		node_print(flattened[i], 0);
+	}
+
+	node **lval_contexts = vector(node *, 0);
+	vector_foreach(flattened, i)
+	{
+		if(!is_nonterm_type(flattened[i], "base_id"))
+			continue;
+
+		//prepend lval contexts (&expr, ++expr)
+		if(i && !flattened[i-1]->is_nonterminal && flattened[i-1]->ntype == TERMINAL)
+		{
+			if(strcmp(flattened[i-1]->str, "&")==0
+				|| strcmp(flattened[i-1]->str, "++")==0
+				|| strcmp(flattened[i-1]->str, "--")==0 )
+				vector_append(lval_contexts, flattened[i]);
+		}
+
+		//append lval contexts (expr++, expr = ..., expr += ...)
+		if(i < vector_len(flattened)-1 && !flattened[i+1]->is_nonterminal && flattened[i+1]->ntype == TERMINAL)
+		{
+			if(strcmp(flattened[i+1]->str, "++")==0
+				|| strcmp(flattened[i+1]->str, "--")==0
+				|| strcmp(flattened[i+1]->str, "=")==0
+				|| strcmp(flattened[i+1]->str, "+=")==0
+				|| strcmp(flattened[i+1]->str, "-=")==0
+				|| strcmp(flattened[i+1]->str, "*=")==0
+				|| strcmp(flattened[i+1]->str, "/=")==0)	//still need the rest of these (%=, etc)
+				vector_append(lval_contexts, flattened[i]);
+		}
+	}
+	return lval_contexts;
+
+	exit(0);
+	*/
+
+	//node *child;
+	node **context_parents = ptree_filter(pt, is_lval_context_parent(n));
 	for(int i=0; i<vector_len(context_parents); i++)
 	{
-		/*if(strcmp(gg.nonterminals[context_parents[i]->ntype], "mdecl")==0 ||
-			strcmp(gg.nonterminals[context_parents[i]->ntype], "assign")==0 ||
-			strcmp(gg.nonterminals[context_parents[i]->ntype], "misc1_context")==0 )
+		if(is_nonterm_type(context_parents[i], "misc1_context") || is_nonterm_type(context_parents[i], "assign"))
 			context_parents[i] = context_parents[i]->children[0];
-		else //misc2_context
-			context_parents[i] = context_parents[i]->children[1];*/
-		if(is_nonterm_type(context_parents[i], "misc2_context"))
-			context_parents[i] = context_parents[i]->children[1];
+		else if(is_nonterm_type(context_parents[i], "mdecl_assign"))
+			context_parents[i] = context_parents[i]->children[2];
 		else
-			context_parents[i] = context_parents[i]->children[0];
+			context_parents[i] = context_parents[i]->children[1];
+
+		/*child = get_nonterm_child(context_parents[i], "base_id");
+		if(!child)
+			child = get_nonterm_child(context_parents[i], "base_expr");
+		if(!child)
+		{
+			if(is_nonterm_type(context_parents[i], "misc2_context"))
+				child = context_parents[i]->children[1];
+			else if(is_nonterm_type(context_parents[i], "assign"))
+				child = context_parents[i]->children[0];
+			//working on this!!!
+		}*/
 
 		//step down through all the single-child nodes until we reach the bottom
+		//(a base_id, or a base_expr)
 		while(1)
 		{
 			if(vector_len(context_parents[i]->children) == 1)
@@ -317,71 +364,30 @@ node **get_lval_contexts(node *pt)
 			else
 				break;
 		}
-	}
 
-	//
-	/*vector_foreach(context_parents, i)
-	{
-		while(1)
-		{
-			if(vector_len(context_parents[i]->children) == 1)
-				context_parents[i] = context_parents[i]->children[0];
-			else if(strcmp(gg.nonterminals[context_parents[i]->ntype], "base_expr")==0)
-				context_parents[i] = context_parents[i]->children[1];
-			else
-				break;
-		}
-	}*/
+		//context_parents[i] = child;
+	}
 
 	return context_parents;
 }
 
-//keep base_id, base_other, "=", more
-/*bool filter_assign_toks(node *n)
+//on
+void declare_new_vars(const char *typestr, node *bid)
 {
-	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "base_id")==0)
-		return true;
-	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "base_other")==0)
-		return true;
-
-	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "decl_assign")==0)
-		return true;
-	if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "massign")==0)
-		return true;
-
-	//if(n->is_nonterminal && strcmp(gg.nonterminals[n->type], "more")==0)
-	//	return true;
-	//if(!(n->is_nonterminal) && n->type==TERMINAL && strcmp(n->str, "=")==0)
-	if(!(n->is_nonterminal) && n->type==TERMINAL)
-		return true;
-
-	return false;
-}*/
-
-//only gets called for mdecl nonterminals
-//void declare_new_vars(node *pt, int depth)
-void declare_new_vars(const char *typestr, node *mdecl)
-{
-	//node *decl_var = pt->children[0]->children[0];	//child 0 is a base_id, its child 0 is the variable
-														//n->0->0 is dependent on the specific grammar
-	//node *decl_var = pt->children[0];
-	node *decl_var = mdecl->children[0]->children[0];	//decl->mdecl->base_id->id
-	if(decl_var->sym->declared)
+	assert(is_nonterm_type(bid, "base_id"));
+	
+	symbol *decl_sym = bid->children[0]->sym;
+	if(decl_sym->declared)
 	{
 		SEMANTIC_STATUS = SEM_REDECLARED_VAR;
-		return;		//we'll keep scanning through the tree, but that's ok
+		return;
 	}
 	else
 	{
 		//declare and define the variable
-		decl_var->sym->declared = true;
-		assign_type_to_symbol(decl_var->sym, typestr);
-		//symbol *typesym = symbol_search(decl->children[0]->str, SYM_TYPESPEC);
-		//decl_var->sym->type = typesym->type;
-		//printf("creating new var of type %s (%d bytes)\n", decl->children[0]->str, typesym->type->bytes);
-		//decl_var->sym->var = (int*)get_new_var(sizeof(int));
-		//decl_var->sym->var = (int*)get_new_var(typesym->type->bytes);
-		define_var(decl_var->sym);
+		decl_sym->declared = true;
+		assign_type_to_symbol(decl_sym, typestr);
+		define_var(decl_sym);
 	}
 }
 
@@ -426,11 +432,13 @@ void update_jump_addr_pairs(node *loop)
 		//one first (and avoid a scenario with multiple "pushaddr 0") 
 		snprintf(buf, 40, "pushaddr %d", i);
 		ref_node = (node){.is_nonterminal=false, .ntype=SEMACT, .str=buf, .children=NULL, .sym=NULL};
-		node **pa = ptree_filter(loop, filter_by_ref_node, -1, false);
+		//node **pa = ptree_filter(loop, filter_by_ref_node, -1, false);
+		node **pa = ptree_filter(loop, filter_by_ref_node(n));
 
 		snprintf(buf, 40, "jumplabel %d", i);
 		ref_node = (node){.is_nonterminal=false, .ntype=SEMACT, .str=buf, .children=NULL, .sym=NULL};
-		node **jl = ptree_filter(loop, filter_by_ref_node, -1, false);
+		//node **jl = ptree_filter(loop, filter_by_ref_node, -1, false);
+		node **jl = ptree_filter(loop, filter_by_ref_node(n));
 
 		if(vector_len(pa) == 0)
 			break;
@@ -461,18 +469,17 @@ void update_jump_addr_pairs(node *loop)
 		return NULL;
 }*/
 
-static node **get_nonterms(node *tree, char *ntstr)
+/*static node **get_nonterms(node *tree, char *ntstr)
 {
 	ref_node = (node){.is_nonterminal=true, .ntype=0, .str=ntstr, .children=NULL, .sym=NULL};
 	return ptree_filter(tree, filter_by_ref_node, -1, true);
-}
+}*/
 
 //returns the first child that matches
 static node *get_nonterm_child(node *parent, char *ntstr)
 {
 	vector_foreach(parent->children, i)
 	{
-		//if(strcmp(gg.nonterminals[parent->children[i]->ntype], ntstr)==0)
 		if(is_nonterm_type(parent->children[i], ntstr))
 			return parent->children[i];
 	}
@@ -481,6 +488,22 @@ static node *get_nonterm_child(node *parent, char *ntstr)
 
 static bool is_nonterm_type(node *n, const char *ntstr)
 {
+	//for testing only -- if i mistype the nonterm string, this will catch it
+	bool ntmatch = false;
+	vector_foreach(gg.nonterminals, i)
+	{
+		if(strcmp(gg.nonterminals[i], ntstr)==0)
+		{
+			ntmatch = true;
+			break;
+		}
+	}
+	if(!ntmatch)
+	{
+		printf("typo in nonterm name \"%s\" passed to is_nonterm_type (semantic.c)\n", ntstr);
+		assert(0);
+	}
+
 	if(!(n->is_nonterminal))
 		return false;
 	return (strcmp(gg.nonterminals[n->ntype], ntstr)==0);
@@ -492,9 +515,13 @@ static void semantic_print_failure(void)
 	const char *failure_messages[] =
 	{
 		[SEM_REDECLARED_VAR] 		= "attempting to redeclare variable",
-		[SEM_USING_UNDECLD_VAR]		= "using undeclared variable"
+		[SEM_USING_UNDECLD_VAR]		= "using undeclared variable(s)",
+		[BAD_LVAL]					= "bad expression(s) in lvalue context"
 	};
 
+	set_text_color(RED_FONT);
+	printf("error: ");
 	puts(failure_messages[SEMANTIC_STATUS]);
+	set_text_color(RESET_FONT);
 }
 

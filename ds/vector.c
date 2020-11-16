@@ -95,18 +95,25 @@ bool vector_dec(void *v)
 	return len? vector_resize(v, len-1) : false;
 }
 
-bool vector_insert(void *v, size_t index)
+bool vector_insert(void *vv, size_t index)
 {
-	CHECK(v, return false);
-	CHECK(index < vector_len(v), return false);
+	printf("vector_insert is buggy, needs to be tested\n");
+	assert(0);
+	
+	void *v = *(void **)vv;
 
-	if(!vector_inc(&v))
+	CHECK(v, return false);
+	//CHECK(index < vector_len(v), return false);
+
+	if(!vector_inc(vv))
 		return false;
 
 	//
-	void *copy_from = v + vector_elem_size(v)*index;
+	//void *copy_from = v + vector_elem_size(v)*index;
+	void *copy_from = vector_nth(v, index);
 	void *copy_to = copy_from + vector_elem_size(v);
-	size_t copy_size = (vector_len(v)-index-1) * vector_elem_size(v);
+	//size_t copy_size = (vector_len(v)-index-1) * vector_elem_size(v);
+	size_t copy_size = (vector_len(v)-index) * vector_elem_size(v);
 	memmove(copy_to, copy_from, copy_size);
 
 	return true;

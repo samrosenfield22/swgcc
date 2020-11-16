@@ -1,21 +1,36 @@
-; grammar for the c programming language, sort of
-; by default, the token on the lhs of the first production is the start symbol
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; grammar for the c programming language, sort of							   ;;;;;
+;;;;; by default, the token on the lhs of the first production is the start symbol ;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; top-level productions
 
 <stmtlist>		::= <stmt>
-<stmtlist>		::= "{" <stmt>* "}"
+<stmtlist>		::= <block>
+<block>			::= "{" <stmt>* "}"
 
-<stmt>			::= <mstmt> ";"
+<stmt>			::= <mstmt>
 <stmt>			::= <if>
 <stmt>			::= <while>
 <stmt>			::= <dowhile>
 <stmt>			::= <forloop>
 
-<mstmt>			::= <comma>
+<mstmt>			::= <comma> ";" {pop}
 <mstmt>			::= <decl>
 
-<decl>			::= type <mdecl> <moredecl>*
-<moredecl>		::= "," <mdecl>
-<mdecl>			::= <base_id> <decl_assign>?
+;maybe lol
+<decl>			::= type <base_id> <declspec>?
+<declspec>		::= <decl_assign> <mdecl_assign>* ";" {pop}
+<declspec>		::= <mdecl_assign>* ";" {pop}
+<declspec>		::= <funcdef>
+<declspec>		::= ";" {pop}
+<mdecl_assign>	::= "," {pop} <base_id> <decl_assign>?
+
+;used to be this
+;<decl>			::= type <mdecl> <moredecl>*
+;<moredecl>		::= "," <mdecl>
+;<mdecl>			::= <base_id> <decl_assign>?
 
 <decl_assign>	::= <var_assign>
 <decl_assign>	::= <array_assign>
@@ -32,86 +47,83 @@
 
 
 <comma>       	::= <assign> <mcomma>*
-<mcomma>      	::= "," <assign> {,}
+<mcomma>      	::= "," {pop} <assign> {,}
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; conditionals
 
 <if>			::= "if" "(" <comma> ")" {pushaddr 0} {jz} <stmtlist> {jumplabel 0}
 
 ;<if>			::= "if" "(" <comma> ")" <stmtlist> <else>?
 ;<else>			::= "else" <stmtlist>
 
-;<while>			::= "while" "(" <comma> ")" <stmtlist>
-;<while>			::= "while" "(" <comma> {pushaddr} {jz} ")" <stmtlist>
-
 ;the comma and stmtlist branches get swapped
 <while>			::= "while" "(" {pushaddr 0} {jmp} {jumplabel 1} <comma> ")" {jumplabel 0} <stmtlist> {pushaddr 1} {jnz}
 
-;jmp loop_cond
-;loop_top
-;stmtlist
-;loop_cond
-;comma
-;jnz loop_top
-
-;;; a do-while is a while with the initial "jmp loop_cond" removed
-;loop_top
-;stmtlist
-;loop_cond
-;comma
-;jnz loop_top
-
-
-;<dowhile>		::= "do" <stmtlist> "while" "(" <comma> ")"
 <dowhile>		::= "do" {jumplabel 0} <stmtlist> "while" "(" <comma> ")" {pushaddr 0} {jnz}
 
 ;the condition (first comma) and stmtlist get swapped
 <forloop>		::= "for" "(" <mstmt>? {pushaddr 0} {jmp} {jumplabel 1} ";" <comma>? ";" <comma>? {jumplabel 0} ")" <stmtlist> {pushaddr 1} {jnz}
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; functions
+
+<funcdef>		::= "(" <funcdeflist> ")" {preamble} <block> {postamble}
+<funcdeflist>	::= "void"
+<funcdeflist>	::= <funcdefarg> <mfuncdefarg>*
+<funcdefarg>	::= type id?
+<mfuncdefarg>	::= "," <funcdefarg>
+
+;<funccall>		::= id "("
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; expressions (arithmetic, logical, bitwise, assignment)
 
 <assign>		::= <logical> <massign>?
-<massign> ::= "=" <assign> {=}
-<massign> ::= "+=" <assign> {+=}
-<massign> ::= "-=" <assign> {-=}
-<massign> ::= "*=" <assign> {*=}
-<massign> ::= "/=" <assign> {/=}
-<massign> ::= "%=" <assign> {%=}
-<massign> ::= "<<=" <assign> {<<=}
-<massign> ::= ">>=" <assign> {>>=}
-<massign> ::= "&=" <assign> {&=}
-<massign> ::= "|=" <assign> {|=}
-<massign> ::= "^=" <assign> {^=}
+<massign> 		::= "=" <assign> {=}
+<massign> 		::= "+=" <assign> {+=}
+<massign> 		::= "-=" <assign> {-=}
+<massign> 		::= "*=" <assign> {*=}
+<massign> 		::= "/=" <assign> {/=}
+<massign> 		::= "%=" <assign> {%=}
+<massign> 		::= "<<=" <assign> {<<=}
+<massign> 		::= ">>=" <assign> {>>=}
+<massign> 		::= "&=" <assign> {&=}
+<massign> 		::= "|=" <assign> {|=}
+<massign> 		::= "^=" <assign> {^=}
 
 
-<logical>     ::= <bitwise> <mlogical>*
-<mlogical>    ::= "&&" <bitwise> {&&}
-<mlogical>    ::= "||" <bitwise> {||}
+<logical>		::= <bitwise> <mlogical>*
+<mlogical>    	::= "&&" <bitwise> {&&}
+<mlogical>    	::= "||" <bitwise> {||}
 
-<bitwise>     ::= <equality> <mbitwise>*
-<mbitwise>    ::= "&" <equality> {&}
-<mbitwise>    ::= "|" <equality> {|}
-<mbitwise>    ::= "^" <equality> {^}
+<bitwise>     	::= <equality> <mbitwise>*
+<mbitwise>    	::= "&" <equality> {&}
+<mbitwise>    	::= "|" <equality> {|}
+<mbitwise>    	::= "^" <equality> {^}
 
-<equality>    ::= <relational> <mequality>*
-<mequality>   ::= "==" <equality> {==}
-<mequality>   ::= "!=" <equality> {!=}
+<equality>    	::= <relational> <mequality>*
+<mequality>   	::= "==" <equality> {==}
+<mequality>   	::= "!=" <equality> {!=}
 
-<relational>  ::= <shift> <mrelational>*
-<mrelational> ::= ">" <shift> {>}
-<mrelational> ::= ">=" <shift> {>=}
-<mrelational> ::= "<" <shift> {<}
-<mrelational> ::= "<=" <shift> {<=}
+<relational>  	::= <shift> <mrelational>*
+<mrelational> 	::= ">" <shift> {>}
+<mrelational> 	::= ">=" <shift> {>=}
+<mrelational> 	::= "<" <shift> {<}
+<mrelational> 	::= "<=" <shift> {<=}
 
-<shift>       ::= <sum> <mshift>*
-<mshift>      ::= "<<" <sum> {<<}
-<mshift>      ::= ">>" <sum> {>>}
+<shift>       	::= <sum> <mshift>*
+<mshift>      	::= "<<" <sum> {<<}
+<mshift>      	::= ">>" <sum> {>>}
 
 <sum>			::= <prod> <msum>*
 <msum>			::= "+" <prod> {+}
 <msum>			::= "-" <prod> {-}
 
-<prod>        ::= <misc2> <mprod>*
-<mprod>       ::= "*" <misc2> {*}
-<mprod>       ::= "/" <misc2> {/}
-<mprod>       ::= "%" <misc2> {%}
+<prod>        	::= <misc2> <mprod>*
+<mprod>       	::= "*" <misc2> {*}
+<mprod>       	::= "/" <misc2> {/}
+<mprod>       	::= "%" <misc2> {%}
 
 <misc2>			::= <misc1>
 <misc2>			::= <misc2_lval>
@@ -139,7 +151,7 @@
 ;<base>			::= <base_num>
 ;<base>			::= <base_expr>
 
-;<base_expr>		::= <base_other>
+;<base_expr>	::= <base_other>
 ;<base_num>		::= <base_other>
 
 <base_id>		::= id {push %s}
@@ -147,4 +159,4 @@
 <base_expr>		::= "(" <comma> ")"
 
 ;<base_other>	::= num {push %s}
-;<base_other>		::= "(" <comma> ")"
+;<base_other>	::= "(" <comma> ")"
