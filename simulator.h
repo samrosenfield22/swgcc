@@ -7,7 +7,8 @@
 #include "utils/printcolor.h"
 
 void generate_intermediate_code(node *n);
-int run_intermediate_code(void);
+void dump_intermediate(void);
+int run_intermediate_code(bool verbose);
 
 void define_var(symbol *sym);
 unsigned char *get_new_var(size_t bytes);

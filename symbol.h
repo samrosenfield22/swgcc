@@ -42,6 +42,7 @@ struct symbol_s
 void symbol_table_initialize(void);
 symbol *symbol_search(const char *name, symbol_type sym_type);
 symbol *symbol_create(const char *name, symbol_type sym_type, typespec *type);
+bool symbol_delete(const char *name);
 void assign_type_to_symbol(symbol *sym, const char *typestr);
 
 void dump_symbol_table(void);

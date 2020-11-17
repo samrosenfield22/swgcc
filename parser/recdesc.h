@@ -11,7 +11,7 @@
 //
 lextok *chars_to_substrings_lexer(const char *instr);
 
-node *parse(lextok *lex_tokens_in);
+node *parse(lextok *lex_tokens_in, bool verbose);
 node *parse_nonterm(nonterminal_type nt);
 
 bool consume_nonterm(node *root, prod_tok *tok, prod_tok *next_tok);

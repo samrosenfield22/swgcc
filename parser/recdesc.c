@@ -124,7 +124,7 @@ lextok *chars_to_substrings_lexer(const char *instr)
 }
 */
 
-node *parse(lextok *lex_tokens_in)
+node *parse(lextok *lex_tokens_in, bool verbose)
 {
 	PARSER_STATUS = P_OK;
 
@@ -135,8 +135,12 @@ node *parse(lextok *lex_tokens_in)
 
 	if(PARSER_STATUS==P_FAIL || lex_tok->str != NULL)
 	{
-		ptree_print(tree);
-		printf("\n^^^ parse tree before failure\n\n");
+		if(verbose)
+		{
+			ptree_print(tree);
+			printf("\n^^^ parse tree before failure\n\n");
+		}
+		
 		//clean up
 		return NULL;
 	}

@@ -13,6 +13,9 @@
 
 //void declare_new_vars(node *pt, int depth);
 //void declare_new_vars(node *decl);
+
+bool define_functions(node *pt);
+
 void declare_new_vars(const char *typestr, node *mdecl);
 
 bool is_lval(node *n);
@@ -49,8 +52,8 @@ enum semantic_status_type
 bool all_semantic_checks(node *pt)
 {
 	SEMANTIC_STATUS = SEM_OK;
-	
-	//get_lval_contexts(pt);
+
+	if(!define_functions(pt))				return false;
 	if(!check_variable_declarations(pt))	return false;
 	if(!handle_lvals(pt))					return false;
 	if(!set_conditional_jumps(pt))			return false;
@@ -60,6 +63,22 @@ bool all_semantic_checks(node *pt)
 }
 
 
+bool define_functions(node *pt)
+{
+	/*node **funcdef = ptree_filter(pt, n->is_nonterminal && (strcmp(n->str, "funcdef")==0));
+	assert(vector_len(funcdef) < 2);
+
+	if(vector_len(funcdef))
+	{
+		//int preamble = vector_search(funcdef, )
+		node *preamble = get_semact_child(funcdef, "preamble");
+	}	
+
+	//push bp; bp = sp
+	//
+	*/
+	return true;
+}
 
 bool check_variable_declarations(node *pt)
 {
@@ -85,10 +104,11 @@ bool check_variable_declarations(node *pt)
 		node **prev_decld_ids = ptree_filter(mstmts[s],		
 			is_nonterm_type(n, "base_id") && vector_search(decl_ids, (int)n)==-1);
 
-		printfcol(YELLOW_FONT, "decl ids:\n");
+		/*printfcol(YELLOW_FONT, "decl ids:\n");
 		vector_foreach(decl_ids, i) {printf("%s\n", decl_ids[i]->children[0]->str);}
 		printfcol(YELLOW_FONT, "other ids:\n");
 		vector_foreach(prev_decld_ids, i) {printf("%s\n", prev_decld_ids[i]->children[0]->str);}
+		*/
 
 		//check if all those vars are already declared
 		vector_filter(prev_decld_ids, n->children[0]->sym->declared == false);
@@ -96,6 +116,8 @@ bool check_variable_declarations(node *pt)
 		vector_foreach(prev_decld_ids, i)
 		{
 			printfcol(RED_FONT, "undeclared variable %s\n", prev_decld_ids[i]->children[0]->str);
+			if(!symbol_delete(prev_decld_ids[i]->children[0]->str))
+				assert(0);
 			SEMANTIC_STATUS = SEM_USING_UNDECLD_VAR;
 		}
 		SEMANTIC_BAIL_IF_NOT_OK
@@ -485,6 +507,17 @@ static node *get_nonterm_child(node *parent, char *ntstr)
 	}
 	return NULL;
 }
+
+/*static node *get_semact_child(node *parent, char *ntstr)
+{
+	vector_foreach(parent->children, i)
+	{
+		node *c = parent->children[i];
+		if(!c->is_nonterminal && c->ntype==SEMACT && strcmp(c->str, ntstr)==0)
+			return parent->children[i];
+	}
+	return NULL;
+}*/
 
 static bool is_nonterm_type(node *n, const char *ntstr)
 {

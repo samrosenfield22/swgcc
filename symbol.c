@@ -42,8 +42,8 @@ symbol *symbol_search(const char *name, symbol_type sym_type)
         {
             if(strcmp(name, SYMBOL_TABLE[i]->name)==0)
             {
-                if(sym_type == SYM_TYPESPEC)
-                    printf("sym %d: found type (%s), size = %d\n", i, name, SYMBOL_TABLE[i]->tspec->bytes);
+                //if(sym_type == SYM_TYPESPEC)
+                //    printf("sym %d: found type (%s), size = %d\n", i, name, SYMBOL_TABLE[i]->tspec->bytes);
 
                 return SYMBOL_TABLE[i];
             }
@@ -76,6 +76,27 @@ symbol *symbol_create(const char *name, symbol_type sym_type, typespec *type)
     }
 
     return vector_last(SYMBOL_TABLE);
+}
+
+bool symbol_delete(const char *name)
+{
+    symbol *sym = symbol_search(name, SYM_IDENTIFIER);
+    if(!sym)
+        return false;
+
+    //kinda dumb that we have to do this
+    vector_foreach(SYMBOL_TABLE, i)
+    {
+        if(SYMBOL_TABLE[i] == sym)
+        {
+            //printf("found symbol for deletion (%s) at index %d (%d total symbols)\n",
+            //    name, i, vector_len(SYMBOL_TABLE));
+            vector_delete(&SYMBOL_TABLE, i);
+            break;
+        }
+    }
+    
+    return true;
 }
 
 void assign_type_to_symbol(symbol *sym, const char *typestr)

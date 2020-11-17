@@ -6,93 +6,13 @@
 #include <assert.h>
 
 #include "lexer/lexer.h"
-#include "symbol.h"
 #include "parser/recdesc.h"
-#include "parser/semantic.h"
-#include "simulator.h"
+#include "interpreter.h"
+#include "symbol.h"
 #include "utils/printcolor.h"
 
-char strbuf[801];
 
-int count_char_in_str(const char *str, char c)
-{
-    int cnt = 0;
-    //for(char *p=str; p; p = strchr(p, c))
-    //    cnt++;
-    for(const char *p=str; *p; p++)
-        if(*p == c)
-            cnt++;
-    return cnt;
-}
-char *read_stmtlist(void)
-{
-    char inbuf[81];
-
-    int brackets=0;
-    strbuf[0] = '\0';
-    
-    printf(">> ");
-    do
-    {
-        for(int i=0; i<brackets; i++) putchar('\t');
-
-        fgets(inbuf, 80, stdin);
-        inbuf[strlen(inbuf)-1] = '\0';
-
-        //count parens and brackets
-        brackets += count_char_in_str(inbuf, '{');
-        brackets -= count_char_in_str(inbuf, '}');
-        
-        //printf("%d parens, %d brackets\n", parens, brackets);
-        snprintf(strbuf, 800, "%s%s ", strbuf, inbuf);
-
-        if(brackets < 0)
-            return NULL;
-        
-    } while(brackets>0);
-
-    //printf("\n%s\n", strbuf);
-    return strbuf;
-}
-
-bool interpreter(char *code)
-{
-    void *tokens = lexer(code);
-    if(!tokens)
-        return false;
-    lex_tokens_dump(tokens);
-    //dump_symbol_table();
-    //continue;
-
-    void *parse_tree = parse(tokens);
-    if(!parse_tree)
-    {
-        printfcol(RED_FONT, "parse failed\n");
-        return false;
-    }
-
-    ptree_print(parse_tree);
-
-    if(!all_semantic_checks(parse_tree))
-    {
-        printfcol(RED_FONT, "semantic fail\n");
-        return false;
-    }
-    ptree_print(parse_tree);
-
-    printf("\n--- semacts ---\n");
-    ptree_action(parse_tree, semact_print, true);
-    printf("----------------\n\n");
-
-    generate_intermediate_code(parse_tree);
-
-    int res = run_intermediate_code();
-    dump_symbol_table();
-    printf("\n%d\n", res);
-
-    return true;
-}
-
+void test_compiler(void);
 
 
 int main(void)
@@ -101,24 +21,106 @@ int main(void)
     symbol_table_initialize();
     lexer_initialize();
 
-    grammar *g = load_grammar("parser/c_grammar.txt");
-    dump_classnames();
-    //dump_productions(g);
-    dump_parse_table(g->parse_table);
+    load_grammar("parser/c_grammar.txt");
+    //grammar *g = load_grammar("parser/c_grammar.txt");
+    //dump_classnames();
+    //dump_parse_table(g->parse_table);
 
-    while(1)
-    {
+    //run test cases
+    test_compiler();
 
-        char *in = read_stmtlist();
-        if(!in)
-        {
-            printf("lmao\n");
-            assert(0);
-        }
-
-        interpreter(in);
-    }
+    //interpret forever
+    launch_interpreter();
 
     
     return 0;
+}
+
+/*
+things to test:
+
+decl
+multiple decl w comma
+comma exprs
+misc logical/arith exprs
+address/dereference     (p=&a,0)
+"complicated" lexemes (funny idents, bin, hex, char lits)
+blocks
+if
+while
+do while
+nested conditionals
+
+code that should fail:
+bad lexeme
+bad syntax
+redecl variable
+bad expr in lval context
+
+*/
+typedef struct test_case_s {char *src; int exp_status; int exp_val;} test_case;
+test_case test_cases[] =
+{
+    {"int a=5;", PASS, 5},
+    {"int b,c=1,p,pp,n;", PASS, 0},
+    {"b=1+5,4,2<<4;", PASS, 32},
+    {"3*(1<<5/3) + (26^12);", PASS, (3*(1<<5/3) + (26^12))},
+    {"p=&a,0;", PASS, 0},   //use the comma so this evalutates to 0 -- we aren't checking the value of &a
+    {"++(*p);", PASS, 6},
+    {"pp=&p,0;", PASS, 0},  //aren't checking
+    {"**pp = b;", PASS, 6},
+    {"b;", PASS, 6},
+    {"int a__1 = 0xFF;", PASS, 255},
+    {"a__1 = '!';", PASS, '!'},
+    {"a__1 = 0b11011011;", PASS, 0b11011011},
+    {"{a=8; b=11;}", PASS, 11},
+    {"a;", PASS, 8},
+    {"if(a-7) 22;", PASS, 22},
+    {"if(a-8) 22;", PASS, 0},
+    {"{while(a) {c*=a; a--;} c;}", PASS, 40320},
+    //do while {";", PASS, },
+    {"{while(c > 40220) {if(c & 0b1) n++; c--;} n;}", PASS, 50},
+
+    //code that should fail
+    {"int 9a;", LEX_FAIL, 0},
+    {"a = !!!;", LEX_FAIL, 0},
+    {"a + -;", PARSE_FAIL, 0},
+    {"int int;", PARSE_FAIL, 0},
+    {"a = ((5);", PARSE_FAIL, 0},
+    {"= a + 1;", PARSE_FAIL, 0},
+    {"int p;", SEMANTIC_FAIL, 0},
+    {"int q = q;", SEMANTIC_FAIL, 0},
+    {"a = notdecld;", SEMANTIC_FAIL, 0},
+    {"5 = a;", SEMANTIC_FAIL, 0},
+    //{";", , 0},
+    
+};
+
+void test_compiler(void)
+{
+    printf("\nrunning test cases..... ");
+
+    const char *fail_strings[] = {"", "lexer", "parser", "semantic"};
+    int res;
+    for(int i=0; i<sizeof(test_cases)/sizeof(test_cases[0]); i++)
+    {
+        int status = interpreter(&res, SILENT, test_cases[i].src);
+        if(status != test_cases[i].exp_status)
+        {
+            if(status == PASS)
+            {
+                printfcol(RED_FONT, "\nfailed test case %d (%s fail):\n%s\n",
+                    i, fail_strings[test_cases[i].exp_status], test_cases[i].src);
+                exit(-1);
+            }
+        }
+        if(status==PASS && res != test_cases[i].exp_val)    //we only care about the result if we wanted to pass
+        {
+            printfcol(RED_FONT, "\nfailed test case %d (expected %d, got %d):\n%s\n\n",
+                i, test_cases[i].exp_val, res, test_cases[i].src);
+            exit(-1);
+        }
+    }
+
+    printfcol(GREEN_FONT, "\nall tests passed!\n");
 }

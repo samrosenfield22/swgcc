@@ -97,7 +97,7 @@ grammar *load_grammar(const char *fname)
 
 static void build_production(char *bp)
 {
-    printf("building production %s\n", bp);
+    //printf("building production %s\n", bp);
     if(bp[0] == ';')    //bnf comment
         return;
 

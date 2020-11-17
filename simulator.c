@@ -10,7 +10,6 @@
 
 static bool filter_semact(node *n);
 static void generate_instruction(node *n, int depth);
-static void dump_intermediate(void);
 static void resolve_jump_addresses(void);
 
 int sim_stack_push(int n);
@@ -96,9 +95,7 @@ void generate_intermediate_code(node *n)
 
     ptree_traverse_dfs(n, filter_semact, generate_instruction, -1, true);
 
-    printf("before resolving jumps:\n"); dump_intermediate();
     resolve_jump_addresses();
-    printf("\n\nafter resolving jumps:\n"); dump_intermediate();
 
     intermediate_spec *cp = ip_start;
     vector_foreach(code, i)
@@ -162,7 +159,7 @@ static void generate_instruction(node *n, int depth)
     
 }
 
-static void dump_intermediate(void)
+void dump_intermediate(void)
 {
     int code_region_offset = (int)(ip_start - (intermediate_spec *)(SIM_MEM+SIM_CODE_OFFSET));
     vector_foreach(code,i)
@@ -174,45 +171,7 @@ static void dump_intermediate(void)
 
 void resolve_jump_addresses(void)
 {
-    /*
-    intermediate_spec *pushaddrs, *labels;
-    pushaddrs = vector(*pushaddrs, 0);
-    labels = vector(*labels, 0);
-    int *laddrs = vector(*laddrs, 0);
-
-    for(int i=0; i<vector_len(code); i++)
-    {
-        if(strcmp(code[i].op, "pushaddr")==0)
-            vector_append(pushaddrs, code[i]);
-        else if(strcmp(code[i].op, "jumplabel")==0)
-        {
-            vector_append(labels, code[i]);
-            vector_append(laddrs, i);
-        }
-    }
-
-    for(int i=0; i<vector_len(pushaddrs))
-    {
-        for(int j=0; j<vector_len(labels); j++)
-        {
-            if(pushaddrs[i].arg == labels[j].arg)
-            {
-                //update stuff
-
-
-                //delete
-                vector_delete(pushaddrs, i);
-                vector_delete(labels, j);
-                i--; j--;
-            }
-        }
-    }
-
-    vector_destroy(pushaddrs);
-    vector_destroy(labels);
-    */
-
-    printf("------------------------\nresolving jump addresses (%d total instrs)\n", vector_len(code));
+    //printf("------------------------\nresolving jump addresses (%d total instrs)\n", vector_len(code));
     for(int i=0; i<vector_len(code); i++)
     {
         //printf("\t%d %s\n", i, code[i].op);
@@ -309,7 +268,7 @@ struct op_entry
 //if (expr) {push jumpaddr} {jumpz semact} stmtlist {jmp label}
 //if (expr) {jz semact} stmtlist {jumplabel}
 
-int run_intermediate_code(void)
+int run_intermediate_code(bool verbose)
 {
     sp = sim_stack;
     //ip = 0;
@@ -317,11 +276,13 @@ int run_intermediate_code(void)
     jump_taken = false;
     int res;
 
-    printf("\n-------------------\nexecution dump:\n");
-
-    printf("before:             ");
-    dump_symbol_table_oneline();
-    printf("\n");
+    if(verbose)
+    {
+        printf("\n-------------------\nexecution dump:\n");
+        printf("before:             ");
+        dump_symbol_table_oneline();
+        printf("\n");
+    }
 
     //for(ip=0; ip<ispec_index; ip++)
     //for(ip=0; ip<vector_len(code); /*ip++*/)
@@ -330,10 +291,13 @@ int run_intermediate_code(void)
         //intermediate_spec *instr = &code[ip];
         jump_taken = false;
 
-        int cursor = printf("%03d %s", ip-ip_start, ip->op);
-        if(strcmp(ip->op, "push")==0 || strcmp(ip->op, "pushv")==0)
-            cursor += printf(" %d", ip->arg);
-        while(cursor < 20) {putchar(' '); cursor++;}
+        if(verbose)
+        {
+            int cursor = printf("%03d %s", ip-ip_start, ip->op);
+            if(strcmp(ip->op, "push")==0 || strcmp(ip->op, "pushv")==0)
+                cursor += printf(" %d", ip->arg);
+            while(cursor < 20) {putchar(' '); cursor++;}
+        }
 
         /*if(strcmp(instr->op, "push")==0)
             sim_stack_push(instr->arg);
@@ -359,11 +323,14 @@ int run_intermediate_code(void)
             }
         //}
 
-        dump_symbol_table_oneline();
-        printf("\t(");
-        for(int *p=sim_stack; p<sp; p++)
-            printf("%d ", *p);
-        printf(")\n");
+        if(verbose)
+        {
+            dump_symbol_table_oneline();
+            printf("\t(");
+            for(int *p=sim_stack; p<sp; p++)
+                printf("%d ", *p);
+            printf(")\n");
+        }
 
         if(!jump_taken)
             ip++;
