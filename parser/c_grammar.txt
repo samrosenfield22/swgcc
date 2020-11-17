@@ -68,7 +68,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; functions
 
-<funcdef>		::= "(" <funcdeflist> ")" {preamble} <block> {postamble}
+<funcdef>		::= "(" <funcdeflist> ")" {enter} <block> {leave} {ret}
 <funcdeflist>	::= "void"
 <funcdeflist>	::= <funcdefarg> <mfuncdefarg>*
 <funcdefarg>	::= type id?

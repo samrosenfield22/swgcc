@@ -53,6 +53,8 @@ bool all_semantic_checks(node *pt)
 {
 	SEMANTIC_STATUS = SEM_OK;
 
+	//tree_sanity_check(pt);
+
 	if(!define_functions(pt))				return false;
 	if(!check_variable_declarations(pt))	return false;
 	if(!handle_lvals(pt))					return false;
@@ -62,21 +64,24 @@ bool all_semantic_checks(node *pt)
 	return true;
 }
 
+void tree_sanity_check(node *pt)
+{
+	//node **invalid_ntypes = ptree_filter(pt, n->ntype > )
+}
 
 bool define_functions(node *pt)
 {
-	/*node **funcdef = ptree_filter(pt, n->is_nonterminal && (strcmp(n->str, "funcdef")==0));
+	node **funcdef = ptree_filter(pt, n->is_nonterminal && (strcmp(n->str, "funcdef")==0));
 	assert(vector_len(funcdef) < 2);
 
-	if(vector_len(funcdef))
-	{
-		//int preamble = vector_search(funcdef, )
-		node *preamble = get_semact_child(funcdef, "preamble");
-	}	
+	if(vector_len(funcdef) == 0)
+		goto define_functions_exit;
 
-	//push bp; bp = sp
-	//
-	*/
+	//update the symbol
+	//decl->declspec->funcdef (since the decl has the base_id)
+
+	define_functions_exit:
+	vector_destroy(funcdef);
 	return true;
 }
 

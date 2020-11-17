@@ -67,6 +67,7 @@ test_case test_cases[] =
     {"3*(1<<5/3) + (26^12);", PASS, (3*(1<<5/3) + (26^12))},
     {"p=&a,0;", PASS, 0},   //use the comma so this evalutates to 0 -- we aren't checking the value of &a
     {"++(*p);", PASS, 6},
+    {"*(p+8);", PASS, 1},
     {"pp=&p,0;", PASS, 0},  //aren't checking
     {"**pp = b;", PASS, 6},
     {"b;", PASS, 6},

@@ -89,8 +89,6 @@ bool symbol_delete(const char *name)
     {
         if(SYMBOL_TABLE[i] == sym)
         {
-            //printf("found symbol for deletion (%s) at index %d (%d total symbols)\n",
-            //    name, i, vector_len(SYMBOL_TABLE));
             vector_delete(&SYMBOL_TABLE, i);
             break;
         }

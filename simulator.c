@@ -10,6 +10,7 @@
 
 static bool filter_semact(node *n);
 static void generate_instruction(node *n, int depth);
+static void generate_instruction_from_str(char *str);
 static void resolve_jump_addresses(void);
 
 int sim_stack_push(int n);
@@ -80,18 +81,41 @@ char SIM_MEM[0x10000];
 char *var_addr = SIM_MEM + SIM_VARS_OFFSET;
 
 int sim_stack[256];
-int *sp = sim_stack;
+int *sp = sim_stack, *bp = sim_stack;
 //int ip;
 
 intermediate_spec *ip, *ip_start=(intermediate_spec *)(SIM_MEM + SIM_CODE_OFFSET), *ip_end;
+bool jump_taken, declaration_only;
 
-bool jump_taken;
+typedef struct meta_op_s
+{
+    char *mnemonic;
+    char **ops;
+} meta_op;
+
+meta_op META_OPS[] =
+{
+    {"enter",   (char*[]){"pushv bp", "push bp", "pushv sp", "=", NULL}},   //push bp; bp = sp
+    {"leave",   (char*[]){"push sp", "pushv bp", "=", "pop bp", NULL}},      //sp = bp; pop bp
+    {"ret",     (char*[]){"pop ip", NULL}}
+};
+
+static meta_op *meta_op_lookup(const char *mop)
+{
+    for(int i=0; i<sizeof(META_OPS)/sizeof(META_OPS[0]); i++)
+    {
+        if(strcmp(mop, META_OPS[i].mnemonic)==0)
+            return &META_OPS[i];
+    }
+    return NULL;
+}
 
 void generate_intermediate_code(node *n)
 {
-    //ispec_index = 0;
     if(code) vector_destroy(code);
     code = vector(*code, 0);
+
+    declaration_only = false;
 
     ptree_traverse_dfs(n, filter_semact, generate_instruction, -1, true);
 
@@ -119,14 +143,6 @@ void define_var(symbol *sym)
     var_addr += bytes;
 }
 
-//delet
-/*unsigned char *get_new_var(size_t bytes) //or a ptr to a type (in a type table?)
-{
-    unsigned char *addr = var_addr;
-    var_addr += bytes;
-    return addr;
-}*/
-
 static bool filter_semact(node *n)
 {
 	return (!(n->is_nonterminal) && n->ntype == SEMACT);
@@ -134,34 +150,47 @@ static bool filter_semact(node *n)
 
 static void generate_instruction(node *n, int depth)
 {
-    vector_inc(&code);
-
-    char *subs = strtok(n->str, " ");
-    //code[ispec_index].op = strdup(subs);
-    vector_last(code).op = strdup(subs);
-
     
+    meta_op *meta = meta_op_lookup(n->str);
+    if(meta)
+    {
+        declaration_only = true;
+        for(char **p=meta->ops; *p; p++)
+            generate_instruction_from_str(*p);
+    }
+    else
+        generate_instruction_from_str(n->str);
+}
+
+static void generate_instruction_from_str(char *str)
+{
+    vector_inc(&code);
+    char *scpy = strdup(str);
+
+    char *subs = strtok(scpy, " ");
+    vector_last(code).op = strdup(subs);    
 
     subs = strtok(NULL, " ");
     if(subs)
     {
-        vector_last(code).arg = strtol(subs, NULL, 10);
-        //code[ispec_index].arg = strtol(subs, NULL, 10);
-        //printf(", arg=%d)\n", vector_last(code).arg);
+        if(strcmp(subs, "bp")==0)       vector_last(code).arg = (int)&bp;
+        else if(strcmp(subs, "sp")==0)  vector_last(code).arg = (int)&sp;
+        else if(strcmp(subs, "ip")==0)  vector_last(code).arg = (int)&ip;
+        else vector_last(code).arg = strtol(subs, NULL, 10);
     }
-    //else
-    //    printf(")\n");
+    else
+        vector_last(code).arg = 0;
 
-    //printf("instruction %d\n\top: %s\n\targ: %d\n\n", ispec_index, code[ispec_index].op, code[ispec_index].arg);
-
-	//ispec_index++;
-
-    
+    free(scpy);
 }
 
 void dump_intermediate(void)
 {
     int code_region_offset = (int)(ip_start - (intermediate_spec *)(SIM_MEM+SIM_CODE_OFFSET));
+    printf("bp:\taddr %d\tval %d\n", (int)&bp, (int)bp);
+    printf("sp:\taddr %d\tval %d\n", (int)&sp, (int)sp);
+    printf("ip:\taddr %d\tval %d\n", (int)&ip, (int)ip);
+    
     vector_foreach(code,i)
     {
         printf("instruction %d (%d)(op: %s, arg %d)\n",
@@ -270,7 +299,13 @@ struct op_entry
 
 int run_intermediate_code(bool verbose)
 {
-    sp = sim_stack;
+    if(declaration_only)
+    {
+        printf("declaration only, not executing code\n");
+        return 0;
+    }
+
+    //sp = sim_stack;
     //ip = 0;
 
     jump_taken = false;
@@ -348,6 +383,7 @@ int run_intermediate_code(bool verbose)
     if(sp != sim_stack)
     {
         printf("--- sp not at stack head, it's at %d\n", sp-sim_stack);
+        assert(0);
     }
     //return sim_stack_pop(0);
     return res;
@@ -369,6 +405,8 @@ int sim_stack_pop(int d)
 {
     assert(sp != sim_stack);    //underflow
     --sp;
+    if(d)
+        *(int*)d = *sp;
     return *sp;
 }
 

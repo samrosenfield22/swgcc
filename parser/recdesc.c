@@ -140,17 +140,12 @@ node *parse(lextok *lex_tokens_in, bool verbose)
 			ptree_print(tree);
 			printf("\n^^^ parse tree before failure\n\n");
 		}
-		
+
 		//clean up
 		return NULL;
 	}
 	else
 		return tree;
-
-	/*if(lex_tok->str != NULL)
-		return false;
-	else
-		return tree;*/
 }
 
 //#define PARSER_FAILURE do {PARSER_STATUS = P_FAIL; return NULL;} while(0)
@@ -164,7 +159,7 @@ node *parse_nonterm(nonterminal_type nt)
 	//printf("\nparsing nonterminal: %s\n", gg.nonterminals[nt]);
 	//printf("\tlookahead at lex tok %d (%s)\n", lex_tok-lex_tokens, lex_tok->str);
 
-	node *root = node_create(true, nt, NULL, NULL);
+	node *root = node_create(true, nt, "", NULL);
 
 	//look in the parse table, get the next production to apply
 	int prod_index = parse_table_lookup(nt);

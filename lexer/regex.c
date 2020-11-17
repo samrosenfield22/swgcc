@@ -223,7 +223,7 @@ static node *parse_range(void)
             root->children[ci++] = pn_create(CHARTOK, c);
         }
 
-        printf("range from %c (%d) to %c (%d) (%d)\n", start, start, end, end, end-start);
+        //printf("range from %c (%d) to %c (%d) (%d)\n", start, start, end, end, end-start);
         union_ct += (end-start);
 
         ri++;//index_advance();
@@ -235,10 +235,10 @@ static node *parse_range(void)
     }
     assert(rp[ri] == ']');
 
-    printf("\t%d unions\n", union_ct);
+    //printf("\t%d unions\n", union_ct);
     for(int i=0; i<union_ct; i++)
         root->children[ci++] = pn_create(SEMACT, '|');
-    printf("ci = %d\n", ci);
+    //printf("ci = %d\n", ci);
 
     return root;
 }
