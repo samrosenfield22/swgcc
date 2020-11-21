@@ -7,7 +7,7 @@
 #include "../simulator.h"
 #include "../utils/printcolor.h"
 
-bool all_semantic_checks(node *pt);
+bool all_semantic_checks(bool *decl_only, node *pt);
 
 bool check_variable_declarations(node *pt);
 bool handle_lvals(node *pt);

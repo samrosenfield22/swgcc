@@ -11,6 +11,7 @@ typedef enum symbol_type_e
 {
     SYM_ANY,
     SYM_IDENTIFIER,
+    //SYM_FUNCTION,
     SYM_TYPESPEC,
     SYM_OTHER_KW
 } symbol_type;

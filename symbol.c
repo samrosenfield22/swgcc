@@ -26,6 +26,7 @@ void symbol_table_initialize(void)
     symbol_create("int", SYM_TYPESPEC, &(typespec){4});
     symbol_create("char", SYM_TYPESPEC, &(typespec){1});
     symbol_create("short", SYM_TYPESPEC, &(typespec){2});
+    symbol_create("function", SYM_TYPESPEC, &(typespec){0});
 
     //symbol_create("lmao", SYM_IDENTIFIER, NULL);
 
@@ -119,6 +120,12 @@ void dump_symbol_table(void)
             printf("symbol %d:\t\'%s\' (%s)(@ %d) = %d\n",
                 i, sym->name, sym->type->name, (int)(sym->var), *(sym->var));
         }
+        /*else if(SYMBOL_TABLE[i]->sym_type==SYM_FUNCTION)
+        {
+            symbol *sym = SYMBOL_TABLE[i];
+            printf("symbol %d:\t\'%s\' (%s)(@ %d) = %d\n",
+                i, sym->name, sym->type->name, (int)(sym->var), *(sym->var));
+        }*/
         /*
         //if(SYMBOL_TABLE[i]->sym_type==SYM_IDENTIFIER)
         printf("symbol %d:\t\'%s\'", i, SYMBOL_TABLE[i]->name);

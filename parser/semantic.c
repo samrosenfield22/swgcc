@@ -14,7 +14,7 @@
 //void declare_new_vars(node *pt, int depth);
 //void declare_new_vars(node *decl);
 
-bool define_functions(node *pt);
+bool define_functions(bool *decl_only, node *pt);
 
 void declare_new_vars(const char *typestr, node *mdecl);
 
@@ -35,6 +35,7 @@ void update_jump_addr_pairs(node *loop);
 
 //static node **get_nonterms(node *tree, char *ntstr);
 static node *get_nonterm_child(node *parent, char *ntstr);
+static node *get_nonterm_child_deep(node *parent, char *ntstr);
 static bool is_nonterm_type(node *n, const char *ntstr);
 static void semantic_print_failure(void);
 
@@ -49,13 +50,13 @@ enum semantic_status_type
 #define SEMANTIC_BAIL_IF_NOT_OK	if(SEMANTIC_STATUS != SEM_OK) {semantic_print_failure(); return false;}
 
 
-bool all_semantic_checks(node *pt)
+bool all_semantic_checks(bool *decl_only, node *pt)
 {
 	SEMANTIC_STATUS = SEM_OK;
 
 	//tree_sanity_check(pt);
 
-	if(!define_functions(pt))				return false;
+	if(!define_functions(decl_only, pt))				return false;
 	if(!check_variable_declarations(pt))	return false;
 	if(!handle_lvals(pt))					return false;
 	if(!set_conditional_jumps(pt))			return false;
@@ -69,19 +70,35 @@ void tree_sanity_check(node *pt)
 	//node **invalid_ntypes = ptree_filter(pt, n->ntype > )
 }
 
-bool define_functions(node *pt)
+bool define_functions(bool *decl_only, node *pt)
 {
-	node **funcdef = ptree_filter(pt, n->is_nonterminal && (strcmp(n->str, "funcdef")==0));
-	assert(vector_len(funcdef) < 2);
 
-	if(vector_len(funcdef) == 0)
-		goto define_functions_exit;
+	node **decls = ptree_filter(pt, is_nonterm_type(n, "decl"));
+	vector_foreach(decls, i)
+	{
+		node **funcdef = ptree_filter(decls[i], is_nonterm_type(n, "funcdef"));
+		if(vector_len(funcdef))
+		{
 
-	//update the symbol
-	//decl->declspec->funcdef (since the decl has the base_id)
+			//there should only be 1
+			assert(vector_len(funcdef) == 1);
 
-	define_functions_exit:
-	vector_destroy(funcdef);
+			//update the base id's symbol, make it a function type
+			node *bid = decls[i]->children[1];
+			symbol *sym = bid->children[0]->sym;
+			printf("defining function \'%s\'\n", sym->name); getchar();
+			assign_type_to_symbol(sym, "function");
+			//sym->symtype = SYM_FUNCTION;
+			sym->var = get_code_addr();
+			sym->declared = true;
+
+			*decl_only = true;
+
+			vector_destroy(funcdef);
+		}
+	}
+	vector_destroy(decls);
+
 	return true;
 }
 
@@ -100,6 +117,15 @@ bool check_variable_declarations(node *pt)
 
 		node **decl_parents = ptree_filter(mstmts[s],
 			is_nonterm_type(n, "decl") || is_nonterm_type(n, "mdecl_assign"));
+		vector_foreach(decl_parents, i)
+		{
+			if(get_nonterm_child_deep(decl_parents[i], "funcdef"))
+			{
+				printf("funcdef at child %d (len is %d)\n", i, vector_len(decl_parents));
+				vector_delete(&decl_parents, i);
+				i--;
+			}
+		}
 		//node **decl_ids = vector_map(decl_parents, n->children[1], node *);
 		node **decl_ids = vector_map(decl_parents, get_nonterm_child(n, "base_id"), node *);	
 		vector_destroy(decl_parents);
@@ -511,6 +537,15 @@ static node *get_nonterm_child(node *parent, char *ntstr)
 			return parent->children[i];
 	}
 	return NULL;
+}
+
+//looks all the way through the tree, returns the first nonterm match
+static node *get_nonterm_child_deep(node *parent, char *ntstr)
+{
+	node **matches = ptree_filter(parent, is_nonterm_type(n, ntstr));
+	node *child = vector_len(matches)? matches[0] : NULL;
+	vector_destroy(matches);
+	return child;
 }
 
 /*static node *get_semact_child(node *parent, char *ntstr)

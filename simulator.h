@@ -9,8 +9,10 @@
 void generate_intermediate_code(node *n);
 void dump_intermediate(void);
 int run_intermediate_code(bool verbose);
+void skip_code(void);
 
 void define_var(symbol *sym);
+void *get_code_addr(void);
 unsigned char *get_new_var(size_t bytes);
 
 #endif //SIMULATOR_H_

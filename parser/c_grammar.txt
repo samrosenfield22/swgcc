@@ -143,6 +143,9 @@
 <misc1_context>	::= <base_expr> <m_misc1>?
 <m_misc1>		::= "++" {++post}
 <m_misc1>		::= "--" {--post}
+<m_misc1>		::= "(" <arglist>? ")" {call}
+<arglist>		::= <comma> <margs>*
+<margs>			::= "," <comma>
 
 <base>			::= <base_id>
 <base>			::= <base_num>

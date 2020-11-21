@@ -85,7 +85,7 @@ int *sp = sim_stack, *bp = sim_stack;
 //int ip;
 
 intermediate_spec *ip, *ip_start=(intermediate_spec *)(SIM_MEM + SIM_CODE_OFFSET), *ip_end;
-bool jump_taken, declaration_only;
+bool jump_taken;//, declaration_only;
 
 typedef struct meta_op_s
 {
@@ -95,9 +95,13 @@ typedef struct meta_op_s
 
 meta_op META_OPS[] =
 {
-    {"enter",   (char*[]){"pushv bp", "push bp", "pushv sp", "=", NULL}},   //push bp; bp = sp
-    {"leave",   (char*[]){"push sp", "pushv bp", "=", "pop bp", NULL}},      //sp = bp; pop bp
-    {"ret",     (char*[]){"pop ip", NULL}}
+    //{"enter",   (char*[]){"pushv bp", "push bp", "pushv sp", "=", "pop", NULL}},   //push bp; bp = sp
+    //{"leave",   (char*[]){"push sp", "pushv bp", "=", "pop", "pop bp", NULL}},      //sp = bp; pop bp
+    {"enter", (char*[]){NULL}},
+    {"leave", (char*[]){NULL}},
+    {"ret",     (char*[]){"jmp", NULL}},    //or "pop ip"
+    {"call",    (char*[]){"push ret", "jmp", NULL}}    //the pushv ret gets swapped w the previous instruction
+                                                        //(the base_id push)
 };
 
 static meta_op *meta_op_lookup(const char *mop)
@@ -115,7 +119,7 @@ void generate_intermediate_code(node *n)
     if(code) vector_destroy(code);
     code = vector(*code, 0);
 
-    declaration_only = false;
+    //declaration_only = false;
 
     ptree_traverse_dfs(n, filter_semact, generate_instruction, -1, true);
 
@@ -143,6 +147,11 @@ void define_var(symbol *sym)
     var_addr += bytes;
 }
 
+void *get_code_addr(void)
+{
+    return ip_start;
+}
+
 static bool filter_semact(node *n)
 {
 	return (!(n->is_nonterminal) && n->ntype == SEMACT);
@@ -150,11 +159,17 @@ static bool filter_semact(node *n)
 
 static void generate_instruction(node *n, int depth)
 {
+    //when we define a function, the function name is a base_id which gets pushed onto the stack.
+    //we don't want this
+    if(strcmp(n->str, "enter")==0)
+    {
+        vector_delete(&code, vector_len(code)-1);
+    }
     
     meta_op *meta = meta_op_lookup(n->str);
     if(meta)
     {
-        declaration_only = true;
+        //declaration_only = true;
         for(char **p=meta->ops; *p; p++)
             generate_instruction_from_str(*p);
     }
@@ -176,25 +191,35 @@ static void generate_instruction_from_str(char *str)
         if(strcmp(subs, "bp")==0)       vector_last(code).arg = (int)&bp;
         else if(strcmp(subs, "sp")==0)  vector_last(code).arg = (int)&sp;
         else if(strcmp(subs, "ip")==0)  vector_last(code).arg = (int)&ip;
+        else if(strcmp(subs, "ret")==0)  vector_last(code).arg = (int)(ip + 4); //a func call takes 4 instrs
+        //else if(strcmp(subs, "ret")==0)  vector_last(code).arg = 123456;
         else vector_last(code).arg = strtol(subs, NULL, 10);
     }
     else
         vector_last(code).arg = 0;
+
+
+    //function call grammar is <base_id> {pushret} {jmp}, but we need the {pushret} to go before the <base_id>'s
+    //value (the func addr) gets pushed -- so we swap them 
+    if(strcmp(str, "push ret")==0)
+    {
+        vector_swap(code, vector_len(code)-1, vector_len(code)-2);
+    }
 
     free(scpy);
 }
 
 void dump_intermediate(void)
 {
-    int code_region_offset = (int)(ip_start - (intermediate_spec *)(SIM_MEM+SIM_CODE_OFFSET));
+    //int code_region_offset = (int)(ip_start - (intermediate_spec *)(SIM_MEM+SIM_CODE_OFFSET));
     printf("bp:\taddr %d\tval %d\n", (int)&bp, (int)bp);
     printf("sp:\taddr %d\tval %d\n", (int)&sp, (int)sp);
     printf("ip:\taddr %d\tval %d\n", (int)&ip, (int)ip);
     
     vector_foreach(code,i)
     {
-        printf("instruction %d (%d)(op: %s, arg %d)\n",
-            i, i + code_region_offset, code[i].op, code[i].arg);
+        printf("instruction %2d (%d)(op: %s, arg %d)\n",
+            i, (int)(&ip_start[i]), code[i].op, code[i].arg);
     }
 }
 
@@ -299,17 +324,16 @@ struct op_entry
 
 int run_intermediate_code(bool verbose)
 {
-    if(declaration_only)
-    {
-        printf("declaration only, not executing code\n");
-        return 0;
-    }
-
-    //sp = sim_stack;
-    //ip = 0;
-
     jump_taken = false;
     int res;
+
+    /*if(declaration_only)
+    {
+        printf("declaration only, not executing code\n");
+        res = (int)ip_start;
+        ip = ip_end;
+        goto execution_done;
+    }*/
 
     if(verbose)
     {
@@ -328,7 +352,7 @@ int run_intermediate_code(bool verbose)
 
         if(verbose)
         {
-            int cursor = printf("%03d %s", ip-ip_start, ip->op);
+            int cursor = printf("(%d) %s", (int)ip, ip->op);
             if(strcmp(ip->op, "push")==0 || strcmp(ip->op, "pushv")==0)
                 cursor += printf(" %d", ip->arg);
             while(cursor < 20) {putchar(' '); cursor++;}
@@ -379,6 +403,7 @@ int run_intermediate_code(bool verbose)
         }
     }
 
+    //execution_done:
     ip_start = ip;
     if(sp != sim_stack)
     {
@@ -387,6 +412,13 @@ int run_intermediate_code(bool verbose)
     }
     //return sim_stack_pop(0);
     return res;
+}
+
+//if we're only doing a decl (i.e. if the code is a function declaration), we generate it but don't execute it --
+//we call this instead of run_intermediate_code()
+void skip_code(void)
+{
+    ip = ip_start = ip_end;
 }
 
 int sim_stack_push(int n)
