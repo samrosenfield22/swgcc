@@ -3,8 +3,10 @@
 #ifndef REGEX_H_
 #define REGEX_H_
 
-#include "../../swglib/automata/nfa/nfa_build.h"
-#include "../../swglib/automata/nfa/nfa_run.h"
+//#include "../../swglib/automata/nfa/nfa_build.h"
+//#include "../../swglib/automata/nfa/nfa_run.h"
+#include "nfa/nfa_build.h"
+#include "nfa/nfa_run.h"
 
 typedef struct node_s node;
 typedef enum tok_type_e tok_type;
