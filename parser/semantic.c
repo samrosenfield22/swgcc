@@ -87,9 +87,7 @@ bool define_functions(bool *decl_only, node *pt)
 			//update the base id's symbol, make it a function type
 			node *bid = decls[i]->children[1];
 			symbol *sym = bid->children[0]->sym;
-			//printf("defining function \'%s\'\n", sym->name); getchar();
 			assign_type_to_symbol(sym, "function");
-			//sym->symtype = SYM_FUNCTION;
 			sym->var = get_code_addr();
 			sym->declared = true;
 
@@ -112,22 +110,18 @@ bool check_variable_declarations(node *pt)
 	vector_foreach(mstmts, s)
 	{
 		//get all vars that should get declared
-		/*node **mdecls = ptree_filter(mstmts[s], is_nonterm_type(n, "mdecl"));
-		node **decl_ids = vector_map(mdecls, n->children[0], node *);	
-		vector_destroy(mdecls);*/
-
+		//(all base_ids that are the targets of a decl statment, and are not function declarations)
 		node **decl_parents = ptree_filter(mstmts[s],
 			is_nonterm_type(n, "decl") || is_nonterm_type(n, "mdecl_assign"));
 		vector_foreach(decl_parents, i)
 		{
 			if(get_nonterm_child_deep(decl_parents[i], "funcdef"))
 			{
-				printf("funcdef at child %d (len is %d)\n", i, vector_len(decl_parents));
+				//printf("funcdef at child %d (len is %d)\n", i, vector_len(decl_parents));
 				vector_delete(&decl_parents, i);
 				i--;
 			}
 		}
-		//node **decl_ids = vector_map(decl_parents, n->children[1], node *);
 		node **decl_ids = vector_map(decl_parents, get_nonterm_child(n, "base_id"), node *);	
 		vector_destroy(decl_parents);
 
@@ -136,15 +130,8 @@ bool check_variable_declarations(node *pt)
 		node **prev_decld_ids = ptree_filter(mstmts[s],		
 			is_nonterm_type(n, "base_id") && vector_search(decl_ids, (int)n)==-1);
 
-		/*printfcol(YELLOW_FONT, "decl ids:\n");
-		vector_foreach(decl_ids, i) {printf("%s\n", decl_ids[i]->children[0]->str);}
-		printfcol(YELLOW_FONT, "other ids:\n");
-		vector_foreach(prev_decld_ids, i) {printf("%s\n", prev_decld_ids[i]->children[0]->str);}
-		*/
-
 		//check if all those vars are already declared
 		vector_filter(prev_decld_ids, n->children[0]->sym->declared == false);
-
 		vector_foreach(prev_decld_ids, i)
 		{
 			printfcol(RED_FONT, "undeclared variable %s\n", prev_decld_ids[i]->children[0]->str);

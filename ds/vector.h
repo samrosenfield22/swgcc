@@ -55,6 +55,7 @@ int vector_search(void *v, int term);
 //void *vector_map(void *v, void *(*map)(void *item));
 void *vector_nth(void *v, size_t index);
 size_t vector_len(void *v);								//returns the vector length (number of elements)
+bool vector_is_empty(void *v);
 size_t vector_internal_len(void *v);					//
 size_t vector_elem_size(void *v);						//
 size_t vector_total_size(void *v);						//

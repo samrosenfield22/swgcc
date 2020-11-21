@@ -245,6 +245,11 @@ size_t vector_len(void *v)
 	return vec_header(v)->len;
 }
 
+bool vector_is_empty(void *v)
+{
+	return vector_len(v)==0;
+}
+
 size_t vector_internal_len(void *v)
 {
 	CHECK(v, return 0);

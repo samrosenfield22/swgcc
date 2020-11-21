@@ -36,8 +36,16 @@ void symbol_table_initialize(void)
 
 symbol *symbol_search(const char *name, symbol_type sym_type)
 {
+
+    symbol **match = vector_copy_filter(SYMBOL_TABLE, 
+        (n->sym_type == sym_type || sym_type==SYM_ANY) && strcmp(name, n->name)==0);
+    symbol *m = vector_is_empty(match)? NULL : match[0];
+    vector_destroy(match);
+    return m;
+    //////////////////////////////////////////
+
     //printf("searching for symbol \'%s\'... ", name);
-    for(int i=0; i<vector_len(SYMBOL_TABLE); i++)
+    /*for(int i=0; i<vector_len(SYMBOL_TABLE); i++)
     {
         if((SYMBOL_TABLE[i]->sym_type == sym_type) || (sym_type==SYM_ANY))
         {
@@ -51,12 +59,18 @@ symbol *symbol_search(const char *name, symbol_type sym_type)
         }
     }
     //printf("not found\n");
-    return NULL;
+    return NULL;*/
 }
 
 symbol *symbol_search_by_addr(int *varaddr)
 {
-    vector_foreach(SYMBOL_TABLE, i)
+    symbol **match = vector_copy_filter(SYMBOL_TABLE, 
+        n->sym_type == SYM_IDENTIFIER && n->var == varaddr);
+    symbol *m = vector_is_empty(match)? NULL : match[0];
+    vector_destroy(match);
+    return m;
+
+    /*vector_foreach(SYMBOL_TABLE, i)
     {
         if(SYMBOL_TABLE[i]->sym_type != SYM_IDENTIFIER)
             continue;
@@ -64,7 +78,7 @@ symbol *symbol_search_by_addr(int *varaddr)
         if(SYMBOL_TABLE[i]->var == varaddr)
             return SYMBOL_TABLE[i];
     }
-    return NULL;
+    return NULL;*/
 }
 
 symbol *symbol_create(const char *name, symbol_type sym_type, typespec *type)
@@ -167,7 +181,7 @@ void dump_symbol_table_oneline(void)
     //return;
     for(int i=0; i<vector_len(SYMBOL_TABLE); i++)
     {
-        if(SYMBOL_TABLE[i]->sym_type == SYM_IDENTIFIER)
+        if(SYMBOL_TABLE[i]->sym_type == SYM_IDENTIFIER && strcmp(SYMBOL_TABLE[i]->type->name, "function")!=0)
             printf("%s=%d   ", SYMBOL_TABLE[i]->name, *SYMBOL_TABLE[i]->var);
 
     }

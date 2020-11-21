@@ -82,6 +82,11 @@ test_case test_cases[] =
     //do while {";", PASS, },
     {"{while(c > 40220) {if(c & 0b1) n++; c--;} n;}", PASS, 50},
 
+    {"int fn(void) {return 11<<1;}", PASS, 0},
+    {"fn() + 5;", PASS, 27},
+    {"int afact(void) {b=1; while(a) {b*=a; a--;} return b;}", PASS, 0},
+    {"{a=5; afact();}", PASS, 120},
+
     //code that should fail
     {"int 9a;", LEX_FAIL, 0},
     {"a = !!!;", LEX_FAIL, 0},

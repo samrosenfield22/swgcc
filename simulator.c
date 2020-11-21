@@ -8,12 +8,20 @@
 
 #include "simulator.h"
 
+typedef struct intermediate_spec_s
+{
+    //ptree_tok_type type;
+    char *op;
+    int arg;
+} intermediate_spec;
+
 static bool filter_semact(node *n);
 static void generate_instruction(node *n, int depth);
 static void generate_instruction_from_str(char *str);
 static void resolve_jump_addresses(void);
 
-static int print_arg_name(int arg);
+static int print_instr(intermediate_spec *instr);
+static int print_reg_or_val(int arg);
 
 int sim_stack_push(int n);
 int sim_stack_pushv(int n);
@@ -65,12 +73,7 @@ int jz_op(int);
 int jnz_op(int);
 
 
-typedef struct intermediate_spec_s
-{
-    //ptree_tok_type type;
-    char *op;
-    int arg;
-} intermediate_spec;
+
 //intermediate_spec code[1000];
 //int ispec_index = 0;
 intermediate_spec *code = NULL;
@@ -218,14 +221,17 @@ static void generate_instruction_from_str(char *str)
 void dump_intermediate(void)
 {
     //int code_region_offset = (int)(ip_start - (intermediate_spec *)(SIM_MEM+SIM_CODE_OFFSET));
-    printf("bp:\taddr %d\tval %d\n", (int)&bp, (int)bp);
-    printf("sp:\taddr %d\tval %d\n", (int)&sp, (int)sp);
-    printf("ip:\taddr %d\tval %d\n", (int)&ip, (int)ip);
+    //printf("bp:\taddr %d\tval %d\n", (int)&bp, (int)bp);
+    //printf("sp:\taddr %d\tval %d\n", (int)&sp, (int)sp);
+    //printf("ip:\taddr %d\tval %d\n", (int)&ip, (int)ip);
     
     vector_foreach(code,i)
     {
-        printf("instruction %2d (%d)(op: %s, arg %d)\n",
-            i, (int)(&ip_start[i]), code[i].op, code[i].arg);
+        printf("instruction %02d (", i);        //instruction index
+        print_reg_or_val((int)(&ip_start[i]));  //instruction address
+        printf(")(");
+        print_instr(&code[i]);                  //instruction (op, and arg if there is one)
+        printf(")\n");
     }
 }
 
@@ -327,6 +333,7 @@ int run_intermediate_code(bool verbose)
 {
     jump_taken = false;
     int res;
+    const int dump_spaces = 24;
 
     /*if(declaration_only)
     {
@@ -336,10 +343,12 @@ int run_intermediate_code(bool verbose)
         goto execution_done;
     }*/
 
+    int cursor;
     if(verbose)
     {
         printf("\n-------------------\nexecution dump:\n");
-        printf("before:             ");
+        cursor = printf("before: ");
+        while(cursor++ < dump_spaces) putchar(' ');
         dump_symbol_table_oneline();
         printf("\n");
     }
@@ -353,12 +362,12 @@ int run_intermediate_code(bool verbose)
 
         if(verbose)
         {
-            int cursor = printf("(%d) %s ", (int)ip, ip->op);
-            if(strcmp(ip->op, "push")==0 || strcmp(ip->op, "pushv")==0 || strcmp(ip->op, "pop")==0)
-            {
-                cursor += print_arg_name(ip->arg);
-            }
-            while(cursor < 20) {putchar(' '); cursor++;}
+            //cursor = printf("(%d) ", (int)ip);
+            printf("(");
+            cursor = print_reg_or_val((int)ip) + 2;
+            printf(")");
+            cursor += print_instr(ip);
+            while(cursor++ < dump_spaces) putchar(' ');
         }
 
         /*if(strcmp(instr->op, "push")==0)
@@ -424,7 +433,16 @@ void skip_code(void)
     ip = ip_start = ip_end;
 }
 
-static int print_arg_name(int arg)
+static int print_instr(intermediate_spec *instr)
+{
+    int cursor = printf("%s ", instr->op);
+    if(!(strcmp(instr->op, "push")==0 || strcmp(instr->op, "pushv")==0 || strcmp(instr->op, "pop")==0))
+        return cursor;
+
+    return cursor + print_reg_or_val(instr->arg);
+}
+
+static int print_reg_or_val(int arg)
 {
     symbol *sym = symbol_search_by_addr((int*)arg);
     if(sym)
@@ -432,9 +450,9 @@ static int print_arg_name(int arg)
         return printf("%s", sym->name);
     }
     //else if(ip->arg == (int)&ip) return printf("ip");
-    else if(arg == (int)&bp) return printf("bp");
-    else if(arg == (int)&sp) return printf("sp");
-    else if(arg == (int)&eax) return printf("eax");
+    else if(arg == (int)&bp)        return printf("bp");
+    else if(arg == (int)&sp)        return printf("sp");
+    else if(arg == (int)&eax)       return printf("eax");
     else if((char*)arg >= (char*)ip_start) return printf("main+%d", (char*)arg - (char*)ip_start);
     else return printf("%d", arg);
 }
