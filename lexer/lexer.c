@@ -49,7 +49,7 @@ regex_action_pair regex_table[] =
     {"", "; | { | } | \\[ | \\] | \\( | \\) | = | , ", NULL, LEXTOK_TERM, NULL},
     {"", "\\&\\& | \\|\\| | \\^ | \\& | \\| | \\^ | ~", NULL, LEXTOK_TERM, NULL},
     {"", "<< | >> | \\+ | - | \\* | \\/ | \\%", NULL, LEXTOK_TERM, NULL},
-    {"", "if | else | for | while | do | void", NULL, LEXTOK_TERM, NULL},
+    {"", "if | else | for | while | do | void | return", NULL, LEXTOK_TERM, NULL},
 
     {"type", "int|char|short|long", NULL, LEXTOK_IDENT(2), NULL},
     //{"id", "[a-z]+", NULL, LEXTOK_IDENT(0), make_identifier},

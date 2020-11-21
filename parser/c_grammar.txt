@@ -15,6 +15,7 @@
 <stmt>			::= <while>
 <stmt>			::= <dowhile>
 <stmt>			::= <forloop>
+<stmt>			::= "return" <comma> ";" {pop eax} {pushaddr 0} {jmp}
 
 <mstmt>			::= <comma> ";" {pop}
 <mstmt>			::= <decl>
@@ -26,11 +27,6 @@
 <declspec>		::= <funcdef>
 <declspec>		::= ";" {pop}
 <mdecl_assign>	::= "," {pop} <base_id> <decl_assign>?
-
-;used to be this
-;<decl>			::= type <mdecl> <moredecl>*
-;<moredecl>		::= "," <mdecl>
-;<mdecl>			::= <base_id> <decl_assign>?
 
 <decl_assign>	::= <var_assign>
 <decl_assign>	::= <array_assign>
@@ -52,29 +48,30 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; conditionals
 
-<if>			::= "if" "(" <comma> ")" {pushaddr 0} {jz} <stmtlist> {jumplabel 0}
+<if>			::= "if" "(" <comma> ")" {pushaddr 1} {jz} <stmtlist> {jumplabel 1}
 
 ;<if>			::= "if" "(" <comma> ")" <stmtlist> <else>?
 ;<else>			::= "else" <stmtlist>
 
 ;the comma and stmtlist branches get swapped
-<while>			::= "while" "(" {pushaddr 0} {jmp} {jumplabel 1} <comma> ")" {jumplabel 0} <stmtlist> {pushaddr 1} {jnz}
+<while>			::= "while" "(" {pushaddr 1} {jmp} {jumplabel 2} <comma> ")" {jumplabel 1} <stmtlist> {pushaddr 2} {jnz}
 
-<dowhile>		::= "do" {jumplabel 0} <stmtlist> "while" "(" <comma> ")" {pushaddr 0} {jnz}
+<dowhile>		::= "do" {jumplabel 1} <stmtlist> "while" "(" <comma> ")" {pushaddr 1} {jnz}
 
 ;the condition (first comma) and stmtlist get swapped
-<forloop>		::= "for" "(" <mstmt>? {pushaddr 0} {jmp} {jumplabel 1} ";" <comma>? ";" <comma>? {jumplabel 0} ")" <stmtlist> {pushaddr 1} {jnz}
+<forloop>		::= "for" "(" <mstmt>? {pushaddr 1} {jmp} {jumplabel 2} ";" <comma>? ";" <comma>? {jumplabel 1} ")" <stmtlist> {pushaddr 2} {jnz}
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; functions
 
-<funcdef>		::= "(" <funcdeflist> ")" {enter} <block> {leave} {ret}
+;if the function contains a return statement, this stores the return value in eax, then jumps to jumplabel 0,
+;skipping the {push 0} {pop eax}
+;if execution reaches the end of the block (without hitting a return statement), then we set eax=0
+<funcdef>		::= "(" <funcdeflist> ")" {enter} <block> {push 0} {pop eax} {jumplabel 0} {leave} {ret}
 <funcdeflist>	::= "void"
 <funcdeflist>	::= <funcdefarg> <mfuncdefarg>*
 <funcdefarg>	::= type id?
 <mfuncdefarg>	::= "," <funcdefarg>
-
-;<funccall>		::= id "("
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; expressions (arithmetic, logical, bitwise, assignment)
@@ -143,7 +140,7 @@
 <misc1_context>	::= <base_expr> <m_misc1>?
 <m_misc1>		::= "++" {++post}
 <m_misc1>		::= "--" {--post}
-<m_misc1>		::= "(" <arglist>? ")" {call}
+<m_misc1>		::= "(" <arglist>? ")" {call} {pushv eax}
 <arglist>		::= <comma> <margs>*
 <margs>			::= "," <comma>
 

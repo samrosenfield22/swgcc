@@ -54,6 +54,19 @@ symbol *symbol_search(const char *name, symbol_type sym_type)
     return NULL;
 }
 
+symbol *symbol_search_by_addr(int *varaddr)
+{
+    vector_foreach(SYMBOL_TABLE, i)
+    {
+        if(SYMBOL_TABLE[i]->sym_type != SYM_IDENTIFIER)
+            continue;
+
+        if(SYMBOL_TABLE[i]->var == varaddr)
+            return SYMBOL_TABLE[i];
+    }
+    return NULL;
+}
+
 symbol *symbol_create(const char *name, symbol_type sym_type, typespec *type)
 {
     assert(sym_type != SYM_ANY);

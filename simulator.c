@@ -13,6 +13,8 @@ static void generate_instruction(node *n, int depth);
 static void generate_instruction_from_str(char *str);
 static void resolve_jump_addresses(void);
 
+static int print_arg_name(int arg);
+
 int sim_stack_push(int n);
 int sim_stack_pushv(int n);
 int sim_stack_pop(int);
@@ -82,6 +84,7 @@ char *var_addr = SIM_MEM + SIM_VARS_OFFSET;
 
 int sim_stack[256];
 int *sp = sim_stack, *bp = sim_stack;
+int eax;
 //int ip;
 
 intermediate_spec *ip, *ip_start=(intermediate_spec *)(SIM_MEM + SIM_CODE_OFFSET), *ip_end;
@@ -191,7 +194,10 @@ static void generate_instruction_from_str(char *str)
         if(strcmp(subs, "bp")==0)       vector_last(code).arg = (int)&bp;
         else if(strcmp(subs, "sp")==0)  vector_last(code).arg = (int)&sp;
         else if(strcmp(subs, "ip")==0)  vector_last(code).arg = (int)&ip;
-        else if(strcmp(subs, "ret")==0)  vector_last(code).arg = (int)(ip + 4); //a func call takes 4 instrs
+        else if(strcmp(subs, "ret")==0)  vector_last(code).arg = (int)(ip + vector_len(code) + 3-2);
+            //a func call takes 3 instrs. but by the time we're generating this instruction, we've already
+            //made 2 extra instructions
+        else if(strcmp(subs, "eax")==0)  vector_last(code).arg = (int)&eax;
         //else if(strcmp(subs, "ret")==0)  vector_last(code).arg = 123456;
         else vector_last(code).arg = strtol(subs, NULL, 10);
     }
@@ -225,67 +231,34 @@ void dump_intermediate(void)
 
 void resolve_jump_addresses(void)
 {
-
-    //int *labels = vector(*labels, 0);
-    int labels[] = {0, 0};
-    int skipped = 0;
+    int *labels = vector(*labels, 0);
+    
+    //get all label addresses
     vector_foreach(code, i)
     {
         if(strcmp(code[i].op, "jumplabel")==0)
         {
-            //int skipped = vector_len(labels);
-            //vector_append(labels, (int)&(ip_start[i]) + skipped);
-            labels[code[i].arg] = (int)&(ip_start[i]) + skipped;
-            skipped++;
+            while(vector_len(labels) <= code[i].arg)
+                vector_append(labels, 0);
+            assert(labels[code[i].arg] == 0);       //there must not be multiple labels with the same val
+            labels[code[i].arg] = (int)&(ip_start[i]);
+            vector_delete(&code, i);
         }
     }
 
+    //update all jmps with the correct address
     vector_foreach(code, i)
     {
         if(strcmp(code[i].op, "pushaddr")==0)
         {
             free(code[i].op);
             code[i].op = strdup("push");
+            assert(labels[code[i].arg] != 0);       //the label with that id must exist
             code[i].arg = labels[code[i].arg];
         }
     }
 
-    return;
-    /////////////////////////////////////////////////////
-
-    //printf("------------------------\nresolving jump addresses (%d total instrs)\n", vector_len(code));
-    for(int i=0; i<vector_len(code); i++)
-    {
-        //printf("\t%d %s\n", i, code[i].op);
-        if(strcmp(code[i].op, "pushaddr")==0)
-        {
-            //find the matching jump label
-            int skipped_labels = 0;
-            for(int j=0; j<vector_len(code); j++)
-            {
-                
-                if(strcmp(code[j].op, "jumplabel")==0)
-                {
-                    if(code[i].arg==code[j].arg)
-                    {
-                        //printf("pushaddr at %d, jumplabel at %d\n", i, j);
-                        //exit(0);
-                        free(code[i].op);
-                        //char buf[41];
-                        //snprintf(buf, 40, "push %d", j);
-                        //code[i].op = strdup(buf);
-                        code[i].op = strdup("push");
-                        //code[i].arg = j - skipped_labels;
-                        code[i].arg = (int)&(ip_start[j - skipped_labels]);
-
-                        vector_delete(&code, j);
-                    }
-                    else
-                        skipped_labels++;
-                }
-            }
-        }
-    }
+    vector_destroy(labels);
 }
 
 struct op_entry
@@ -380,9 +353,11 @@ int run_intermediate_code(bool verbose)
 
         if(verbose)
         {
-            int cursor = printf("(%d) %s", (int)ip, ip->op);
-            if(strcmp(ip->op, "push")==0 || strcmp(ip->op, "pushv")==0)
-                cursor += printf(" %d", ip->arg);
+            int cursor = printf("(%d) %s ", (int)ip, ip->op);
+            if(strcmp(ip->op, "push")==0 || strcmp(ip->op, "pushv")==0 || strcmp(ip->op, "pop")==0)
+            {
+                cursor += print_arg_name(ip->arg);
+            }
             while(cursor < 20) {putchar(' '); cursor++;}
         }
 
@@ -448,6 +423,24 @@ void skip_code(void)
 {
     ip = ip_start = ip_end;
 }
+
+static int print_arg_name(int arg)
+{
+    symbol *sym = symbol_search_by_addr((int*)arg);
+    if(sym)
+    {
+        return printf("%s", sym->name);
+    }
+    //else if(ip->arg == (int)&ip) return printf("ip");
+    else if(arg == (int)&bp) return printf("bp");
+    else if(arg == (int)&sp) return printf("sp");
+    else if(arg == (int)&eax) return printf("eax");
+    else if((char*)arg >= (char*)ip_start) return printf("main+%d", (char*)arg - (char*)ip_start);
+    else return printf("%d", arg);
+}
+
+
+///////////////////////
 
 int sim_stack_push(int n)
 {
