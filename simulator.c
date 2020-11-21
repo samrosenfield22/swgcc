@@ -101,8 +101,8 @@ typedef struct meta_op_s
 
 meta_op META_OPS[] =
 {
-    //{"enter",   (char*[]){"pushv bp", "push bp", "pushv sp", "=", "pop", NULL}},   //push bp; bp = sp
-    //{"leave",   (char*[]){"push sp", "pushv bp", "=", "pop", "pop bp", NULL}},      //sp = bp; pop bp
+    //{"enter",   (char*[]){"pushv bp", "pushv sp", "pop bp", NULL}},   //push bp; bp = sp
+    //{"leave",   (char*[]){"pushv bp", "pop sp", "pop bp", NULL}},      //sp = bp; pop bp
     {"enter", (char*[]){NULL}},
     {"leave", (char*[]){NULL}},
     {"ret",     (char*[]){"jmp", NULL}},    //or "pop ip"
@@ -326,13 +326,11 @@ struct op_entry
     
 };
 
-//if (expr) {push jumpaddr} {jumpz semact} stmtlist {jmp label}
-//if (expr) {jz semact} stmtlist {jumplabel}
 
 int run_intermediate_code(bool verbose)
 {
     jump_taken = false;
-    int res;
+    int res = 0;
     const int dump_spaces = 24;
 
     /*if(declaration_only)
@@ -353,8 +351,6 @@ int run_intermediate_code(bool verbose)
         printf("\n");
     }
 
-    //for(ip=0; ip<ispec_index; ip++)
-    //for(ip=0; ip<vector_len(code); /*ip++*/)
     for(ip=ip_start; ip<ip_end; )
     {
         //intermediate_spec *instr = &code[ip];
@@ -370,36 +366,26 @@ int run_intermediate_code(bool verbose)
             while(cursor++ < dump_spaces) putchar(' ');
         }
 
-        /*if(strcmp(instr->op, "push")==0)
-            sim_stack_push(instr->arg);
-        else if(strcmp(instr->op, "pushv")==0)
-            sim_stack_push(*(int*)instr->arg);
-        else if(strcmp(instr->op, "pop")==0)
-            sim_stack_pop(0);    //what do with result?
-        else
-        {*/
-            for(int i=0; i<sizeof(op_table)/sizeof(op_table[0]); i++)
+        //execute the instruction
+        for(int i=0; i<sizeof(op_table)/sizeof(op_table[0]); i++)
+        {
+            if(strcmp(ip->op, op_table[i].op)==0)
             {
-                if(strcmp(ip->op, op_table[i].op)==0)
-                {
-                    res = op_table[i].func(ip->arg);     //the arg is a dummy value unless the func is push(v)
-
-                    //if(op is a jump op)
-                    //if(res == 1)    //right now, only the jmp ops return anything (other than 0)
-                                    //1 means a jump was taken -- so we don't increment ip
-                    //    jump_taken = true;
-
-                    break;
-                }
+                res = op_table[i].func(ip->arg);     //the arg is a dummy value unless the func is push(v)
+                break;
             }
-        //}
+        }
 
         if(verbose)
         {
-            dump_symbol_table_oneline();
-            printf("\t(");
+            //dump_symbol_table_oneline();
+            printf("\tsp=bp+%d\t(", sp-bp);
             for(int *p=sim_stack; p<sp; p++)
-                printf("%d ", *p);
+            {
+                //printf("%d ", *p);
+                print_reg_or_val(*p);
+                printf(" ");
+            }
             printf(")\n");
         }
 
@@ -445,15 +431,15 @@ static int print_instr(intermediate_spec *instr)
 static int print_reg_or_val(int arg)
 {
     symbol *sym = symbol_search_by_addr((int*)arg);
-    if(sym)
-    {
-        return printf("%s", sym->name);
-    }
+    symbol *func = symbol_search_function_addr((int*)arg);
+    
     //else if(ip->arg == (int)&ip) return printf("ip");
-    else if(arg == (int)&bp)        return printf("bp");
-    else if(arg == (int)&sp)        return printf("sp");
-    else if(arg == (int)&eax)       return printf("eax");
-    else if((char*)arg >= (char*)ip_start) return printf("main+%d", (char*)arg - (char*)ip_start);
+    if(arg == (int)&bp)                     return printf("bp");
+    else if(arg == (int)&sp)                return printf("sp");
+    else if(arg == (int)&eax)               return printf("eax");
+    else if(sym)                            return printfcol(YELLOW_FONT, "%s", sym->name);
+    else if((char*)arg >= (char*)ip_start)  return printfcol(YELLOW_FONT, "main+%d", (char*)arg - (char*)ip_start);
+    else if(func)     return printfcol(YELLOW_FONT, "%s+%d", func->name, (char*)arg - (char*)(func->var));
     else return printf("%d", arg);
 }
 
@@ -476,9 +462,10 @@ int sim_stack_pop(int d)
 {
     assert(sp != sim_stack);    //underflow
     --sp;
+    int popval = *sp;
     if(d)
-        *(int*)d = *sp;
-    return *sp;
+        *(int*)d = popval;
+    return popval;
 }
 
 //all binary operators follow the same semantic action format
@@ -592,25 +579,6 @@ int comma_op(int d)
     sim_stack_push(b);
     return 0;
 }
-
-/*int assign_op(void)
-{
-    int b = sim_stack_pop();
-    int *lv = (int*)sim_stack_pop();
-    //printf("assigning value %d to variable\n", b);
-
-    //symbol *as = (symbol *)sim_stack_pop();
-    //int *val = as->val;
-
-    //printf("simulator: var w symbol at addr %p, value is %d\n", as, as->val);
-
-    *lv = b;
-    //as->val = b;
-    //as->initialized = true;
-    sim_stack_push(b);
-    
-    return 0;
-}*/
 
 int jmp_op(int d)
 {

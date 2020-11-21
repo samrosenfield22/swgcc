@@ -16,11 +16,12 @@
 #define set_text_color(color)	system(color);
 
 #define printfcol(color, ...)			\
-	do {								\
+	({								\
 		set_text_color(color);			\
-		printf(__VA_ARGS__);			\
+		int dummy = printf(__VA_ARGS__);			\
 		set_text_color(RESET_FONT);		\
-	} while(0)
+		dummy;							\
+	})
 
 #define putscol(color, str)				\
 	do {								\

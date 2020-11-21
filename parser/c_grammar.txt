@@ -50,9 +50,6 @@
 
 <if>			::= "if" "(" <comma> ")" {pushaddr 1} {jz} <stmtlist> {jumplabel 1}
 
-;<if>			::= "if" "(" <comma> ")" <stmtlist> <else>?
-;<else>			::= "else" <stmtlist>
-
 ;the comma and stmtlist branches get swapped
 <while>			::= "while" "(" {pushaddr 1} {jmp} {jumplabel 2} <comma> ")" {jumplabel 1} <stmtlist> {pushaddr 2} {jnz}
 

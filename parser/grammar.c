@@ -486,6 +486,8 @@ int find_parse_table_column(char *str, prod_tok_type ntype)
       assert(index != -1);
       index += ident_len;
   }
+  else    
+      assert(0);
 
   return index;
 }

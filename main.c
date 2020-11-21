@@ -27,7 +27,7 @@ int main(void)
     //dump_parse_table(g->parse_table);
 
     //run test cases
-    test_compiler();
+    //test_compiler();
 
     //interpret forever
     launch_interpreter();
