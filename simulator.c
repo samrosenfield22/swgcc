@@ -225,6 +225,34 @@ void dump_intermediate(void)
 
 void resolve_jump_addresses(void)
 {
+
+    //int *labels = vector(*labels, 0);
+    int labels[] = {0, 0};
+    int skipped = 0;
+    vector_foreach(code, i)
+    {
+        if(strcmp(code[i].op, "jumplabel")==0)
+        {
+            //int skipped = vector_len(labels);
+            //vector_append(labels, (int)&(ip_start[i]) + skipped);
+            labels[code[i].arg] = (int)&(ip_start[i]) + skipped;
+            skipped++;
+        }
+    }
+
+    vector_foreach(code, i)
+    {
+        if(strcmp(code[i].op, "pushaddr")==0)
+        {
+            free(code[i].op);
+            code[i].op = strdup("push");
+            code[i].arg = labels[code[i].arg];
+        }
+    }
+
+    return;
+    /////////////////////////////////////////////////////
+
     //printf("------------------------\nresolving jump addresses (%d total instrs)\n", vector_len(code));
     for(int i=0; i<vector_len(code); i++)
     {
