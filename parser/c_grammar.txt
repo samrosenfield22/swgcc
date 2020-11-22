@@ -3,6 +3,11 @@
 ;;;;; by default, the token on the lhs of the first production is the start symbol ;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;jump id 	meaning
+;0 			function postamble
+;1,2		misc conditionals
+;3 			ret from function call
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; top-level productions
 
@@ -137,7 +142,7 @@
 <misc1_context>	::= <base_expr> <m_misc1>?
 <m_misc1>		::= "++" {++post}
 <m_misc1>		::= "--" {--post}
-<m_misc1>		::= "(" <arglist>? ")" {call} {pushv eax}
+<m_misc1>		::= "(" <arglist>? ")" {pushaddr 3} {jmp} {jumplabel 3} {pushv eax}
 <arglist>		::= <comma> <margs>*
 <margs>			::= "," <comma>
 

@@ -101,12 +101,12 @@ typedef struct meta_op_s
 
 meta_op META_OPS[] =
 {
-    //{"enter",   (char*[]){"pushv bp", "pushv sp", "pop bp", NULL}},   //push bp; bp = sp
-    //{"leave",   (char*[]){"pushv bp", "pop sp", "pop bp", NULL}},      //sp = bp; pop bp
-    {"enter", (char*[]){NULL}},
-    {"leave", (char*[]){NULL}},
-    {"ret",     (char*[]){"jmp", NULL}},    //or "pop ip"
-    {"call",    (char*[]){"push ret", "jmp", NULL}}    //the pushv ret gets swapped w the previous instruction
+    {"enter",   (char*[]){"pushv bp", "pushv sp", "pop bp", NULL}},   //push bp; bp = sp
+    {"leave",   (char*[]){"pushv bp", "pop sp", "pop bp", NULL}},      //sp = bp; pop bp
+    //{"enter", (char*[]){NULL}},
+    //{"leave", (char*[]){NULL}},
+    {"ret",     (char*[]){"jmp", NULL}}    //or "pop ip"
+    //{"call",    (char*[]){"pushaddr 3", "jmp", NULL}}    //the pushv ret gets swapped w the previous instruction
                                                         //(the base_id push)
 };
 
@@ -128,6 +128,9 @@ void generate_intermediate_code(node *n)
     //declaration_only = false;
 
     ptree_traverse_dfs(n, filter_semact, generate_instruction, -1, true);
+
+    //printf("~~~ instructions before resolving jumps ~~~\n");
+    //dump_intermediate();
 
     resolve_jump_addresses();
 
@@ -197,7 +200,7 @@ static void generate_instruction_from_str(char *str)
         if(strcmp(subs, "bp")==0)       vector_last(code).arg = (int)&bp;
         else if(strcmp(subs, "sp")==0)  vector_last(code).arg = (int)&sp;
         else if(strcmp(subs, "ip")==0)  vector_last(code).arg = (int)&ip;
-        else if(strcmp(subs, "ret")==0)  vector_last(code).arg = (int)(ip + vector_len(code) + 3-2);
+        //else if(strcmp(subs, "ret")==0)  vector_last(code).arg = (int)(ip_start + vector_len(code) + 3-2);
             //a func call takes 3 instrs. but by the time we're generating this instruction, we've already
             //made 2 extra instructions
         else if(strcmp(subs, "eax")==0)  vector_last(code).arg = (int)&eax;
@@ -210,10 +213,11 @@ static void generate_instruction_from_str(char *str)
 
     //function call grammar is <base_id> {pushret} {jmp}, but we need the {pushret} to go before the <base_id>'s
     //value (the func addr) gets pushed -- so we swap them 
-    if(strcmp(str, "push ret")==0)
+    //if(strcmp(str, "push ret")==0)
+    /*if(strcmp(str, "pushaddr 3")==0)
     {
         vector_swap(code, vector_len(code)-1, vector_len(code)-2);
-    }
+    }*/
 
     free(scpy);
 }
@@ -259,6 +263,10 @@ void resolve_jump_addresses(void)
         {
             free(code[i].op);
             code[i].op = strdup("push");
+            if(labels[code[i].arg] == 0)
+            {
+                printf("trying to push jump addr %d\n", i);
+            }
             assert(labels[code[i].arg] != 0);       //the label with that id must exist
             code[i].arg = labels[code[i].arg];
         }
@@ -379,7 +387,7 @@ int run_intermediate_code(bool verbose)
         if(verbose)
         {
             //dump_symbol_table_oneline();
-            printf("\tsp=bp+%d\t(", sp-bp);
+            printf("\tbp=%d sp=%d\t(", bp-sim_stack, sp-sim_stack);
             for(int *p=sim_stack; p<sp; p++)
             {
                 //printf("%d ", *p);
@@ -422,7 +430,8 @@ void skip_code(void)
 static int print_instr(intermediate_spec *instr)
 {
     int cursor = printf("%s ", instr->op);
-    if(!(strcmp(instr->op, "push")==0 || strcmp(instr->op, "pushv")==0 || strcmp(instr->op, "pop")==0))
+    if(!(strcmp(instr->op, "push")==0 || strcmp(instr->op, "pushv")==0 || strcmp(instr->op, "pop")==0
+         || strcmp(instr->op, "pushaddr")==0 || strcmp(instr->op, "jumplabel")==0))  //in case we dump before resolving 
         return cursor;
 
     return cursor + print_reg_or_val(instr->arg);
@@ -437,9 +446,10 @@ static int print_reg_or_val(int arg)
     if(arg == (int)&bp)                     return printf("bp");
     else if(arg == (int)&sp)                return printf("sp");
     else if(arg == (int)&eax)               return printf("eax");
-    else if(sym)                            return printfcol(YELLOW_FONT, "%s", sym->name);
+    else if(sym)                            return printf("%s", sym->name);
     else if((char*)arg >= (char*)ip_start)  return printfcol(YELLOW_FONT, "main+%d", (char*)arg - (char*)ip_start);
     else if(func)     return printfcol(YELLOW_FONT, "%s+%d", func->name, (char*)arg - (char*)(func->var));
+    else if(sim_stack<=(int*)arg && (int*)arg<=sp) return printf("stack+%d", (int*)(arg)-sim_stack);
     else return printf("%d", arg);
 }
 
@@ -454,13 +464,15 @@ int sim_stack_push(int n)
 
 int sim_stack_pushv(int n)
 {
-    *sp++ = *(int*)n;
+    //*sp++ = *(int*)n;
+    int pushv = *(int*)n;
+    *sp++ = pushv;
     return 0;
 }
 
 int sim_stack_pop(int d)
 {
-    assert(sp != sim_stack);    //underflow
+    assert(sp > sim_stack);    //underflow
     --sp;
     int popval = *sp;
     if(d)

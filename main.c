@@ -27,7 +27,7 @@ int main(void)
     //dump_parse_table(g->parse_table);
 
     //run test cases
-    //test_compiler();
+    test_compiler();
 
     //interpret forever
     launch_interpreter();
@@ -84,7 +84,8 @@ test_case test_cases[] =
 
     {"int fn(void) {return 11<<1;}", PASS, 0},
     {"fn() + 5;", PASS, 27},
-    {"int afact(void) {b=1; while(a) {b*=a; a--;} return b;}", PASS, 0},
+    {"int mulab(void) {return b * a;}", PASS, 0},
+    {"int afact(void) {b=1; while(a) {b = mulab(); a--;} return b;}", PASS, 0},
     {"{a=5; afact();}", PASS, 120},
 
     //code that should fail
