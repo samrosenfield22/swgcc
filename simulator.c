@@ -210,15 +210,6 @@ static void generate_instruction_from_str(char *str)
     else
         vector_last(code).arg = 0;
 
-
-    //function call grammar is <base_id> {pushret} {jmp}, but we need the {pushret} to go before the <base_id>'s
-    //value (the func addr) gets pushed -- so we swap them 
-    //if(strcmp(str, "push ret")==0)
-    /*if(strcmp(str, "pushaddr 3")==0)
-    {
-        vector_swap(code, vector_len(code)-1, vector_len(code)-2);
-    }*/
-
     free(scpy);
 }
 

@@ -215,15 +215,12 @@ bool handle_lvals(node *pt)
 	return true;
 }
 
-int jlpair;
+int jlpair = 4;		//track jump addr/label pairs. this is a kludgey solution -- it can't be confused for any
+					//addr/labels w id 0 or 1 (conditionals/loops) or 2 (function exit)
+
 bool set_conditional_jumps(node *pt)
 {
 	//swap the condition and stmtlist in while loops
-	jlpair = 4;	//track jump addr/label pairs. this is a kludgey solution -- it can't be confused for any
-				//addr/labels w id 0 or 1 (conditionals/loops) or 2 (function exit)
-
-
-	//node **whiles = get_nonterms(pt, "while");
 	node **whiles = ptree_filter(pt, is_nonterm_type(n, "while"));
 	vector_foreach(whiles, i)
 	{
@@ -250,12 +247,7 @@ bool set_conditional_jumps(node *pt)
 		is_nonterm_type(n, "misc1_context") && get_nonterm_child(n, "base_id") && vector_len(n->children)==2);
 	vector_filter(fcalls, vector_len(n->children[1]->children)>2);
 	node **fc = vector_map(fcalls, n->children[1], node *);
-	/*vector_foreach(fcalls, i)
-	{
-		printf("%d ", i);
-		node_print(fcalls[i], 0);
-		getchar();
-	}*/
+	
 	vector_foreach(fcalls, i)
 	{
 		//get the index of the "pushaddr 3" node
@@ -267,13 +259,7 @@ bool set_conditional_jumps(node *pt)
 		}
 		assert(strstr(fc[i]->children[j]->str, "pushaddr"));
 
-		//the index (2) depends on whether or not there are args to the function!
-		printf("swapping nodes:\n");
-		node_print(fcalls[i]->children[0], 0);
-		node_print(fc[i]->children[j], 0);
-		/*!!!!!!!!!!!!!!!!!!!!!!
-		need to swap the base_id and the pushaddr 3*/
-		//swap fcalls[i]->children[0], fc->children[3]
+		//need to swap the base_id and the pushaddr 3
 		node *temp = fcalls[i]->children[0];
 		fcalls[i]->children[0] = fc[i]->children[j];
 		fc[i]->children[j] = temp;
@@ -285,12 +271,10 @@ bool set_conditional_jumps(node *pt)
 	node **all_conditionals = ptree_traverse_dfs(pt, is_conditional, NULL, -1, false);
 	vector_foreach(all_conditionals, i)
 	{
-		//update_jump_addr_pairs(all_conditionals[i]);
 		update_jump_semacts(all_conditionals[i], "pushaddr");
 		update_jump_semacts(all_conditionals[i], "jumplabel");
 		jlpair += 4;	//if we have multiple conditionals, this avoids them sharing jumplabel/pushaddr ids
 	}
-	//getchar();
 	vector_destroy(all_conditionals);
 
 	return true;
@@ -371,48 +355,6 @@ bool is_conditional(node *n)
 //&expr, ++expr/expr++, expr.n, expr = ..., expr += ...
 node **get_lval_contexts(node *pt)
 {
-	/*
-	printf("all ids and terminal symbols:\n");
-	node **flattened = ptree_filter(pt,
-		is_nonterm_type(n, "base_id") || is_nonterm_type(n, "base_num") || (!(n->is_nonterminal) && n->ntype == TERMINAL));
-	vector_foreach(flattened, i)
-	{
-		node_print(flattened[i], 0);
-	}
-
-	node **lval_contexts = vector(node *, 0);
-	vector_foreach(flattened, i)
-	{
-		if(!is_nonterm_type(flattened[i], "base_id"))
-			continue;
-
-		//prepend lval contexts (&expr, ++expr)
-		if(i && !flattened[i-1]->is_nonterminal && flattened[i-1]->ntype == TERMINAL)
-		{
-			if(strcmp(flattened[i-1]->str, "&")==0
-				|| strcmp(flattened[i-1]->str, "++")==0
-				|| strcmp(flattened[i-1]->str, "--")==0 )
-				vector_append(lval_contexts, flattened[i]);
-		}
-
-		//append lval contexts (expr++, expr = ..., expr += ...)
-		if(i < vector_len(flattened)-1 && !flattened[i+1]->is_nonterminal && flattened[i+1]->ntype == TERMINAL)
-		{
-			if(strcmp(flattened[i+1]->str, "++")==0
-				|| strcmp(flattened[i+1]->str, "--")==0
-				|| strcmp(flattened[i+1]->str, "=")==0
-				|| strcmp(flattened[i+1]->str, "+=")==0
-				|| strcmp(flattened[i+1]->str, "-=")==0
-				|| strcmp(flattened[i+1]->str, "*=")==0
-				|| strcmp(flattened[i+1]->str, "/=")==0)	//still need the rest of these (%=, etc)
-				vector_append(lval_contexts, flattened[i]);
-		}
-	}
-	return lval_contexts;
-
-	exit(0);
-	*/
-
 	//node *child;
 	node **context_parents = ptree_filter(pt, is_lval_context_parent(n));
 	for(int i=0; i<vector_len(context_parents); i++)
@@ -522,34 +464,6 @@ void update_jump_semacts(node *loop, const char *jtype)
 	//printf("\tupdated %d %ss\n", vector_len(jsemacts), jtype);
 	vector_destroy(jsemacts);
 }
-
-/*void update_jump_addr_pairs(node *loop)
-{
-	char buf[41];
-
-	//not pairs anymore lol
-	node **pushaddrs = ptree_filter(loop, !(n->is_nonterminal) && n->ntype==SEMACT && strstr(n->str, "pushaddr"));
-	vector_foreach(pushaddrs, i)
-	{
-		int jid = *(pushaddrs[i]->str + strlen("pushaddr "))-'0';
-		snprintf(buf, 40, "pushaddr %d", jid + jlpair);
-		free(pushaddrs[i]->str);
-		pushaddrs[i]->str = strdup(buf);
-	}
-	vector_destroy(pushaddrs);
-
-	node **jlabels = ptree_filter(loop, !(n->is_nonterminal) && n->ntype==SEMACT && strstr(n->str, "jumplabel"));
-	vector_foreach(jlabels, i)
-	{
-		int jid = *(jlabels[i]->str + strlen("jumplabel "))-'0';
-		snprintf(buf, 40, "jumplabel %d", jid + jlpair);
-		free(jlabels[i]->str);
-		jlabels[i]->str = strdup(buf);
-	}
-	vector_destroy(jlabels);
-
-	jlpair += 3;	//if we have multiple loops, we need to disambiguate between their labels
-}*/
 
 /*void *get_zeroth_child(void *n)
 {
