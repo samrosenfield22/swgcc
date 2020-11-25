@@ -8,10 +8,10 @@
 
 #include "tree.h"
 
-char **nt_strings;
 
-int *branch_list, *branch_ct;
 
+
+//labels for tree printing. if we're printing a nonterminal, we print the nonterm type instead of "nonterminal"
 const char *t_strings[] =
 {
 	[0] = "SHOULDNTSEETHIS",
@@ -31,6 +31,7 @@ node *node_create(bool is_nonterminal, int ntype, const char *str, symbol *sym)
     n->ntype = ntype;
     n->sym = sym;
     //n->type = NULL;
+    n->parent = NULL;
     n->children = vector(node *, 0);
     n->str = strdup(str);
 
@@ -40,12 +41,22 @@ node *node_create(bool is_nonterminal, int ntype, const char *str, symbol *sym)
 void node_add_child(node *root, node *child)
 {
 	vector_append(root->children, child);
+	child->parent = root;
 }
 
-/*void ptree_init_names(char **strings)
+node *node_get_parent(node *n)
 {
-	nt_strings = strings;
-}*/
+	return n->parent;
+}
+
+node *node_get_ancestor(node *n, size_t cnt)
+{
+	for(int i=0; i<cnt; i++)
+		if(n)
+			n = n->parent;
+	return n;
+}
+
 
 /*node **ptree_filter(node *n, bool (*filter)(node *n), int depth, bool node_then_children)
 {
@@ -106,9 +117,12 @@ void ptree_traverse_dfs_recursive
 	vector_destroy(collect);
 }*/
 
+//delet, maybe. ptree_filter() macro kinda replaced this functionality.
 node ref_node;	//declared extern in tree.h
 bool filter_by_ref_node(node *n)
 {
+	assert(0);	//are we nuking this function or what??
+
 	if(n==NULL)
 		return false;
 
@@ -142,17 +156,21 @@ node *node_has_direct_child(node *pt, bool (*filter)(node *n))
 	return NULL;
 }
 
+
+int *branch_list, *branch_ct;
+
 void ptree_print(node *pt)
 {
 	branch_list = vector(*branch_list, 0);
 	branch_ct = vector(*branch_ct, 0);
-	//ptree_traverse_dfs(pt, NULL, node_print_pretty, true);
-	node_print_pretty(pt, 0);
+
+	tree_print_pretty(pt, 0);
+
 	vector_destroy(branch_list);
 	vector_destroy(branch_ct);
 }
 
-void node_print_pretty(node *pt, int depth)
+void tree_print_pretty(node *pt, int depth)
 {
 	const bool compress_tree = true;
 
@@ -161,7 +179,7 @@ void node_print_pretty(node *pt, int depth)
 	{
 		if(vector_len(pt->children) == 1)
 		{
-			node_print_pretty(pt->children[0], depth);
+			tree_print_pretty(pt->children[0], depth);
 			return;
 		}
 	}
@@ -190,11 +208,10 @@ void node_print_pretty(node *pt, int depth)
 			printf("  ");
 	}
 
-	if(!pt->is_nonterminal && pt->ntype == SEMACT)
-		set_text_color(MAGENTA_FONT);
+	//print the node
+	if(!pt->is_nonterminal && pt->ntype == SEMACT)		set_text_color(MAGENTA_FONT);
 	node_print(pt, depth);
-	if(!pt->is_nonterminal && pt->ntype == SEMACT)
-		set_text_color(RESET_FONT);
+	if(!pt->is_nonterminal && pt->ntype == SEMACT)		set_text_color(RESET_FONT);
 
 	if(d != -1)
 	{
@@ -206,15 +223,14 @@ void node_print_pretty(node *pt, int depth)
 		}
 	}
 
-	for(int i=0; i<vector_len(pt->children); i++)
-		node_print_pretty(pt->children[i], depth+1);
+	//for(int i=0; i<vector_len(pt->children); i++)
+	vector_foreach(pt->children, i)
+		tree_print_pretty(pt->children[i], depth+1);
 }
 
 void node_print(node *pt, int depth)
 {
 	bool is_semact = (!pt->is_nonterminal && pt->ntype == SEMACT);
-	//if(is_semact)
-	//	set_text_color(MAGENTA_FONT);
 
 	//print node type
 	if(pt->is_nonterminal == true)
@@ -223,21 +239,15 @@ void node_print(node *pt, int depth)
 		printf("(%s) ", t_strings[pt->ntype]);
 
 	//print node data
-	//if(pt->str)
-	//	printf("%s", pt->str);
-	//if(!pt->is_nonterminal && pt->ntype == SEMACT)
 	if(is_semact)
 		printf("%s", pt->str);
 	else
 		ptree_action(pt, node_print_str, false);
-		//ptree_traverse_dfs(pt, NULL, node_print_str, false);
 
 	putchar('\n');
-
-	//if(is_semact)
-	//	set_text_color(RESET_FONT);
 }
 
+//build and print the string by recursively adding substrings from child nodes
 void node_print_str(node *pt, int depth)
 {
 	if(!(pt->is_nonterminal) && pt->ntype != SEMACT)

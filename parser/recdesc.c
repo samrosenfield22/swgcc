@@ -1,69 +1,9 @@
 
 
 /*
-	0	regex -> term | regex
-	1			| term
-
-	2	term -> factor+
-
-	3	factor -> base*
-	4			| base+
-	5			| base?
-				| base
-
-	6	base -> char
-	7			| (regex)
-	8			| [range+]
-
-	9	range -> char-char
-
-	---------------------------------
-
-	rewritten, given the following rules:
-	* no left-recursion
-	* for each nonterminal, either
-		* it must have one production, or
-		* it can have multiple productions, each of which start with distinct terminals
-		ex.
-		factor -> base* | base+ | base?
-		becomes
-		factor -> base suffix?
-		suffix -> * | + | ?
-	* if a token is followed by an expr (ie "factor+" or "thing?"), this must either be the end of the production,
-		or the following token must not be a nonterminal
-
-	0	regex -> term moreterm*
-	1	moreterm -> | term
-	2	term -> factor+
-	3	factor -> base base_suffix?
-	4	base_suffix -> *
-	5					| +
-	6					| ?
-	7	base -> char
-	8			| (regex)
-	9			| [range+]
-	a	range -> char-char
-
-	---------------------------------
-
-	grammar to parse table:
-		if the first item on the rhs is a nonterminal, we always apply that production (fill the whole row)
-		if the first item on the rhs is a terminal, write to the one cell table[nt][term] = production_id
-
-				c 	* 	+ 	? 	( 	)	[	]	|
-	regex 		0	0	0	0	0	0	0	0	0
-	term 		2	2	2	2	2	2	2	2	2
-	moreterm 	-	-	-	-	-	-	-	-	1
-	factor 		3	3	3	3	3	3	3	3	3
-	base 		7	-	-	-	8	-	9	-	-
-	bsuffix		-	4	5	6	-	-	-	-	-
-	range		a	-	-	-	-	-	-	-	-
-
-	---------------------------------
-
-	each item on the rhs of a production is one of the following:
-	terminal (reserved), id, nonterminal, semantic action, expr (*,+,?)
-
+recursive descent parser
+in order to use this, the grammar.c library must first be used to load a grammar (read the productions and
+generate a parse table)
 
 */
 
@@ -86,43 +26,6 @@ lextok *lex_tok;
 //the lhs of the first production is the start symbol
 #define grammar_start_symbol (0)
 
-/*
-lextok *chars_to_substrings_lexer(const char *instr)
-{
-		lextok *l = calloc(strlen(instr)+1, sizeof(*l));
-		assert(l);
-		lextok *lp = l;
-
-		const char *ops = "*+?|()[]-";
-		for(const char *c=instr; *c!='\0'; c++)
-		{
-			lp->str = malloc(2);
-			lp->str[0] = *c;
-			lp->str[1] = '\0';
-			//lp->str = strdup((char[]){*c, '\0'});
-			if(strchr(ops, *c))
-			{
-					lp->is_ident = false;
-			}
-			else if((*c>='a' && *c<='z') || (*c>='A' && *c<='Z'))
-			{
-					lp->is_ident = true;
-					lp->ident_id = 0;
-			}
-			else if(*c>='0' && *c<='9')
-			{
-					lp->is_ident = true;
-					lp->ident_id = 1;
-			}
-			else assert(0);
-
-			lp++;
-		}
-
-		lp->str = NULL;
-		return l;
-}
-*/
 
 node *parse(lextok *lex_tokens_in, bool verbose)
 {
@@ -131,8 +34,10 @@ node *parse(lextok *lex_tokens_in, bool verbose)
 	lex_tokens = lex_tokens_in;
 	lex_tok = lex_tokens;
 
+	//parse the token string, according to productions for the start symbol. generate the parse tree.
 	node *tree = parse_nonterm(grammar_start_symbol);
 
+	//error if something went wrong, or if we didn't reach the end of the lex token string
 	if(PARSER_STATUS==P_FAIL || lex_tok->str != NULL)
 	{
 		if(verbose)
@@ -148,7 +53,6 @@ node *parse(lextok *lex_tokens_in, bool verbose)
 		return tree;
 }
 
-//#define PARSER_FAILURE do {PARSER_STATUS = P_FAIL; return NULL;} while(0)
 #define PARSER_FAILURE do {PARSER_STATUS = P_FAIL; return root;} while(0)
 
 //#define BAIL_IF_PARSER_FAILED if(PARSER_STATUS != P_OK) return NULL
@@ -174,7 +78,8 @@ node *parse_nonterm(nonterminal_type nt)
 	
 
 	int tok_ct = vector_len(prod->rhs);
-	for(int i=0; i<tok_ct; i++)
+	//for(int i=0; i<tok_ct; i++)
+	vector_foreach(prod->rhs, i)
 	{
 		prod_tok *tok = prod->rhs[i];
 		prod_tok *next_tok = (i+1<tok_ct)? prod->rhs[i+1] : NULL;

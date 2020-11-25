@@ -23,6 +23,9 @@ typedef struct typespec_s
 
 typedef struct symbol_s symbol;
 
+#define STATIC  true
+#define AUTO    false
+
 struct symbol_s
 {
     symbol_type sym_type;
@@ -30,6 +33,9 @@ struct symbol_s
     int *var;
 
     //scope
+    //lifetime
+    bool lifetime;
+
     //type
     symbol *type;
 

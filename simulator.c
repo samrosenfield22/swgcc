@@ -27,6 +27,9 @@ int sim_stack_push(int n);
 int sim_stack_pushv(int n);
 int sim_stack_pop(int);
 
+int incsp(int bytes);
+int decsp(int bytes);
+
 int add_op(int);
 int sub_op(int);
 int mult_op(int);
@@ -84,6 +87,7 @@ char SIM_MEM[0x10000];
 #define SIM_VARS_OFFSET     (0x8000)    //
 
 char *var_addr = SIM_MEM + SIM_VARS_OFFSET;
+int local_var_addr = 0;     //bp offsets
 
 int sim_stack[256];
 int *sp = sim_stack, *bp = sim_stack;
@@ -127,6 +131,8 @@ void generate_intermediate_code(node *n)
 
     //declaration_only = false;
 
+    local_var_addr = 0;
+
     ptree_traverse_dfs(n, filter_semact, generate_instruction, -1, true);
 
     //printf("~~~ instructions before resolving jumps ~~~\n");
@@ -144,16 +150,25 @@ void generate_intermediate_code(node *n)
     ip_end = cp;
 }
 
-void define_var(symbol *sym)
+int define_var(symbol *sym)
 {
     //get number of bytes
     symbol *type = sym->type;
     size_t bytes = type->tspec->bytes;
 
     //allocate the var
-    sym->var = (int*)var_addr;
-    //unsigned char *addr = var_addr;
-    var_addr += bytes;
+    if(sym->lifetime == STATIC)
+    {
+        sym->var = (int*)var_addr;
+        var_addr += bytes;
+        return 0;
+    }
+    else
+    {
+        sym->var = (int*)local_var_addr;
+        local_var_addr += bytes;
+        return bytes;
+    }
 }
 
 void *get_code_addr(void)
@@ -275,6 +290,9 @@ struct op_entry
     {"push",    sim_stack_push},
     {"pushv",    sim_stack_pushv},
     {"pop",    sim_stack_pop},
+
+    {"incsp",   incsp},
+    {"decsp",   decsp},
 
     {"+",   add_op},
     {"-",   sub_op},
@@ -469,6 +487,20 @@ int sim_stack_pop(int d)
     if(d)
         *(int*)d = popval;
     return popval;
+}
+
+int incsp(int bytes)
+{
+    assert(bytes > 0);
+    sp += bytes;
+    return 0;
+}
+
+int decsp(int bytes)
+{
+    assert(bytes > 0);
+    sp -= bytes;
+    return 0;
 }
 
 //all binary operators follow the same semantic action format

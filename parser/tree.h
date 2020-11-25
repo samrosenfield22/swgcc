@@ -16,6 +16,7 @@ struct node_s
 	bool is_nonterminal;
 	int ntype;	//either a nonterminal index, or a type of thing (nonterminal, semantic, ident...)
 
+	node *parent;
     node **children;
     char *str;
 
@@ -27,8 +28,10 @@ struct node_s
 extern node ref_node;	//defined in tree.c
 extern const char *t_strings[];
 
-node *node_create(bool is_nonterminal, int type, const char *str, symbol *sym);
+node *node_create(bool is_nonterminal, int ntype, const char *str, symbol *sym);
 void node_add_child(node *root, node *child);
+node *node_get_parent(node *n);
+node *node_get_ancestor(node *n, size_t cnt);
 
 //void ptree_init_names(char **strings);
 
@@ -50,7 +53,7 @@ bool filter_by_ref_node(node *n);
 
 void ptree_print(node *pt);
 void node_print(node *pt, int depth);
-void node_print_pretty(node *pt, int depth);
+void tree_print_pretty(node *pt, int depth);
 void node_print_str(node *pt, int depth);
 
 void semact_print(node *pt, int depth);

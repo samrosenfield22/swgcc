@@ -39,6 +39,13 @@ void *vector_create_internal(size_t elem_size, size_t len)
 	return (v+1);
 }
 
+void *vector_from_arr_internal(void *arr, size_t len, size_t elem_size)
+{
+    void *v = vector_create_internal(elem_size, len);
+    memcpy(v, arr, len*elem_size);
+    return v;
+}
+
 void vector_destroy(void *v)
 {
 	CHECK(v, return);
@@ -53,12 +60,9 @@ bool vector_resize(void *vptr, size_t new_len)
 	void **vdptr = vptr;
 	vector_hdr *vhdr = vec_header(*vdptr);
 
-	//size_t new_alloc_len = next_power_of_two(new_len);
-
 	//check if vector needs to reallocate
-	if((new_len <= vhdr->alloc_len) && new_len > (vhdr->alloc_len)>>1)
+	if((vhdr->alloc_len)>>1 < new_len && new_len <= vhdr->alloc_len)
 	//ex. if the alloc_len is 8, anything >4 and <=8 means we don't need to reallocate
-	//if(new_alloc_len == vhdr->alloc_len)
 	{
 		vhdr->len = new_len;
 		return true;
@@ -97,23 +101,25 @@ bool vector_dec(void *v)
 
 bool vector_insert(void *vv, size_t index)
 {
-	printf("vector_insert is buggy, needs to be tested\n");
-	assert(0);
+	//printf("vector_insert is buggy, needs to be tested\n");
+	//assert(0);
 	
 	void *v = *(void **)vv;
 
 	CHECK(v, return false);
-	//CHECK(index < vector_len(v), return false);
+	CHECK(index <= vector_len(v), return false);
 
 	if(!vector_inc(vv))
 		return false;
+	v = *(void **)vv;	//if we reallocated, v is in a different location
 
 	//
 	//void *copy_from = v + vector_elem_size(v)*index;
 	void *copy_from = vector_nth(v, index);
 	void *copy_to = copy_from + vector_elem_size(v);
-	//size_t copy_size = (vector_len(v)-index-1) * vector_elem_size(v);
-	size_t copy_size = (vector_len(v)-index) * vector_elem_size(v);
+	size_t copy_size = (vector_len(v)-index-1) * vector_elem_size(v);
+	//size_t copy_size = (vector_len(v)-index) * vector_elem_size(v);
+	//printf("moving %d bytes for insert\n", copy_size);
 	memmove(copy_to, copy_from, copy_size);
 
 	return true;
@@ -126,7 +132,8 @@ bool vector_delete(void *vv, size_t index)
 	CHECK(index < vector_len(v), return false);
 
 	//
-	void *copy_to = v + vector_elem_size(v)*index;
+	//void *copy_to = v + vector_elem_size(v)*index;
+	void *copy_to = vector_nth(v, index);
 	void *copy_from = copy_to + vector_elem_size(v);
 	size_t copy_size = (vector_len(v)-index-1) * vector_elem_size(v);
 	memmove(copy_to, copy_from, copy_size);
@@ -205,32 +212,23 @@ bool vector_swap(void *v, size_t a, size_t b)
 
 int vector_search(void *v, int term)
 {
-	//printf("\tsearching v of len %d\n", vector_len(v));
 	for(int i=0; i<vector_len(v); i++)
 	{
-		//printf("\tcomparing %d,%d\n", *(int*)vector_nth(v,i), term);
 		if(*(int*)vector_nth(v,i) == term)
 			return i;
 	}
 	return -1;
 }
 
-/*void *vector_map(void *v, void *(*map)(void *item))
+int vector_search_str(char **v, const char *str)
 {
-	size_t size = vector_elem_size(v);
-	void *out = vector_create_internal(size, vector_len(v));
-
-	//printf("vector w %d items\n", vector_len(v));
-	vector_foreach(v, i)
+	for(int i=0; i<vector_len(v); i++)
 	{
-		// *(int*)vector_nth(out, i) = (int)map(*(void**)vector_nth(v, i));
-		//printf("%d\n", *(int*)vector_nth(v,i));
-		void *from = map(vector_nth(v, i));
-		void *to = vector_nth(out, i);
-		memcpy(to, from, size);
+		if(strcmp(v[i], str)==0)
+			return i;
 	}
-	return out;
-}*/
+	return -1;
+}
 
 //usually using native array indexing (thing[n]) is a better choice
 void *vector_nth(void *v, size_t index)
@@ -268,21 +266,6 @@ size_t vector_total_size(void *v)
 	vector_hdr *vhdr = vec_header(v);
 	size_t arrsize = (vhdr->alloc_len)*(vhdr->elem_size);
 	return (sizeof(vector_hdr) + arrsize);
-}
-
-void vector_dump_internal(void *v, const char *fmt, const char *name)
-{
-	CHECK(v, return);
-	vector_hdr *vhdr = vec_header(v);
-
-	printf("> \"%s\": %d elems (%d alloc'd) of size %d. total bytes: %d\n",
-		name, vhdr->len, vhdr->alloc_len, vhdr->elem_size, vector_total_size(v));
-	for(int i=0; i<vhdr->len; i++)
-	{
-		printf("\t%s[%d]:\t", name, i);
-		printf(fmt, *(int *)(v+i*vhdr->elem_size));
-		putchar('\n');
-	}
 }
 
 static inline vector_hdr *vec_header(void *v)
