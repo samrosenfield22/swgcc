@@ -108,23 +108,38 @@ symbol *symbol_create(const char *name, symbol_type sym_type, typespec *type)
     return vector_last(SYMBOL_TABLE);
 }
 
-bool symbol_delete(const char *name)
+//bool symbol_delete(const char *name)
+bool symbol_delete(symbol *sym)
 {
+    /*assert(0);
     symbol *sym = symbol_search(name, SYM_IDENTIFIER);
     if(!sym)
         return false;
-
+    */
     //kinda dumb that we have to do this
     vector_foreach(SYMBOL_TABLE, i)
     {
         if(SYMBOL_TABLE[i] == sym)
         {
             vector_delete(&SYMBOL_TABLE, i);
-            break;
+            return true;
         }
     }
     
-    return true;
+    return false;
+}
+
+void delete_all_locals(void)
+{
+    vector_foreach(SYMBOL_TABLE, i)
+    {
+        symbol *sym = SYMBOL_TABLE[i];
+        if(sym->sym_type==SYM_IDENTIFIER && strcmp(sym->type->name, "function")!=0 && sym->lifetime==AUTO)
+        {
+            vector_delete(&SYMBOL_TABLE, i);
+            i--;
+        }
+    }
 }
 
 void assign_type_to_symbol(symbol *sym, const char *typestr)

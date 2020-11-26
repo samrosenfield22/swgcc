@@ -52,7 +52,9 @@ symbol *symbol_search(const char *name, symbol_type sym_type);
 symbol *symbol_search_by_addr(int *varaddr);
 symbol *symbol_search_function_addr(int *varaddr);
 symbol *symbol_create(const char *name, symbol_type sym_type, typespec *type);
-bool symbol_delete(const char *name);
+//bool symbol_delete(const char *name);
+bool symbol_delete(symbol *sym);
+void delete_all_locals(void);
 void assign_type_to_symbol(symbol *sym, const char *typestr);
 
 void dump_symbol_table(void);

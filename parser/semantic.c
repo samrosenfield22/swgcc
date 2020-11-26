@@ -104,10 +104,21 @@ bool define_functions(bool *decl_only, node *pt)
 
 bool is_block_nonterm(node *n) {return is_nonterm_type(n, "block");}
 
+/*bool check_variable_declarations(node *pt)
+{
+	node **bids = ptree_filter(pt, is_nonterm_type(n, "base_id"));
+	vector_foreach(bids, i)
+	{
+		//if it's in a declaration stmt, declare it
+		//if not, make sure it's already declared
+	}
+}*/
+
 bool check_variable_declarations(node *pt)
 {
 	//handle declarations for each sequence (comma or decl) separately
-	node **mstmts = ptree_filter(pt, is_nonterm_type(n, "mstmt") && !get_nonterm_ancestor(n, "mstmt"));
+	//node **mstmts = ptree_filter(pt, is_nonterm_type(n, "mstmt") && !get_nonterm_ancestor(n, "mstmt"));
+	node **mstmts = ptree_filter(pt, is_nonterm_type(n, "mstmt") && !get_nonterm_child_deep(n, "mstmt"));
 	//node **blocks = ptree_filter(pt, is_nonterm_type(n, "block"));
 	//node **blocks = ptree_traverse_dfs(pt, is_block_nonterm, NULL, -1, false);	//deepest blocks first
 
@@ -121,24 +132,39 @@ bool check_variable_declarations(node *pt)
 		node **decl_ids = vector_map(decl_parents, get_nonterm_child(n, "base_id"));	
 		vector_destroy(decl_parents);
 
-		set_text_color(YELLOW_FONT);
-		printf("\ndecl vars in mstmt ");
-		node_print(mstmts[s], 0);
-		printf(":\n");
-		vector_foreach(decl_ids, i)
-			node_print(decl_ids[i], 0);
-		set_text_color(RESET_FONT);
-
 		//get all vars that should already have been declared
 		node **prev_decld_ids = ptree_filter(mstmts[s],		
 			is_nonterm_type(n, "base_id") && vector_search(decl_ids, (int)n)==-1);
+
+		set_text_color(YELLOW_FONT);
+		printf("\ndeclaring variables for statement ");
+		node_print(mstmts[s], 0);
+		printf("vars that should get declared:");
+		vector_foreach(decl_ids, i)
+			node_print(decl_ids[i], 0);
+		printf("vars that should already be declared:");
+		vector_foreach(prev_decld_ids, i)
+			node_print(prev_decld_ids[i], 0);
+		set_text_color(RESET_FONT);
+
+		vector_foreach(decl_ids, i)
+		{
+			vector_foreach(prev_decld_ids, j)
+			{
+				if(decl_ids[i] == prev_decld_ids[j])
+				{
+					printfcol(RED_FONT, "a m g e r y\n");
+					exit(-1);
+				}
+			}
+		}
 
 		//check if all those vars are already declared
 		vector_filter(prev_decld_ids, n->children[0]->sym->declared == false);
 		vector_foreach(prev_decld_ids, i)
 		{
 			printfcol(RED_FONT, "undeclared variable %s\n", prev_decld_ids[i]->children[0]->str);
-			if(!symbol_delete(prev_decld_ids[i]->children[0]->str))
+			if(!symbol_delete(prev_decld_ids[i]->children[0]->sym))
 				assert(0);
 			SEMANTIC_STATUS = SEM_USING_UNDECLD_VAR;
 		}
@@ -151,29 +177,10 @@ bool check_variable_declarations(node *pt)
 			char *type = decl->children[0]->str;	//decl->type->str
 
 			//check if it's in a block
-			/*bool is_in_block = false;
-			node *containing_block;
-			vector_foreach(blocks, j)
-			{
-				node **decl_in_block = ptree_filter(blocks[j], n==decl);
-				if(vector_len(decl_in_block))
-				{
-					is_in_block = true;
-					containing_block = blocks[j];
-				}
-				vector_destroy(decl_in_block);
-
-				if(is_in_block)
-					break;
-			}*/
 			//bool lifetime = is_in_block? AUTO : STATIC;		//unless it's explicitly made static
 			node *containing_block = get_nonterm_ancestor(decl, "block");
 			bool lifetime = containing_block? AUTO : STATIC;		//unless it's explicitly made static
-			/*if(lifetime == AUTO)
-			{
-				printfcol(GREEN_FONT, "found auto decl\n");
-				getchar();
-			}*/
+			
 
 			int bytes_decld = 0;
 			vector_foreach(decl_ids, i)
@@ -546,7 +553,7 @@ static int get_semact_child_index(node *parent, char *str)
 //looks all the way through the tree, returns the first nonterm match
 static node *get_nonterm_child_deep(node *parent, char *ntstr)
 {
-	node **matches = ptree_filter(parent, is_nonterm_type(n, ntstr));
+	node **matches = ptree_filter(parent, is_nonterm_type(n, ntstr) && n!=parent);
 	node *child = vector_len(matches)? matches[0] : NULL;
 	vector_destroy(matches);
 	return child;

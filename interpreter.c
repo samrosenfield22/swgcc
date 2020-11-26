@@ -78,6 +78,8 @@ fail_type interpreter(int *result, bool verbose, char *code)
     if(verbose) dump_symbol_table();
     if(verbose) printf("\n%d\n", res);
 
+    delete_all_locals();
+
     if(result)
         *result = res;
     return PASS;
