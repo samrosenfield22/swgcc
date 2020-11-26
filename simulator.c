@@ -25,6 +25,8 @@ static int print_reg_or_val(int arg);
 
 int sim_stack_push(int n);
 int sim_stack_pushv(int n);
+int sim_stack_pushl(int n);
+int sim_stack_pushlv(int n);
 int sim_stack_pop(int);
 
 int incsp(int bytes);
@@ -89,8 +91,8 @@ char SIM_MEM[0x10000];
 char *var_addr = SIM_MEM + SIM_VARS_OFFSET;
 int local_var_addr = 0;     //bp offsets
 
-int sim_stack[256];
-int *sp = sim_stack, *bp = sim_stack;
+char sim_stack[1024];
+char *sp = sim_stack, *bp = sim_stack;
 int eax;
 //int ip;
 
@@ -169,6 +171,14 @@ int define_var(symbol *sym)
         local_var_addr += bytes;
         return bytes;
     }
+}
+
+int *get_var_addr(symbol *variable)
+{
+    if(variable->lifetime == STATIC)
+        return variable->var;
+    else
+        return (int)bp + (char*)variable->var;
 }
 
 void *get_code_addr(void)
@@ -289,6 +299,8 @@ struct op_entry
 {
     {"push",    sim_stack_push},
     {"pushv",    sim_stack_pushv},
+    {"pushl",   sim_stack_pushl},
+    {"pushlv",   sim_stack_pushlv},
     {"pop",    sim_stack_pop},
 
     {"incsp",   incsp},
@@ -384,22 +396,36 @@ int run_intermediate_code(bool verbose)
         }
 
         //execute the instruction
+        /*if(strcmp(ip->op, "pushl")==0 || strcmp(ip->op, "pushlv")==0)
+                {
+                    printf("aaaaaaaaa\n");
+                    //dump_intermediate();
+                    //dump_symbol_table();
+                    getchar();
+                }*/
+        bool valid_instr = false;
         for(int i=0; i<sizeof(op_table)/sizeof(op_table[0]); i++)
         {
             if(strcmp(ip->op, op_table[i].op)==0)
             {
-                res = op_table[i].func(ip->arg);     //the arg is a dummy value unless the func is push(v)
+                res = op_table[i].func(ip->arg);     //the arg is a dummy value for most instructions
+                valid_instr = true;
                 break;
             }
+        }
+        if(!valid_instr)
+        {
+            printfcol(RED_FONT, "unrecognized instruction: %s\n", ip->op);
+            //exit(-1);
         }
 
         if(verbose)
         {
             //dump_symbol_table_oneline();
             printf("\tbp=%d sp=%d\t(", bp-sim_stack, sp-sim_stack);
-            for(int *p=sim_stack; p<sp; p++)
+            for(char *p=sim_stack; p<sp; p+=4)
             {
-                //printf("%d ", *p);
+                //printf("%d ", *(int*)p);
                 print_reg_or_val(*p);
                 printf(" ");
             }
@@ -439,8 +465,10 @@ void skip_code(void)
 static int print_instr(intermediate_spec *instr)
 {
     int cursor = printf("%s ", instr->op);
-    if(!(strcmp(instr->op, "push")==0 || strcmp(instr->op, "pushv")==0 || strcmp(instr->op, "pop")==0
-         || strcmp(instr->op, "pushaddr")==0 || strcmp(instr->op, "jumplabel")==0))  //in case we dump before resolving 
+    if(!(strcmp(instr->op, "push")==0 || strcmp(instr->op, "pushv")==0 || 
+        strcmp(instr->op, "pushl")==0 || strcmp(instr->op, "pushlv")==0 || 
+        strcmp(instr->op, "pop")==0 || strcmp(instr->op, "incsp")==0 || strcmp(instr->op, "decsp")==0 || 
+        strcmp(instr->op, "pushaddr")==0 || strcmp(instr->op, "jumplabel")==0))  //in case we dump before resolving 
         return cursor;
 
     return cursor + print_reg_or_val(instr->arg);
@@ -458,7 +486,7 @@ static int print_reg_or_val(int arg)
     else if(sym)                            return printf("%s", sym->name);
     else if((char*)arg >= (char*)ip_start)  return printfcol(YELLOW_FONT, "main+%d", (char*)arg - (char*)ip_start);
     else if(func)     return printfcol(YELLOW_FONT, "%s+%d", func->name, (char*)arg - (char*)(func->var));
-    else if(sim_stack<=(int*)arg && (int*)arg<=sp) return printf("stack+%d", (int*)(arg)-sim_stack);
+    else if(sim_stack<=(char*)arg && (char*)arg<=sp) return printf("stack+%d", (char*)(arg)-sim_stack);
     else return printf("%d", arg);
 }
 
@@ -467,7 +495,8 @@ static int print_reg_or_val(int arg)
 
 int sim_stack_push(int n)
 {
-    *sp++ = n;
+    memcpy(sp, &n, 4);
+    sp += 4;
     return 0;
 }
 
@@ -475,15 +504,36 @@ int sim_stack_pushv(int n)
 {
     //*sp++ = *(int*)n;
     int pushv = *(int*)n;
-    *sp++ = pushv;
+    //*sp = pushv;
+    memcpy(sp, &pushv, 4);
+    sp += 4;
+    return 0;
+}
+
+int sim_stack_pushl(int n)
+{
+    int local = (int)(bp + n);
+    //*sp = (int)local;
+    memcpy(sp, &local, 4);
+    sp += 4;
+    return 0;
+}
+
+int sim_stack_pushlv(int n)
+{
+    int local = (int)(bp + n);
+    int pushv = *(int*)local;
+    //*sp = pushv;
+    memcpy(sp, &pushv, 4);
+    sp += 4;
     return 0;
 }
 
 int sim_stack_pop(int d)
 {
     assert(sp > sim_stack);    //underflow
-    --sp;
-    int popval = *sp;
+    sp -= 4;
+    int popval = *(int*)sp;
     if(d)
         *(int*)d = popval;
     return popval;

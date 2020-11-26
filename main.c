@@ -103,7 +103,7 @@ test_case test_cases[] =
     {"{a=5; afact();}", PASS, 120},
 
     //code that should fail
-    {"int 9a;", LEX_FAIL, 0},
+    //{"int 9a;", LEX_FAIL, 0},
     {"a = !!!;", LEX_FAIL, 0},
     {"a + -;", PARSE_FAIL, 0},
     {"int int;", PARSE_FAIL, 0},
@@ -130,8 +130,13 @@ void test_compiler(void)
         {
             if(status == PASS)
             {
-                printfcol(RED_FONT, "\nfailed test case %d (%s fail):\n%s\n",
-                    i, fail_strings[test_cases[i].exp_status], test_cases[i].src);
+                printfcol(RED_FONT, "\nexpected failure on case %d (%s), passed instead\n",
+                    i, fail_strings[test_cases[i].exp_status]);
+            }
+            else
+            {
+                printfcol(RED_FONT, "\nfailed test case %d (%s fail instead of %s):\n%s\n",
+                    i, fail_strings[status], fail_strings[test_cases[i].exp_status], test_cases[i].src);
                 exit(-1);
             }
         }

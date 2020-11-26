@@ -146,8 +146,23 @@ void dump_symbol_table(void)
         if(SYMBOL_TABLE[i]->sym_type==SYM_IDENTIFIER)
         {
             symbol *sym = SYMBOL_TABLE[i];
-            printf("symbol %d:\t\'%s\' (%s)(@ %d) = %d\n",
-                i, sym->name, sym->type->name, (int)(sym->var), *(sym->var));
+            //printf("symbol %d:\t\'%s\' (%s)(@ %d) = %d\n",
+            //    i, sym->name, sym->type->name, (int)(sym->var), *(sym->var));
+
+
+            printf("symbol %d:\t\'%s\' (", i, sym->name);
+            if(strcmp(sym->type->name, "function") == 0)
+            {
+                printf("%s)(@ %d)\n", sym->type->name, (int)(sym->var));
+            }
+            else
+            {
+                if(sym->lifetime==STATIC)
+                    printf("static %s)(@ %d) = %d\n", sym->type->name, (int)(sym->var), *(sym->var));
+                else
+                    printf("auto %s)(@ bp+%d)\n", sym->type->name, (int)(sym->var));
+            }
+            
         }
         /*else if(SYMBOL_TABLE[i]->sym_type==SYM_FUNCTION)
         {
@@ -180,11 +195,12 @@ void dump_symbol_table(void)
 
 void dump_symbol_table_oneline(void)
 {
-    //return;
+    return;
     for(int i=0; i<vector_len(SYMBOL_TABLE); i++)
     {
         if(SYMBOL_TABLE[i]->sym_type == SYM_IDENTIFIER && strcmp(SYMBOL_TABLE[i]->type->name, "function")!=0)
             printf("%s=%d   ", SYMBOL_TABLE[i]->name, *SYMBOL_TABLE[i]->var);
+            //printf("%s=%d   ", SYMBOL_TABLE[i]->name, *get_var_addr(SYMBOL_TABLE[i]));
 
     }
 }

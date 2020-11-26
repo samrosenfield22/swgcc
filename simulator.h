@@ -12,6 +12,8 @@ int run_intermediate_code(bool verbose);
 void skip_code(void);
 
 int define_var(symbol *sym);
+int *get_var_addr(symbol *variable);
+
 void *get_code_addr(void);
 unsigned char *get_new_var(size_t bytes);
 

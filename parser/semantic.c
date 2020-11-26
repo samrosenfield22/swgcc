@@ -27,12 +27,12 @@ void amend_num(node *pt);
 
 void update_jump_semacts(node *loop, const char *jtype);
 
-
 static node *get_nonterm_child(node *parent, char *ntstr);
 static int get_nonterm_child_index(node *parent, char *ntstr);
 static int get_semact_child_index(node *parent, char *str);
 static node *get_nonterm_child_deep(node *parent, char *ntstr);
 static bool is_nonterm_type(node *n, const char *ntstr);
+static node *get_nonterm_ancestor(node *n, const char *ntstr);
 
 static void semantic_print_failure(void);
 
@@ -107,9 +107,9 @@ bool is_block_nonterm(node *n) {return is_nonterm_type(n, "block");}
 bool check_variable_declarations(node *pt)
 {
 	//handle declarations for each sequence (comma or decl) separately
-	node **mstmts = ptree_filter(pt, is_nonterm_type(n, "mstmt"));
+	node **mstmts = ptree_filter(pt, is_nonterm_type(n, "mstmt") && !get_nonterm_ancestor(n, "mstmt"));
 	//node **blocks = ptree_filter(pt, is_nonterm_type(n, "block"));
-	node **blocks = ptree_traverse_dfs(pt, is_block_nonterm, NULL, -1, false);	//deepest blocks first
+	//node **blocks = ptree_traverse_dfs(pt, is_block_nonterm, NULL, -1, false);	//deepest blocks first
 
 	vector_foreach(mstmts, s)
 	{
@@ -120,6 +120,14 @@ bool check_variable_declarations(node *pt)
 			&& !get_nonterm_child_deep(n, "funcdef"));
 		node **decl_ids = vector_map(decl_parents, get_nonterm_child(n, "base_id"));	
 		vector_destroy(decl_parents);
+
+		set_text_color(YELLOW_FONT);
+		printf("\ndecl vars in mstmt ");
+		node_print(mstmts[s], 0);
+		printf(":\n");
+		vector_foreach(decl_ids, i)
+			node_print(decl_ids[i], 0);
+		set_text_color(RESET_FONT);
 
 		//get all vars that should already have been declared
 		node **prev_decld_ids = ptree_filter(mstmts[s],		
@@ -143,7 +151,7 @@ bool check_variable_declarations(node *pt)
 			char *type = decl->children[0]->str;	//decl->type->str
 
 			//check if it's in a block
-			bool is_in_block = false;
+			/*bool is_in_block = false;
 			node *containing_block;
 			vector_foreach(blocks, j)
 			{
@@ -157,8 +165,15 @@ bool check_variable_declarations(node *pt)
 
 				if(is_in_block)
 					break;
-			}
-			bool lifetime = is_in_block? AUTO : STATIC;		//unless it's explicitly made static
+			}*/
+			//bool lifetime = is_in_block? AUTO : STATIC;		//unless it's explicitly made static
+			node *containing_block = get_nonterm_ancestor(decl, "block");
+			bool lifetime = containing_block? AUTO : STATIC;		//unless it's explicitly made static
+			/*if(lifetime == AUTO)
+			{
+				printfcol(GREEN_FONT, "found auto decl\n");
+				getchar();
+			}*/
 
 			int bytes_decld = 0;
 			vector_foreach(decl_ids, i)
@@ -184,7 +199,7 @@ bool check_variable_declarations(node *pt)
 		//clean up
 		vector_destroy(decl_ids);
 		//vector_destroy(all_bids);
-		vector_destroy(blocks);
+		//vector_destroy(blocks);
 		vector_destroy(prev_decld_ids);
 	}
 
@@ -428,6 +443,7 @@ int declare_new_vars(const char *typestr, node *bid, bool lifetime)
 	symbol *decl_sym = bid->children[0]->sym;
 	if(decl_sym->declared)
 	{
+		printfcol(RED_FONT, "redeclaring variable %s\n", bid->children[0]->str);
 		SEMANTIC_STATUS = SEM_REDECLARED_VAR;
 		return 0;
 	}
@@ -454,12 +470,14 @@ void amend_push_instr(node *pt, int arg, const char *instr)
 
 void amend_lval(node *pt)
 {
-	amend_push_instr(pt, (int)(pt->children[0]->sym->var), "push");
+	bool lifetime = pt->children[0]->sym->lifetime;
+	amend_push_instr(pt, (int)(pt->children[0]->sym->var), (lifetime==STATIC)? "push" : "pushl");
 }
 
 void amend_rval(node *pt)
 {
-	amend_push_instr(pt, (int)(pt->children[0]->sym->var), "pushv");
+	bool lifetime = pt->children[0]->sym->lifetime;
+	amend_push_instr(pt, (int)(pt->children[0]->sym->var), (lifetime==STATIC)? "pushv" : "pushlv");
 }
 
 void amend_num(node *pt)
@@ -557,6 +575,27 @@ static bool is_nonterm_type(node *n, const char *ntstr)
 	if(!(n->is_nonterminal))
 		return false;
 	return (strcmp(gg.nonterminals[n->ntype], ntstr)==0);
+}
+
+static node *get_nonterm_ancestor(node *n, const char *ntstr)
+{
+	assert(n);
+	/*printfcol(GREEN_FONT, "searching for nt %s\nnode: ", ntstr);
+	node_print(n, 0);
+	printf("\n");*/
+	while(1)
+	{
+		n = node_get_parent(n);
+		if(!n) break;
+
+		/*printfcol(GREEN_FONT, "parent: ");
+		node_print(n, 0);
+		printf("\n");*/
+		
+		if(is_nonterm_type(n, ntstr))
+			return n;
+	}
+	return NULL;
 }
 
 

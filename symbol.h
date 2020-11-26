@@ -4,6 +4,7 @@
 #define SYMBOL_H_
 
 #include <stdbool.h>
+//#include "simulator.h"
 
 #include "ds/vector.h"
 
