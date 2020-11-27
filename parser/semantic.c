@@ -136,7 +136,7 @@ bool check_variable_declarations(node *pt)
 		node **prev_decld_ids = ptree_filter(mstmts[s],		
 			is_nonterm_type(n, "base_id") && vector_search(decl_ids, (int)n)==-1);
 
-		set_text_color(YELLOW_FONT);
+		/*set_text_color(YELLOW_FONT);
 		printf("\ndeclaring variables for statement ");
 		node_print(mstmts[s], 0);
 		printf("vars that should get declared:");
@@ -157,7 +157,7 @@ bool check_variable_declarations(node *pt)
 					exit(-1);
 				}
 			}
-		}
+		}*/
 
 		//check if all those vars are already declared
 		vector_filter(prev_decld_ids, n->children[0]->sym->declared == false);

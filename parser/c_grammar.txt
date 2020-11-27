@@ -26,7 +26,7 @@
 <mstmt>			::= <decl>
 
 ;maybe lol
-<decl>			::= type <base_id> <declspec>?
+<decl>			::= type <base_id> <declspec>
 <declspec>		::= <decl_assign> <mdecl_assign>* ";" {pop}
 <declspec>		::= <mdecl_assign>* ";" {pop}
 <declspec>		::= <funcdef>
