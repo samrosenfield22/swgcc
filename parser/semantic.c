@@ -102,7 +102,6 @@ bool semantic_compiler_actions(node *pt)
 {
 	if(!decl_var_list)
 		decl_var_list = vector(*decl_var_list, 0);
-	//prev_decl_list = vector(*prev_decl_list, 0);
 
 	node **sem = ptree_filter(pt, is_semact_special(n));
 	vector_foreach(sem, i)
@@ -114,7 +113,7 @@ bool semantic_compiler_actions(node *pt)
 			char *match = strstr(sem[i]->str, aspec->str);
 			if(match)
 			{
-				assert(match == &(sem[i]->str[2]));
+				assert(match == &(sem[i]->str[2]));	//after the '!', ' '
 				special_action_recognized = true;
 
 				//get the arg
@@ -122,8 +121,21 @@ bool semantic_compiler_actions(node *pt)
 				if(aspec->argc == 1)
 				{
 					match += strlen(aspec->str) + 1;
-					int sib_num = atoi(match);
-					arg = node_get_parent(sem[i])->children[sib_num];	//assumes we're getting the sibling
+
+					//int sib_num = atoi(match);
+					//arg = node_get_parent(sem[i])->children[sib_num];	//assumes we're getting the sibling
+
+					//traverse the argument string (ex. parent.1 means get the parent, then get its child[1])
+					while(1)
+					{
+						arg = sem[i];
+						if(strstr(match, "parent"))	arg = node_get_parent(arg);
+						else arg = arg->children[atoi(match)];
+
+						match = strchr(match, '.');
+						if(!match) break;
+						match++;
+					}
 				}
 
 				//call the function
@@ -295,7 +307,6 @@ bool define_functions(bool *decl_only, node *pt)
 	return true;
 }
 
-bool is_block_nonterm(node *n) {return is_nonterm_type(n, "block");}
 
 /*bool check_variable_declarations(node *pt)
 {
@@ -313,7 +324,6 @@ bool check_variable_declarations(node *pt)
 	//node **mstmts = ptree_filter(pt, is_nonterm_type(n, "mstmt") && !get_nonterm_ancestor(n, "mstmt"));
 	node **mstmts = ptree_filter(pt, is_nonterm_type(n, "mstmt") && !get_nonterm_child_deep(n, "mstmt"));
 	//node **blocks = ptree_filter(pt, is_nonterm_type(n, "block"));
-	//node **blocks = ptree_traverse_dfs(pt, is_block_nonterm, NULL, -1, false);	//deepest blocks first
 
 	vector_foreach(mstmts, s)
 	{
