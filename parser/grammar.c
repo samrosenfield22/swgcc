@@ -483,7 +483,11 @@ int find_parse_table_column(char *str, prod_tok_type ntype)
   else if(ntype == TERMINAL)
   {
       index = search_term_name(str);
-      assert(index != -1);
+      if(index == -1)
+      {
+        printf("\'%s\' is a lex terminal but it's not in the parser/grammar!\n", str);
+        assert(0);
+      }
       index += ident_len;
   }
   else    

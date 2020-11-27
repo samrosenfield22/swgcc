@@ -18,26 +18,13 @@ void test_compiler(void);
 int main(void)
 {
 
-
-    int *n = vector_from_arr((int[]){5, 6, 4, 3});
-    vector_foreach(n, i)
-        printf("%d %d\n", i, n[i]);
-    vector_insert(&n, 1);
-    n[1] = 9999;
-    vector_foreach(n, i)
-        printf("%d %d\n", i, n[i]);
-    //return 0;
-
-
-
-
-
     symbol_table_initialize();
     lexer_initialize();
 
     load_grammar("parser/c_grammar.txt");
     //grammar *g = load_grammar("parser/c_grammar.txt");
-    //dump_classnames();
+    dump_classnames();
+    getchar();
     //dump_parse_table(g->parse_table);
 
     //run test cases

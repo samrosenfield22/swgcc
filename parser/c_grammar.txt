@@ -26,12 +26,12 @@
 <mstmt>			::= <decl>
 
 ;maybe lol
-<decl>			::= type <base_id> {! add_decl_var 1} <declspec>
+<decl>			::= type <base_id> {! add_decl_var parent.1} <declspec>
 <declspec>		::= <decl_assign> <mdecl_assign>* ";" {! declare_vars} {pop}
 <declspec>		::= <mdecl_assign>* ";" {! declare_vars} {pop}
 <declspec>		::= <funcdef>
 <declspec>		::= ";" {! declare_vars} {pop}
-<mdecl_assign>	::= "," {pop} <base_id> {! add_decl_var 2} <decl_assign>?
+<mdecl_assign>	::= "," {pop} <base_id> {! add_decl_var parent.2} <decl_assign>?
 
 <decl_assign>	::= <var_assign>
 <decl_assign>	::= <array_assign>
@@ -156,7 +156,7 @@
 ;<base_expr>	::= <base_other>
 ;<base_num>		::= <base_other>
 
-<base_id>		::= id {! check_decl_parent 0} {push %s}
+<base_id>		::= id {! check_decl_parent parent.0, parent.parent} {push %s}
 <base_num>		::= num {push %s}
 <base_expr>		::= "(" <comma> ")"
 

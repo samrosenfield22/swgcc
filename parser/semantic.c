@@ -16,11 +16,11 @@ int declare_new_vars(const char *typestr, node *mdecl, bool lifetime);
 
 ////////// that new ish
 bool semantic_compiler_actions(node *pt);
-bool add_decl_var(node *sem, node *var);
-bool check_decl_parent(node *sem, node *id);
-bool declare_vars(node *sem, node *dummy);
-bool alloc_lcls(node *sem, node *dummy);
-bool free_lcls(node *sem, node *dummy);
+bool add_decl_var(node *sem, node *var, node *dummy);
+bool check_decl_parent(node *sem, node *id, node *dummy);
+bool declare_vars(node *sem, node *dummy, node *dummy2);
+bool alloc_lcls(node *sem, node *dummy, node *dummy2);
+bool free_lcls(node *sem, node *dummy, node *dummy2);
 
 
 bool is_lval(node *n);
@@ -83,12 +83,12 @@ typedef struct sem_compiler_act_s
 {
 	const char *str;
 	int argc;
-	bool (*action)(node *sem, node *arg);	//dummy for actions w/o args
+	bool (*action)(node *sem, node *arg0, node *arg1);	//dummy for actions w/o args
 } sem_compiler_act;
 sem_compiler_act COMPILER_ACTIONS[] =
 {
 	{"add_decl_var", 1, add_decl_var},
-	{"check_decl_parent", 1, check_decl_parent},
+	{"check_decl_parent", 2, check_decl_parent},
 	{"declare_vars", 0, declare_vars},
 
 	{"alloc_lcls", 0, alloc_lcls},
@@ -116,30 +116,42 @@ bool semantic_compiler_actions(node *pt)
 				assert(match == &(sem[i]->str[2]));	//after the '!', ' '
 				special_action_recognized = true;
 
-				//get the arg
-				node *arg = NULL;
-				if(aspec->argc == 1)
+				//get the arg(s)
+				node *arg[2] = {NULL, NULL};
+				//if(aspec->argc == 1)
+				match += strlen(aspec->str) + 1;
+				for(int ai=0; ai<aspec->argc; ai++)
 				{
-					match += strlen(aspec->str) + 1;
+					
 
 					//int sib_num = atoi(match);
 					//arg = node_get_parent(sem[i])->children[sib_num];	//assumes we're getting the sibling
 
 					//traverse the argument string (ex. parent.1 means get the parent, then get its child[1])
+					arg[ai] = sem[i];
 					while(1)
 					{
-						arg = sem[i];
-						if(strstr(match, "parent"))	arg = node_get_parent(arg);
-						else arg = arg->children[atoi(match)];
+						if(strstr(match, "parent")==match)	arg[ai] = node_get_parent(arg[ai]);
+						else arg[ai] = arg[ai]->children[atoi(match)];
 
-						match = strchr(match, '.');
-						if(!match) break;
-						match++;
+						while(!(*match=='.' || *match==',' || *match=='\0')) match++;
+
+						//match = strchr(match, ',');
+						
+						if(*match == ',') {match+=2; break;}
+						else if(*match == '\0') goto args_loaded;
+						else if(*match == '.') match++;
+						else assert(0);
 					}
+
+					//printf("arg %d\n", ai);
+					//node_print(arg[ai], 0);
 				}
+				args_loaded:
+				
 
 				//call the function
-				if(!aspec->action(sem[i], arg))
+				if(!aspec->action(sem[i], arg[0], arg[1]))
 					return false;
 			}
 		}
@@ -156,7 +168,7 @@ bool semantic_compiler_actions(node *pt)
 	return true;
 }
 
-bool add_decl_var(node *sem, node *var)
+bool add_decl_var(node *sem, node *var, node *dummy)
 {
 	assert(is_nonterm_type(var, "base_id"));
 
@@ -171,7 +183,7 @@ bool add_decl_var(node *sem, node *var)
 
 }
 
-bool check_decl_parent(node *sem, node *id)
+bool check_decl_parent(node *sem, node *id, node *parent)
 {
 	/*
 		the node is inside a <decl>, it's already been added to the decl var list -- all good
@@ -180,7 +192,10 @@ bool check_decl_parent(node *sem, node *id)
 	*/
 
 	//if(get_nonterm_ancestor(id, "decl"))
-	node *parent = node_get_ancestor(id, 2);
+	
+	//node *parent = node_get_ancestor(id, 2);
+	
+	assert(parent == node_get_ancestor(id, 2));
 	if(is_nonterm_type(parent, "decl") || is_nonterm_type(parent, "mdecl_assign"))
 		return true;
 	else
@@ -206,7 +221,7 @@ bool check_decl_parent(node *sem, node *id)
 	return true;
 }
 
-bool declare_vars(node *sem, node *dummy)
+bool declare_vars(node *sem, node *dummy, node *dummy2)
 {
 	vector_foreach(decl_var_list, i)
 	{
@@ -238,7 +253,7 @@ bool declare_vars(node *sem, node *dummy)
 	return true;
 }
 
-bool alloc_lcls(node *sem, node *dummy)
+bool alloc_lcls(node *sem, node *dummy, node *dummy2)
 {
 	char buf[21];
 	node *parent = node_get_parent(sem);
@@ -252,7 +267,7 @@ bool alloc_lcls(node *sem, node *dummy)
 	return true;
 }
 
-bool free_lcls(node *sem, node *dummy)
+bool free_lcls(node *sem, node *dummy, node *dummy2)
 {
 	char buf[21];
 	node *parent = node_get_parent(sem);
