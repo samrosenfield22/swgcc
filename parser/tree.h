@@ -23,6 +23,8 @@ struct node_s
     //symbol *type;
 
     symbol *sym;	//if the node contains a variable, this points to its symbol in the sym table
+
+    size_t block_bytes;	//only for "block" nonterms -- number of auto/local variable bytes
 };
 
 extern node ref_node;	//defined in tree.c
@@ -58,6 +60,7 @@ void node_print_str(node *pt, int depth);
 
 void semact_print(node *pt, int depth);
 void node_delete(node *pt, int dummy);
+void node_delete_from_parent(node *n);
 
 //"filter" is an expression where "n" refers to each node
 #define ptree_filter(tree, filter)					\

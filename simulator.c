@@ -358,6 +358,7 @@ struct op_entry
 
 int run_intermediate_code(bool verbose)
 {
+    //verbose = true;
     jump_taken = false;
     int res = 0;
     const int dump_spaces = 24;
@@ -426,7 +427,7 @@ int run_intermediate_code(bool verbose)
             for(char *p=sim_stack; p<sp; p+=4)
             {
                 //printf("%d ", *(int*)p);
-                print_reg_or_val(*p);
+                print_reg_or_val(*(int*)p);
                 printf(" ");
             }
             printf(")\n");
@@ -440,6 +441,14 @@ int run_intermediate_code(bool verbose)
         if(ip > ip_end)
         {
             printfcol(RED_FONT, "error: ip past end of code\n");
+            printf("ip:\t\t%d\t", (int)ip);             print_reg_or_val((int)ip);
+            printf("\nip_start:\t%d\t", (int)ip_start);   print_reg_or_val((int)ip_start);
+            printf("\nip_end:\t\t%d\t", (int)ip_end);     print_reg_or_val((int)ip_end);
+            printf("\n");
+            print_reg_or_val((int)((char*)ip-(char*)ip_start));
+            printf("\n");
+
+            dump_intermediate();
             assert(0);
         }
     }
@@ -448,7 +457,7 @@ int run_intermediate_code(bool verbose)
     ip_start = ip;
     if(sp != sim_stack)
     {
-        printf("--- sp not at stack head, it's at %d\n", sp-sim_stack);
+        printf("--- sp not at stack head, it's at %d ---\n", sp-sim_stack);
         assert(0);
     }
     //return sim_stack_pop(0);
@@ -483,8 +492,8 @@ static int print_reg_or_val(int arg)
     if(arg == (int)&bp)                     return printf("bp");
     else if(arg == (int)&sp)                return printf("sp");
     else if(arg == (int)&eax)               return printf("eax");
-    else if(sym)                            return printf("%s", sym->name);
-    else if((char*)arg >= (char*)ip_start)  return printfcol(YELLOW_FONT, "main+%d", (char*)arg - (char*)ip_start);
+    else if(sym)                            return printfcol(YELLOW_FONT, "%s", sym->name);
+    else if((char*)arg >= (char*)ip_start)  return printfcol(YELLOW_FONT, "main+%d", (int)((char*)arg - (char*)ip_start));
     else if(func)     return printfcol(YELLOW_FONT, "%s+%d", func->name, (char*)arg - (char*)(func->var));
     else if(sim_stack<=(char*)arg && (char*)arg<=sp) return printf("stack+%d", (char*)(arg)-sim_stack);
     else return printf("%d", arg);
@@ -533,7 +542,9 @@ int sim_stack_pop(int d)
 {
     assert(sp > sim_stack);    //underflow
     sp -= 4;
-    int popval = *(int*)sp;
+    //int popval = *(int*)sp;
+    int popval;
+    memcpy(&popval, sp, 4);
     if(d)
         *(int*)d = popval;
     return popval;

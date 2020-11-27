@@ -13,7 +13,7 @@
 
 <stmtlist>		::= <stmt>
 <stmtlist>		::= <block>
-<block>			::= "{" <stmt>* "}"
+<block>			::= "{" {! alloc_lcls} <stmt>* {! free_lcls} "}"
 
 <stmt>			::= <mstmt>
 <stmt>			::= <if>
@@ -22,16 +22,16 @@
 <stmt>			::= <forloop>
 <stmt>			::= "return" <comma> ";" {pop eax} {pushaddr 0} {jmp}
 
-<mstmt>			::= <comma> ";" {pop}
+<mstmt>			::= <comma> ";" {! declare_vars} {pop}
 <mstmt>			::= <decl>
 
 ;maybe lol
-<decl>			::= type <base_id> <declspec>
-<declspec>		::= <decl_assign> <mdecl_assign>* ";" {pop}
-<declspec>		::= <mdecl_assign>* ";" {pop}
+<decl>			::= type <base_id> {! add_decl_var 1} <declspec>
+<declspec>		::= <decl_assign> <mdecl_assign>* ";" {! declare_vars} {pop}
+<declspec>		::= <mdecl_assign>* ";" {! declare_vars} {pop}
 <declspec>		::= <funcdef>
-<declspec>		::= ";" {pop}
-<mdecl_assign>	::= "," {pop} <base_id> <decl_assign>?
+<declspec>		::= ";" {! declare_vars} {pop}
+<mdecl_assign>	::= "," {pop} <base_id> {! add_decl_var 2} <decl_assign>?
 
 <decl_assign>	::= <var_assign>
 <decl_assign>	::= <array_assign>
@@ -156,7 +156,7 @@
 ;<base_expr>	::= <base_other>
 ;<base_num>		::= <base_other>
 
-<base_id>		::= id {push %s}
+<base_id>		::= id {! check_decl_parent 0} {push %s}
 <base_num>		::= num {push %s}
 <base_expr>		::= "(" <comma> ")"
 

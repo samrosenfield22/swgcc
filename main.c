@@ -75,6 +75,7 @@ bad expr in lval context
 typedef struct test_case_s {char *src; int exp_status; int exp_val;} test_case;
 test_case test_cases[] =
 {
+
     {"int a=5;", PASS, 5},
     {"int b,c=1,p,pp,n;", PASS, 0},
     {"b=1+5,4,2<<4;", PASS, 32},
@@ -94,7 +95,7 @@ test_case test_cases[] =
     {"if(a-8) 22;", PASS, 0},
     {"{while(a) {c*=a; a--;} c;}", PASS, 40320},
     //do while {";", PASS, },
-    {"{while(c > 40220) {if(c & 0b1) n++; c--;} n;}", PASS, 50},
+    //{"{while(c > 40220) {if(c & 0b1) n++; c--;} n;}", PASS, 50},
 
     {"int fn(void) {return 11<<1;}", PASS, 0},
     {"fn() + 5;", PASS, 27},
@@ -125,6 +126,8 @@ void test_compiler(void)
     int res;
     for(int i=0; i<sizeof(test_cases)/sizeof(test_cases[0]); i++)
     {
+        printfcol(GREEN_FONT, "testing: %s\n", test_cases[i].src);
+
         int status = interpreter(&res, SILENT, test_cases[i].src);
         if(status != test_cases[i].exp_status)
         {

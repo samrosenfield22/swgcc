@@ -96,6 +96,7 @@ symbol *symbol_create(const char *name, symbol_type sym_type, typespec *type)
     vector_last(SYMBOL_TABLE)->var = NULL;
     vector_last(SYMBOL_TABLE)->declared = false;
     vector_last(SYMBOL_TABLE)->initialized = false;
+    vector_last(SYMBOL_TABLE)->lifetime = STATIC;
 
     //if we're defining a new type, add the type specification
     if(type)

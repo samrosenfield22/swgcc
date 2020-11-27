@@ -194,16 +194,21 @@ void lex_tokens_dump(lextok *lt)
 
 static void make_identifier(lextok *tp)
 {
-    //printf("checking if identifier \"%s\" is already a symbol", tp->str);
-    tp->sym = symbol_search(tp->str, SYM_ANY);
-    //printf("table addr %p\n", tp->sym);
+    /*tp->sym = symbol_search(tp->str, SYM_ANY);
     if(tp->sym)
     {
         if(tp->sym->sym_type != SYM_IDENTIFIER)
             tp->is_ident = false;
     }
     else
-        tp->sym = symbol_create(tp->str, SYM_IDENTIFIER, NULL);
+        tp->sym = symbol_create(tp->str, SYM_IDENTIFIER, NULL);*/
+
+    symbol *sym = symbol_search(tp->str, SYM_ANY);
+    if(sym)
+    {
+        if(sym->sym_type != SYM_IDENTIFIER)
+            tp->is_ident = false;
+    }
 }
 
 static void make_decimal(lextok *tp)

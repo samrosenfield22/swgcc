@@ -34,6 +34,7 @@ node *node_create(bool is_nonterminal, int ntype, const char *str, symbol *sym)
     n->parent = NULL;
     n->children = vector(node *, 0);
     n->str = strdup(str);
+    n->block_bytes = 0;
 
     return n;
 }
@@ -265,4 +266,14 @@ void node_delete(node *pt, int dummy)
 {
 	vector_destroy(pt->children);
 	free(pt);
+}
+
+void node_delete_from_parent(node *n)
+{
+	node *parent = node_get_parent(n);
+	int index = vector_search(parent->children, (int)n);
+	assert(index != -1);
+
+	node_delete(n, 0);
+	vector_delete(&(parent->children), index);
 }
