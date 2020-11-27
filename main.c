@@ -22,9 +22,7 @@ int main(void)
     lexer_initialize();
 
     load_grammar("parser/c_grammar.txt");
-    //grammar *g = load_grammar("parser/c_grammar.txt");
-    dump_classnames();
-    getchar();
+    //dump_classnames();
     //dump_parse_table(g->parse_table);
 
     //run test cases
@@ -64,7 +62,7 @@ test_case test_cases[] =
 {
 
     {"int a=5;", PASS, 5},
-    {"int b,c=1,p,pp,n;", PASS, 0},
+    {"int b,c=1,p,pp,n=0;", PASS, 0},
     {"b=1+5,4,2<<4;", PASS, 32},
     {"3*(1<<5/3) + (26^12);", PASS, (3*(1<<5/3) + (26^12))},
     {"p=&a,0;", PASS, 0},   //use the comma so this evalutates to 0 -- we aren't checking the value of &a

@@ -26,12 +26,12 @@
 <mstmt>			::= <decl>
 
 ;maybe lol
-<decl>			::= type <base_id> {! add_decl_var parent.1} <declspec>
+<decl>			::= type <base_id> {! add_decl_var parent.1} <declspec> {! handle_lvcontext parent.1}
 <declspec>		::= <decl_assign> <mdecl_assign>* ";" {! declare_vars} {pop}
 <declspec>		::= <mdecl_assign>* ";" {! declare_vars} {pop}
-<declspec>		::= <funcdef>
+<declspec>		::= <funcdef> {! define_function parent.parent.1.0}
 <declspec>		::= ";" {! declare_vars} {pop}
-<mdecl_assign>	::= "," {pop} <base_id> {! add_decl_var parent.2} <decl_assign>?
+<mdecl_assign>	::= "," {pop} <base_id> {! add_decl_var parent.2} <decl_assign>?  {! handle_lvcontext parent.2}
 
 <decl_assign>	::= <var_assign>
 <decl_assign>	::= <array_assign>
@@ -56,7 +56,7 @@
 <if>			::= "if" "(" <comma> ")" {pushaddr 1} {jz} <stmtlist> {jumplabel 1}
 
 ;the comma and stmtlist branches get swapped
-<while>			::= "while" "(" {pushaddr 1} {jmp} {jumplabel 2} <comma> ")" {jumplabel 1} <stmtlist> {pushaddr 2} {jnz}
+<while>			::= "while" "(" {pushaddr 1} {jmp} {jumplabel 2} <comma> ")" {jumplabel 1} <stmtlist> {pushaddr 2} {jnz} {! swap_nodes parent.5, parent.8}
 
 <dowhile>		::= "do" {jumplabel 1} <stmtlist> "while" "(" <comma> ")" {pushaddr 1} {jnz}
 
@@ -79,17 +79,17 @@
 ; expressions (arithmetic, logical, bitwise, assignment)
 
 <assign>		::= <logical> <massign>?
-<massign> 		::= "=" <assign> {=}
-<massign> 		::= "+=" <assign> {+=}
-<massign> 		::= "-=" <assign> {-=}
-<massign> 		::= "*=" <assign> {*=}
-<massign> 		::= "/=" <assign> {/=}
-<massign> 		::= "%=" <assign> {%=}
-<massign> 		::= "<<=" <assign> {<<=}
-<massign> 		::= ">>=" <assign> {>>=}
-<massign> 		::= "&=" <assign> {&=}
-<massign> 		::= "|=" <assign> {|=}
-<massign> 		::= "^=" <assign> {^=}
+<massign> 		::= "=" <assign> {=} {! handle_lvcontext parent.parent.0}
+<massign> 		::= "+=" <assign> {+=} {! handle_lvcontext parent.parent.0}
+<massign> 		::= "-=" <assign> {-=} {! handle_lvcontext parent.parent.0}
+<massign> 		::= "*=" <assign> {*=} {! handle_lvcontext parent.parent.0}
+<massign> 		::= "/=" <assign> {/=} {! handle_lvcontext parent.parent.0}
+<massign> 		::= "%=" <assign> {%=} {! handle_lvcontext parent.parent.0}
+<massign> 		::= "<<=" <assign> {<<=} {! handle_lvcontext parent.parent.0}
+<massign> 		::= ">>=" <assign> {>>=} {! handle_lvcontext parent.parent.0}
+<massign> 		::= "&=" <assign> {&=} {! handle_lvcontext parent.parent.0}
+<massign> 		::= "|=" <assign> {|=} {! handle_lvcontext parent.parent.0}
+<massign> 		::= "^=" <assign> {^=} {! handle_lvcontext parent.parent.0}
 
 
 <logical>		::= <bitwise> <mlogical>*
@@ -129,9 +129,9 @@
 <misc2>			::= <misc2_context>
 <misc2>			::= "!" <misc2> {!}
 <misc2>			::= "~" <misc2> {~}
-<misc2_context>	::= "&" <misc1> {&addr}
-<misc2_context>	::= "++" <misc1> {++pre}
-<misc2_context>	::= "--" <misc1> {--pre}
+<misc2_context>	::= "&" <misc1> {&addr} {! handle_lvcontext parent.1}
+<misc2_context>	::= "++" <misc1> {++pre} {! handle_lvcontext parent.1}
+<misc2_context>	::= "--" <misc1> {--pre} {! handle_lvcontext parent.1}
 <misc2_lval>	::= "*" <misc2> {*deref}
 
 ;<misc1>			::= <base>
@@ -140,9 +140,11 @@
 <misc1>			::= <base_num>
 <misc1_context>	::= <base_id> <m_misc1>?
 <misc1_context>	::= <base_expr> <m_misc1>?
-<m_misc1>		::= "++" {++post}
-<m_misc1>		::= "--" {--post}
-<m_misc1>		::= "(" <arglist>? ")" {pushaddr 3} {jmp} {jumplabel 3} {pushv eax}
+<m_misc1>		::= "++" {! handle_lvcontext parent.parent.0} {++post}
+<m_misc1>		::= "--" {! handle_lvcontext parent.parent.0} {--post}
+;;;;;;;;;;;;;this is actually a problem -- the index of the {jumplabel} is dependent on whether or not there's an arglist
+;;;;<m_misc1>		::= "(" <arglist>? ")" {pushaddr 3} {jmp} {jumplabel 3} {pushv eax} {! swap_nodes parent.2, parent.parent.0}
+<m_misc1>		::= "(" <arglist>? ")" {pushaddr 3} {jmp} {jumplabel 3} {pushv eax} {! handle_lvcontext parent.parent.0}
 <arglist>		::= <comma> <margs>*
 <margs>			::= "," <comma>
 
@@ -150,15 +152,9 @@
 <base>			::= <base_num>
 <base>			::= <base_expr>
 
-;<base>			::= <base_num>
-;<base>			::= <base_expr>
-
-;<base_expr>	::= <base_other>
-;<base_num>		::= <base_other>
-
-<base_id>		::= id {! check_decl_parent parent.0, parent.parent} {push %s}
-<base_num>		::= num {push %s}
+;<base_id>		::= id {! check_decl_parent parent.0, parent.parent} {push %s}
+<base_id>		::= id {! check_decl_parent parent.0, parent.parent} {! make_push parent}
+;<base_num>		::= num {push %s}
+<base_num>		::= num {! make_push parent}
 <base_expr>		::= "(" <comma> ")"
 
-;<base_other>	::= num {push %s}
-;<base_other>	::= "(" <comma> ")"

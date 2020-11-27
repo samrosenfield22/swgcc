@@ -21,7 +21,12 @@ bool check_decl_parent(node *sem, node *id, node *dummy);
 bool declare_vars(node *sem, node *dummy, node *dummy2);
 bool alloc_lcls(node *sem, node *dummy, node *dummy2);
 bool free_lcls(node *sem, node *dummy, node *dummy2);
+bool swap_nodes(node *sem, node *n1, node *n2);
+bool define_function(node *sem, node *id, node *dummy);
+bool handle_lvcontext(node *sem, node *id, node *dummy);
+bool make_push(node *sem, node *bid, node *dummy);
 
+void insert_local_allocations(node *sem, const char *instr, bool at_start);
 
 bool is_lval(node *n);
 bool is_lval_context_parent(node *n);
@@ -57,20 +62,22 @@ enum semantic_status_type
 
 #define SEMANTIC_BAIL_IF_NOT_OK	if(SEMANTIC_STATUS != SEM_OK) {semantic_print_failure(); return false;}
 
-
+bool declaration_only;
 bool all_semantic_checks(bool *decl_only, node *pt)
 {
 	SEMANTIC_STATUS = SEM_OK;
+	declaration_only = false;
 
 	//tree_sanity_check(pt);
 
-	if(!define_functions(decl_only, pt))	return false;
+	//if(!define_functions(decl_only, pt))	return false;
 	//if(!check_variable_declarations(pt))	return false;
 	if(!semantic_compiler_actions(pt))		return false;
-	if(!handle_lvals(pt))					return false;
+	//if(!handle_lvals(pt))					return false;
 	if(!set_conditional_jumps(pt))			return false;
 	//if(!resolve_tree_types(pt))				return false;
 
+	*decl_only = declaration_only;
 	return true;
 }
 
@@ -81,22 +88,29 @@ void tree_sanity_check(node *pt)
 
 typedef struct sem_compiler_act_s
 {
+	int order;		//order in which they get evaluated
 	const char *str;
 	int argc;
 	bool (*action)(node *sem, node *arg0, node *arg1);	//dummy for actions w/o args
 } sem_compiler_act;
 sem_compiler_act COMPILER_ACTIONS[] =
 {
-	{"add_decl_var", 1, add_decl_var},
-	{"check_decl_parent", 2, check_decl_parent},
-	{"declare_vars", 0, declare_vars},
+	{0, "add_decl_var", 1, add_decl_var},
+	{0, "check_decl_parent", 2, check_decl_parent},
+	{0, "declare_vars", 0, declare_vars},
 
-	{"alloc_lcls", 0, alloc_lcls},
-	{"free_lcls", 0, free_lcls}
+	{0, "alloc_lcls", 0, alloc_lcls},
+	{0, "free_lcls", 0, free_lcls},
 
+	{3, "swap_nodes", 2, swap_nodes},
+
+	{0, "define_function", 1, define_function},
+	{1, "handle_lvcontext", 1, handle_lvcontext},
+	{2, "make_push", 1, make_push}
 	//{"", 0, },
 };
 
+#define MAX_ORDER 3
 node **decl_var_list = NULL;//, **prev_decl_list;
 bool semantic_compiler_actions(node *pt)
 {
@@ -104,65 +118,62 @@ bool semantic_compiler_actions(node *pt)
 		decl_var_list = vector(*decl_var_list, 0);
 
 	node **sem = ptree_filter(pt, is_semact_special(n));
-	vector_foreach(sem, i)
+	for(int ord=0; ord<=MAX_ORDER; ord++)
 	{
-		bool special_action_recognized = false;
 		for(int a=0; a<sizeof(COMPILER_ACTIONS)/sizeof(COMPILER_ACTIONS[0]); a++)
 		{
 			sem_compiler_act *aspec = &COMPILER_ACTIONS[a];
-			char *match = strstr(sem[i]->str, aspec->str);
-			if(match)
-			{
-				assert(match == &(sem[i]->str[2]));	//after the '!', ' '
-				special_action_recognized = true;
+			if(aspec->order != ord)
+				continue;
 
-				//get the arg(s)
-				node *arg[2] = {NULL, NULL};
-				//if(aspec->argc == 1)
-				match += strlen(aspec->str) + 1;
-				for(int ai=0; ai<aspec->argc; ai++)
+			vector_foreach(sem, i)
+			{	
+				char *match = strstr(sem[i]->str, aspec->str);
+				if(match)
 				{
+					assert(match == &(sem[i]->str[2]));	//after the '!', ' '
+
+					//get the arg(s)
+					node *arg[2] = {NULL, NULL};
+					//if(aspec->argc == 1)
+					match += strlen(aspec->str) + 1;
+					for(int ai=0; ai<aspec->argc; ai++)
+					{
+						//traverse the argument string (ex. parent.1 means get the parent, then get its child[1])
+						arg[ai] = sem[i];
+						while(1)
+						{
+							if(strstr(match, "parent")==match)	arg[ai] = node_get_parent(arg[ai]);
+							else arg[ai] = arg[ai]->children[atoi(match)];
+
+							//advance to the next delimiter
+							while(!(*match=='.' || *match==',' || *match=='\0')) match++;
+							if(*match == ',')
+							{
+								match++;
+								if(*match == ' ') match++;
+								break;
+							}
+							else if(*match == '\0') goto args_loaded;
+							else if(*match == '.') match++;
+							else assert(0);
+						}
+					}
+					args_loaded:
 					
 
-					//int sib_num = atoi(match);
-					//arg = node_get_parent(sem[i])->children[sib_num];	//assumes we're getting the sibling
+					//call the function
+					if(!aspec->action(sem[i], arg[0], arg[1]))
+						return false;
 
-					//traverse the argument string (ex. parent.1 means get the parent, then get its child[1])
-					arg[ai] = sem[i];
-					while(1)
-					{
-						if(strstr(match, "parent")==match)	arg[ai] = node_get_parent(arg[ai]);
-						else arg[ai] = arg[ai]->children[atoi(match)];
-
-						while(!(*match=='.' || *match==',' || *match=='\0')) match++;
-
-						//match = strchr(match, ',');
-						
-						if(*match == ',') {match+=2; break;}
-						else if(*match == '\0') goto args_loaded;
-						else if(*match == '.') match++;
-						else assert(0);
-					}
-
-					//printf("arg %d\n", ai);
-					//node_print(arg[ai], 0);
+					//
+					//printf("deleting derived semact: %s\n", sem[i]->str);
+					node_delete_from_parent(sem[i]);
+					vector_delete(&sem, i);
+					i--;
 				}
-				args_loaded:
-				
-
-				//call the function
-				if(!aspec->action(sem[i], arg[0], arg[1]))
-					return false;
 			}
 		}
-
-		if(!special_action_recognized)
-		{
-			printfcol(RED_FONT, "unrecognized special semantic action: %s\n", sem[i]->str);
-			assert(0);
-		}
-
-		node_delete_from_parent(sem[i]);
 	}
 
 	return true;
@@ -185,40 +196,27 @@ bool add_decl_var(node *sem, node *var, node *dummy)
 
 bool check_decl_parent(node *sem, node *id, node *parent)
 {
-	/*
-		the node is inside a <decl>, it's already been added to the decl var list -- all good
+	/*	the node is inside a <decl>, it's already been added to the decl var list -- all good
 		the node is not inside a <decl>, and the id is in the symbol table -- all good
 		the node is not inside a <decl>, and the id is not in the symbol table -- using undecld variable!
-	*/
-
-	//if(get_nonterm_ancestor(id, "decl"))
-	
-	//node *parent = node_get_ancestor(id, 2);
+		*/
 	
 	assert(parent == node_get_ancestor(id, 2));
 	if(is_nonterm_type(parent, "decl") || is_nonterm_type(parent, "mdecl_assign"))
 		return true;
 	else
 	{
-		symbol *sym = symbol_search(id->str, SYM_IDENTIFIER);
-		if(sym)
-		{
-			//add it to the prev_decl_list so it can get pointed to the symbol (when we're done w the stmt)
-			//vector_append(prev_decl_list, id);
-			id->sym = sym;
-			//printf("\tattaching symbol to id %s\n", id->str);
+		assert(id->sym == NULL);
+		id->sym = symbol_search(id->str, SYM_IDENTIFIER);
+		if(id->sym)
 			return true;
-		}
 		else
 		{
 			printfcol(RED_FONT, "undeclared variable %s\n", id->str);
 			SEMANTIC_STATUS = SEM_USING_UNDECLD_VAR;
 			return false;
 		}
-
 	}
-
-	return true;
 }
 
 bool declare_vars(node *sem, node *dummy, node *dummy2)
@@ -226,12 +224,17 @@ bool declare_vars(node *sem, node *dummy, node *dummy2)
 	vector_foreach(decl_var_list, i)
 	{
 		node *id = decl_var_list[i]->children[0];
+		if(symbol_search(id->str, SYM_IDENTIFIER))
+		{
+			printfcol(RED_FONT, "redeclaring variable %s\n", id->str);
+			SEMANTIC_STATUS = SEM_REDECLARED_VAR;
+			return false;
+		}
 		id->sym = symbol_create(id->str, SYM_IDENTIFIER, NULL);
 
+		//get variable attributes from the context
 		node *decl = get_nonterm_ancestor(decl_var_list[i], "decl");
 		char *type = decl->children[0]->str;	//decl->type->str
-
-		//check if it's in a block
 		node *containing_block = get_nonterm_ancestor(decl, "block");
 		bool lifetime = containing_block? AUTO : STATIC;		//unless it's explicitly made static
 
@@ -255,35 +258,212 @@ bool declare_vars(node *sem, node *dummy, node *dummy2)
 
 bool alloc_lcls(node *sem, node *dummy, node *dummy2)
 {
-	char buf[21];
+	/*char buf[21];
 	node *parent = node_get_parent(sem);
 	assert(is_nonterm_type(parent, "block"));
 	size_t bytes = parent->block_bytes;
 
-	snprintf(buf, 20, "incsp %d", bytes);
-	free(sem->str);
-	sem->str = strdup(buf);
-
+	if(bytes)
+	{
+		snprintf(buf, 20, "incsp %d", bytes);
+		node *newsem = node_create(false, SEMACT, buf, NULL);
+		node_add_child(parent, newsem);
+	}*/
+	insert_local_allocations(sem, "incsp", true);
 	return true;
 }
 
 bool free_lcls(node *sem, node *dummy, node *dummy2)
+{
+	/*char buf[21];
+	node *parent = node_get_parent(sem);
+	assert(is_nonterm_type(parent, "block"));
+	size_t bytes = parent->block_bytes;
+	
+	if(bytes)
+	{
+		snprintf(buf, 20, "decsp %d", bytes);
+		node *newsem = node_create(false, SEMACT, buf, NULL);
+		node_add_child(parent, newsem);
+	}*/
+	insert_local_allocations(sem, "decsp", false);
+	return true;
+}
+
+void insert_local_allocations(node *sem, const char *instr, bool at_start)
 {
 	char buf[21];
 	node *parent = node_get_parent(sem);
 	assert(is_nonterm_type(parent, "block"));
 	size_t bytes = parent->block_bytes;
 	
-	snprintf(buf, 20, "decsp %d", bytes);
-	free(sem->str);
-	sem->str = strdup(buf);
+	if(bytes)
+	{
+		snprintf(buf, 20, "%s %d", instr, bytes);
+		node *newsem = node_create(false, SEMACT, buf, NULL);
+		//node_add_child(parent, newsem);
+		int index = at_start? 1 : vector_len(parent->children)-2;
+
+		//
+		vector_insert(parent->children, index);
+		parent->children[index] = newsem;
+		newsem->parent = parent;
+	}
+}
+
+bool swap_nodes(node *sem, node *n1, node *n2)
+{
+	printf("swapping nodes:\n");
+	node_print(n1, 0);
+	node_print(n2, 0);
+
+	node *p1 = node_get_parent(n1);
+	int ind1 = vector_search(p1->children, (int)n1);
+	assert(ind1 != -1);
+
+	node *p2 = node_get_parent(n2);
+	int ind2 = vector_search(p2->children, (int)n2);
+	assert(ind2 != -1);
+
+	node *temp = n1;
+	p1->children[ind1] = n2;
+	p2->children[ind2] = temp;
 
 	return true;
 }
 
+bool define_function(node *sem, node *id, node *dummy)
+{
+	//id (decl->children[1]->children[0])
+	id->sym = symbol_create(id->str, SYM_IDENTIFIER, NULL);
+	assign_type_to_symbol(id->sym, "function");
+	id->sym->var = get_code_addr();
+	id->sym->declared = true;
+
+	declaration_only = true;
+
+	printfcol(GREEN_FONT, "defined function: %s\n", id->sym->name);
+	return true;
+}
+
+bool handle_lvcontext(node *sem, node *context, node *dummy)
+{
+	if(is_lval(context))
+	{
+		for(node *n=context; ;)
+		{
+			n->lval = true;
+			if(is_nonterm_type(n, "misc2_lval"))
+			{
+				assert(n->children[2]->ntype==SEMACT);
+				vector_delete(&n->children, 2);	//delete the '*' node
+			}
+
+			//next one
+			if(vector_len(n->children)==1) n = n->children[0];
+			else if(is_nonterm_type(n, "base_expr")) n = n->children[1];
+			else break;
+		}
+
+		//context->lval = true;
+		/*if(is_nonterm_type(context, "misc2_lval"))
+		{
+			assert(context->children[2]->ntype==SEMACT);
+			vector_delete(&context->children, 2);	//delete the '*' node
+		}*/
+		return true;
+	}
+	else
+	{
+		//error
+		set_text_color(RED_FONT);
+		printf("unexpected expression in lval context: ");
+		node_print(context, 0);
+		printf("\n");
+		SEMANTIC_STATUS = BAD_LVAL;
+		return false;
+	}
+}
+
+bool make_push(node *sem, node *bid, node *dummy)
+{
+	bool local = get_nonterm_ancestor(bid, "block") &&
+	(get_nonterm_ancestor(bid, "decl") || get_nonterm_ancestor(bid, "mdecl_assign"));
+	char instr[21], buf[21];
+	int arg;
+
+	//compose the push command string
+	if(is_nonterm_type(bid, "base_num"))
+	{
+		arg = atoi(bid->children[0]->str);
+		strcpy(instr, "push");
+	}
+	else
+	{
+		arg = (int)bid->children[0]->sym->var;
+		/*if(local)
+		{
+			if(bid->lval)	strcpy(instr, "pushl");
+			else			strcpy(instr, "pushlv");
+		}
+		else
+		{*/
+			if(bid->lval)	strcpy(instr, "push");
+			else			strcpy(instr, "pushv");
+		//}
+	}
+	snprintf(buf, 20, "%s %d", instr, arg);
+
+	node *pushact = node_create(false, SEMACT, buf, NULL);
+	node_add_child(bid, pushact);
+	return true;
+}
+
+/*
+each node has a lval attribute, which is false by default
+make a semantic action for each lval context (&context, context++, context = ...) that
+checks if that thing is an lval
+	if it's not, error
+	if it is, mark it as an lval (and for misc2s, delete the *deref)
+(note that this scheme does nothing to lvals out of context -- since the only lvals-out-of-context that
+we need to do anything to are base_ids, and those are already rvals by default, no problemo)
+after this is all done, we iterate the tree and make push instrs for each bid
+
+handle_lval_context(node *sem, node *context, node *dummy)
+{
+	if(is_lval(context))
+	{
+		context->lval = true;
+		if(is_nonterm_type(context, "misc2_whatever"))
+			delete the *deref
+	}
+	else
+		error
+}
+
+make_push(node *sem, node *id, node *parent)
+{
+	node *pushact = node_add_child(parent, ...)
+	bool local = get_ancestor(parent, "block");
+	if(local)
+	{
+		if(id->lval)	pushact->str = strdup("pushl");
+		else			pushact->str = strdup("pushlv");
+	}
+	else
+	{
+		if(id->lval)	pushact->str = strdup("push");
+		else			pushact->str = strdup("pushv");
+	}
+}
+
+*/
+
 ////////////////////////////////////////////
 
-bool define_functions(bool *decl_only, node *pt)
+
+
+/*bool define_functions(bool *decl_only, node *pt)
 {
 
 	//node **decls = ptree_filter(pt, is_nonterm_type(n, "decl"));
@@ -320,7 +500,7 @@ bool define_functions(bool *decl_only, node *pt)
 	//vector_destroy(decls);
 
 	return true;
-}
+}*/
 
 
 /*bool check_variable_declarations(node *pt)
@@ -333,6 +513,7 @@ bool define_functions(bool *decl_only, node *pt)
 	}
 }*/
 
+/*
 bool check_variable_declarations(node *pt)
 {
 	//handle declarations for each sequence (comma or decl) separately
@@ -354,29 +535,7 @@ bool check_variable_declarations(node *pt)
 		node **prev_decld_ids = ptree_filter(mstmts[s],		
 			is_nonterm_type(n, "base_id") && vector_search(decl_ids, (int)n)==-1);
 
-		/*set_text_color(YELLOW_FONT);
-		printf("\ndeclaring variables for statement ");
-		node_print(mstmts[s], 0);
-		printf("vars that should get declared:");
-		vector_foreach(decl_ids, i)
-			node_print(decl_ids[i], 0);
-		printf("vars that should already be declared:");
-		vector_foreach(prev_decld_ids, i)
-			node_print(prev_decld_ids[i], 0);
-		set_text_color(RESET_FONT);
-
-		vector_foreach(decl_ids, i)
-		{
-			vector_foreach(prev_decld_ids, j)
-			{
-				if(decl_ids[i] == prev_decld_ids[j])
-				{
-					printfcol(RED_FONT, "a m g e r y\n");
-					exit(-1);
-				}
-			}
-		}*/
-
+		
 		//check if all those vars are already declared
 		vector_filter(prev_decld_ids, n->children[0]->sym->declared == false);
 		vector_foreach(prev_decld_ids, i)
@@ -430,7 +589,7 @@ bool check_variable_declarations(node *pt)
 
 	vector_destroy(mstmts);
 	return true;
-}
+}*/
 
 bool handle_lvals(node *pt)
 {
@@ -499,7 +658,7 @@ int jlpair = 4;		//track jump addr/label pairs. this is a kludgey solution -- it
 bool set_conditional_jumps(node *pt)
 {
 	//swap the condition and stmtlist in while loops
-	node **whiles = ptree_filter(pt, is_nonterm_type(n, "while"));
+	/*node **whiles = ptree_filter(pt, is_nonterm_type(n, "while"));
 	vector_foreach(whiles, i)
 	{
 		//vector_swap(whiles[i]->children, 5, 8);	//swap the comma and stmtlist (nodes 5 and 8)
@@ -507,7 +666,7 @@ bool set_conditional_jumps(node *pt)
 		int fl_stmtlist = get_nonterm_child_index(whiles[i], "stmtlist");
 		vector_swap(whiles[i]->children, fl_comma, fl_stmtlist);
 	}
-	vector_destroy(whiles);
+	vector_destroy(whiles);*/
 
 	//swap the condition and stmtlist in for loops
 	node **forloops = ptree_filter(pt, is_nonterm_type(n, "forloop"));
@@ -555,6 +714,8 @@ bool is_lval(node *n)
 	if(is_nonterm_type(n, "base_id"))		return true;
 	if(is_nonterm_type(n, "base_expr"))		return is_lval(n->children[1]);	//the expr between the ()
 	if(is_nonterm_type(n, "misc2_lval"))	return true;
+
+	if(vector_len(n->children)==1 && is_lval(n->children[0])) return true;
 
 	return false;
 }

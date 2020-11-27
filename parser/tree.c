@@ -34,6 +34,7 @@ node *node_create(bool is_nonterminal, int ntype, const char *str, symbol *sym)
     n->parent = NULL;
     n->children = vector(node *, 0);
     n->str = strdup(str);
+    n->lval = false;
     n->block_bytes = 0;
 
     return n;

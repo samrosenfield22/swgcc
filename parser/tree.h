@@ -24,6 +24,7 @@ struct node_s
 
     symbol *sym;	//if the node contains a variable, this points to its symbol in the sym table
 
+    bool lval;
     size_t block_bytes;	//only for "block" nonterms -- number of auto/local variable bytes
 };
 
