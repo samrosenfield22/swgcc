@@ -11,12 +11,37 @@
 #include "symbol.h"
 #include "utils/printcolor.h"
 
-
+void banner(void);
 void test_compiler(bool verbose, int problem_case);
 
 
-int main(void)
+int main(int argc, char *argv[])
 {
+    bool run_tests = false;
+    bool verbosity = VERBOSE;
+    for(int i=1; i<argc; i++)
+    {
+        if(strcmp(argv[i], "-h")==0 || strcmp(argv[i], "--help")==0)
+        {
+            printfcol(YELLOW_FONT, "swgcc -- the swg c compiler\n");
+            printf("(still in development)\n\n");
+            
+            printf("format: swgcc {options}\n");
+            printf("options:\n");
+            printf("-h, --help\t\tdisplay this message\n");
+            printf("-s, --silent\t\trun interpreter without extra diagnostics (does not affect test verbosity)\n");
+            printf("-t, --test\t\trun unit tests before launching interpreter\n");
+            printf("\nfor more information on what features of the c language are supported, consult manual.txt\n");
+            return 0;
+        }
+
+        else if(strcmp(argv[i], "-t")==0 || strcmp(argv[i], "--test")==0)
+            run_tests = true;
+        else if(strcmp(argv[i], "-s")==0 || strcmp(argv[i], "--silent")==0)
+            verbosity = SILENT;
+    }
+
+    banner();
 
     symbol_table_initialize();
     lexer_initialize();
@@ -26,10 +51,11 @@ int main(void)
     //dump_parse_table(g->parse_table);
 
     //run test cases
-    test_compiler(SILENT, 17);
+    if(run_tests)
+        test_compiler(SILENT, -1);
 
     //interpret forever
-    launch_interpreter();
+    launch_interpreter(verbosity);
 
     
     return 0;
@@ -88,6 +114,10 @@ test_case test_cases[] =
     {"int afact(void) {b=1; while(a) {b = mulab(); a--;} return b;}", PASS, 0},
     {"{a=5; afact();}", PASS, 120},
 
+    //locals
+    {"{int cc=5; cc++; a=cc;}", PASS, 0},
+    {"a;", PASS, 6},
+
     //code that should fail
     //{"int 9a;", LEX_FAIL, 0},
     {"a = !!!;", LEX_FAIL, 0},
@@ -139,4 +169,15 @@ void test_compiler(bool verbose, int problem_case)
     }
 
     printfcol(GREEN_FONT, "\nall tests passed!\n");
+}
+
+void banner(void)
+{
+
+const char *banner = "\n   _|_|_|  _|          _|    _|_|_|    _|_|_|    _|_|_|   \n\
+ _|        _|          _|  _|        _|        _|           \n\
+   _|_|    _|    _|    _|  _|  _|_|  _|        _|           \n\
+       _|    _|  _|  _|    _|    _|  _|        _|           \n\
+ _|_|_|        _|  _|        _|_|_|    _|_|_|    _|_|_| \n";
+    puts(banner);
 }

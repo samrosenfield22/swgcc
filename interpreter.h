@@ -18,7 +18,7 @@ typedef enum fail_type
 } fail_type;
 
 
-void launch_interpreter(void);
+void launch_interpreter(bool verbose);
 fail_type interpreter(int *result, bool verbose, char *code);
 
 #endif //INTERPRETER_H_

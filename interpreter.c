@@ -18,7 +18,7 @@ char strbuf[801];
 char *read_stmtlist(void);
 int count_char_in_str(const char *str, char c);
 
-void launch_interpreter(void)
+void launch_interpreter(bool verbose)
 {
 	while(1)
     {
@@ -29,7 +29,7 @@ void launch_interpreter(void)
             assert(0);
         }
 
-        interpreter(NULL, VERBOSE, in);
+        interpreter(NULL, verbose, in);
     }
 }
 
@@ -76,7 +76,7 @@ fail_type interpreter(int *result, bool verbose, char *code)
     else
     	res = run_intermediate_code(verbose);
     if(verbose) dump_symbol_table();
-    if(verbose) printf("\n%d\n", res);
+    printf("\n%d\n", res);
 
     delete_all_locals();
 

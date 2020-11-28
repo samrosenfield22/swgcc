@@ -27,6 +27,13 @@ typedef struct symbol_s symbol;
 #define STATIC  true
 #define AUTO    false
 
+typedef enum scopetype_e
+{
+    BLOCK,
+    INTERNAL,
+    EXTERNAL
+} scopetype;
+
 struct symbol_s
 {
     symbol_type sym_type;
@@ -36,6 +43,8 @@ struct symbol_s
     //scope
     //lifetime
     bool lifetime;
+    scopetype scope;
+    void *block;    //if the var is block scope, this points to the containing block
 
     //type
     symbol *type;
@@ -49,11 +58,13 @@ struct symbol_s
 
 void symbol_table_initialize(void);
 symbol *symbol_search(const char *name, symbol_type sym_type);
+symbol *symbol_search_local(const char *name, symbol_type sym_type, void *block);
 symbol *symbol_search_by_addr(int *varaddr);
 symbol *symbol_search_function_addr(int *varaddr);
 symbol *symbol_create(const char *name, symbol_type sym_type, typespec *type);
 //bool symbol_delete(const char *name);
 bool symbol_delete(symbol *sym);
+void delete_locals_in_block(void *block);
 void delete_all_locals(void);
 void assign_type_to_symbol(symbol *sym, const char *typestr);
 

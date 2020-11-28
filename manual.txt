@@ -1,0 +1,12 @@
+pshhh, you call this a manual?!
+
+swgcc (swg c compiler) supported features:
+* expressions (arithmetic, logical, assignment, comparison, dereference, address-of)
+* variables (ints)
+* hex and binary constants, char literals
+* if, while
+* functions (no arguments), local (auto-lifetime) variables
+
+coming soon:
+* function arguments
+* types

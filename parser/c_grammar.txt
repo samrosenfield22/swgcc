@@ -13,7 +13,7 @@
 
 <stmtlist>		::= <stmt>
 <stmtlist>		::= <block>
-<block>			::= "{" {! alloc_lcls} <stmt>* {! free_lcls} "}"
+<block>			::= "{" {! alloc_lcls} <stmtlist>* {! free_lcls} "}"
 
 <stmt>			::= <mstmt>
 <stmt>			::= <if>

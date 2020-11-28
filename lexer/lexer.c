@@ -75,9 +75,9 @@ void lexer_initialize(void)
     nfa_builder_initialize();
     nfa_simulator_initialize();
 
-    printf("building regexes... ");
+    //printf("building regexes... ");
     lexer_build_all_regexes();
-    printf("done!\n");
+    //printf("done!\n");
 }
 
 static void lexer_build_all_regexes(void)

@@ -34,32 +34,27 @@ void symbol_table_initialize(void)
     //exit(0);
 }
 
+//searches for symbols w matching type (unless passed SYM_ANY) and name
+//if there are multiple (i.e. variables that shadow each other), return the deepest one
 symbol *symbol_search(const char *name, symbol_type sym_type)
 {
 
     symbol **match = vector_copy_filter(SYMBOL_TABLE, 
         (n->sym_type == sym_type || sym_type==SYM_ANY) && strcmp(name, n->name)==0);
+    //symbol *m = vector_is_empty(match)? NULL : match[0];
+    symbol *m = vector_is_empty(match)? NULL : vector_last(match);
+    vector_destroy(match);
+    return m;
+}
+
+symbol *symbol_search_local(const char *name, symbol_type sym_type, void *block)
+{
+
+    symbol **match = vector_copy_filter(SYMBOL_TABLE, 
+        (n->sym_type == sym_type || sym_type==SYM_ANY) && strcmp(name, n->name)==0 && n->block==block);
     symbol *m = vector_is_empty(match)? NULL : match[0];
     vector_destroy(match);
     return m;
-    //////////////////////////////////////////
-
-    //printf("searching for symbol \'%s\'... ", name);
-    /*for(int i=0; i<vector_len(SYMBOL_TABLE); i++)
-    {
-        if((SYMBOL_TABLE[i]->sym_type == sym_type) || (sym_type==SYM_ANY))
-        {
-            if(strcmp(name, SYMBOL_TABLE[i]->name)==0)
-            {
-                //if(sym_type == SYM_TYPESPEC)
-                //    printf("sym %d: found type (%s), size = %d\n", i, name, SYMBOL_TABLE[i]->tspec->bytes);
-
-                return SYMBOL_TABLE[i];
-            }
-        }
-    }
-    //printf("not found\n");
-    return NULL;*/
 }
 
 //returns a ptr to a symbol whose var addr matches, or if there is none, a symbol (of type function)
@@ -97,6 +92,8 @@ symbol *symbol_create(const char *name, symbol_type sym_type, typespec *type)
     vector_last(SYMBOL_TABLE)->declared = false;
     vector_last(SYMBOL_TABLE)->initialized = false;
     vector_last(SYMBOL_TABLE)->lifetime = STATIC;
+    vector_last(SYMBOL_TABLE)->scope = INTERNAL;
+    vector_last(SYMBOL_TABLE)->block = NULL;
 
     //if we're defining a new type, add the type specification
     if(type)
@@ -130,12 +127,26 @@ bool symbol_delete(symbol *sym)
     return false;
 }
 
+void delete_locals_in_block(void *block)
+{
+    vector_foreach(SYMBOL_TABLE, i)
+    {
+        symbol *sym = SYMBOL_TABLE[i];
+        if(sym->sym_type==SYM_IDENTIFIER && strcmp(sym->type->name, "function")!=0 && sym->block==block)
+        {
+            vector_delete(&SYMBOL_TABLE, i);
+            i--;
+        }
+    }
+}
+
 void delete_all_locals(void)
 {
     vector_foreach(SYMBOL_TABLE, i)
     {
         symbol *sym = SYMBOL_TABLE[i];
-        if(sym->sym_type==SYM_IDENTIFIER && strcmp(sym->type->name, "function")!=0 && sym->lifetime==AUTO)
+        //if(sym->sym_type==SYM_IDENTIFIER && strcmp(sym->type->name, "function")!=0 && sym->lifetime==AUTO)
+        if(sym->sym_type==SYM_IDENTIFIER && strcmp(sym->type->name, "function")!=0 && sym->scope==BLOCK)
         {
             vector_delete(&SYMBOL_TABLE, i);
             i--;
