@@ -58,7 +58,7 @@ struct symbol_s
 
 void symbol_table_initialize(void);
 symbol *symbol_search(const char *name, symbol_type sym_type);
-symbol *symbol_search_local(const char *name, symbol_type sym_type, void *block);
+symbol *symbol_search_local(const char *name, symbol_type sym_type, void **block);
 symbol *symbol_search_by_addr(char *varaddr);
 symbol *symbol_search_function_addr(char *varaddr);
 symbol *symbol_create(const char *name, symbol_type sym_type, typespec *type);

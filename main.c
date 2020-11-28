@@ -84,12 +84,15 @@ test_case test_cases[] =
     {"a__1 = 0b11011011;", PASS, 0b11011011},
     {"{a=8; b=11;}", PASS, 11},
     {"a;", PASS, 8},
+
+    //conditionals
     {"if(a-7) 22;", PASS, 22},
     {"if(a-8) 22;", PASS, 0},
     {"{while(a) {c*=a; a--;} c;}", PASS, 40320},
     //do while {";", PASS, },
     //{"{while(c > 40220) {if(c & 0b1) n++; c--;} n;}", PASS, 50},
 
+    //functions
     {"int fn(void) {return 11<<1;}", PASS, 0},
     {"fn() + 5;", PASS, 27},
     {"int mulab(void) {return b * a;}", PASS, 0},
@@ -99,6 +102,8 @@ test_case test_cases[] =
     //locals
     {"{int cc=5; cc++; a=cc;}", PASS, 0},
     {"a;", PASS, 6},
+    {"{int a=1; {int a=2; {int a=3;} b=a;} b;}", PASS, 0},
+    {"b;", PASS, 2},
 
     //code that should fail
     //{"int 9a;", LEX_FAIL, 0},
@@ -178,16 +183,23 @@ void handle_cmdline_options(int argc, char *argv[])
             {"file",    required_argument, 0, 'f'},
             */
 
-            {"test",      no_argument,    0,  't'},
             {"help",      no_argument,    0,  'h'},
+            {"test",      no_argument,    0,  't'},
             {"quiet",     no_argument,    0,  'q'},
             {0, 0, 0, 0}
+        };
+
+        const char *explanations[] =
+        {
+            "display this message",                                                     //--help
+            "run unit tests before launching interpreter",                              //--test
+            "run interpreter without extra diagnostics (tests are quiet regardless)"    //--quiet  
         };
       
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        //for required args put a colon after
+        //for options which require an arg, put a colon after
         //ex. getopt_long(argc, argv, "abc:d:f:, ...");
         int c = getopt_long (argc, argv, "thq", long_options, &option_index);
 
@@ -221,9 +233,11 @@ void handle_cmdline_options(int argc, char *argv[])
 
                 printf("format: swgcc {options}\n");
                 printf("options:\n");
-                printf("-h, --help\t\tdisplay this message\n");
-                printf("-t, --test\t\trun unit tests before launching interpreter\n");
-                printf("-q, --quiet\t\trun interpreter without extra diagnostics (tests are quiet regardless)\n");
+                for(int i=0; i<sizeof(explanations)/sizeof(explanations[0]); i++)
+                {
+                    printf("-%c, --%s\t\t%s\n",
+                        long_options[i].val, long_options[i].name, explanations[i]);
+                }
                 printf("\nfor more information on what features of the c language are supported, consult manual.txt\n");
                 exit(0);
                 break;

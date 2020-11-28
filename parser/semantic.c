@@ -205,15 +205,29 @@ bool check_decl_parent(node *sem, node *id, node *parent)
 	else
 	{
 		assert(id->sym == NULL);
-		//printf("checking if symbol %s is declared... ", id->str);
-		id->sym = symbol_search(id->str, SYM_IDENTIFIER);	//gets the one in the deepest block
-		//printf("%s\n", id->sym? "yes":"no");
+
+		/* get all blocks that are possible scopes for the variable -- that way if one shadows another,
+		we get the one belonging to the innermost block
+		this list must include NULL so we also look for a global variable */
+		node *b = get_nonterm_ancestor(id, "block");
+		node **blocks = vector(*blocks, 0);
+		while(b)
+		{
+			vector_append(blocks, b);
+			b = get_nonterm_ancestor(b, "block");
+		}
+		vector_append(blocks, NULL);
+
+		//id->sym = symbol_search(id->str, SYM_IDENTIFIER);	//gets the one in the deepest block
+		id->sym = symbol_search_local(id->str, SYM_IDENTIFIER, (void**)blocks);
+		vector_destroy(blocks);
+
 		if(id->sym)
 			return true;
 		else
 		{
 			printfcol(RED_FONT, "undeclared variable %s\n", id->str);
-			dump_symbol_table();
+			//dump_symbol_table();
 			SEMANTIC_STATUS = SEM_USING_UNDECLD_VAR;
 			return false;
 		}
@@ -225,9 +239,15 @@ bool declare_vars(node *sem, node *dummy, node *dummy2)
 	vector_foreach(decl_var_list, i)
 	{
 		node *id = decl_var_list[i]->children[0];
-		node *block = get_nonterm_ancestor(id, "block");
+		
+		/* only look for a variable w matching name in the same scope! if there's a var (w same name)
+		in an outer scope, we can shadow it */
+		node **blocks = vector(*blocks, 1);
+		blocks[0] = get_nonterm_ancestor(id, "block");
+		bool var_same_name_in_scope = symbol_search_local(id->str, SYM_IDENTIFIER, (void**)blocks);
+		vector_destroy(blocks);
 
-		if(symbol_search_local(id->str, SYM_IDENTIFIER, block))
+		if(var_same_name_in_scope)
 		{
 			printfcol(RED_FONT, "redeclaring variable %s\n", id->str);
 			SEMANTIC_STATUS = SEM_REDECLARED_VAR;

@@ -47,14 +47,37 @@ symbol *symbol_search(const char *name, symbol_type sym_type)
     return m;
 }
 
-symbol *symbol_search_local(const char *name, symbol_type sym_type, void *block)
+//takes a vector of blocks (scopes). for each one, looks for a symbol (of matching name/type) in that scope.
+symbol *symbol_search_local(const char *name, symbol_type sym_type, void **block)
 {
 
-    symbol **match = vector_copy_filter(SYMBOL_TABLE, 
+    /*symbol **match = vector_copy_filter(SYMBOL_TABLE, 
         (n->sym_type == sym_type || sym_type==SYM_ANY) && strcmp(name, n->name)==0 && n->block==block);
-    symbol *m = vector_is_empty(match)? NULL : match[0];
+    symbol *m = vector_is_empty(match)? NULL : match[0];*/
+    
+    symbol **match = vector_copy_filter(SYMBOL_TABLE, 
+        (n->sym_type == sym_type || sym_type==SYM_ANY) && strcmp(name, n->name)==0);
+    if(vector_is_empty(match))
+    {
+        vector_destroy(match);
+        return NULL;
+    }
+
+    symbol *local = NULL;
+    vector_foreach(block, b)
+    {
+        vector_foreach(match, m)
+        {
+            if(block[b] == match[m]->block)
+            {
+                local = match[m];
+                goto local_found;
+            }
+        }
+    }
+    local_found:
     vector_destroy(match);
-    return m;
+    return local;
 }
 
 //returns a ptr to a symbol whose var addr matches, or if there is none, a symbol (of type function)
@@ -127,7 +150,7 @@ bool symbol_delete(symbol *sym)
     return false;
 }
 
-void delete_locals_in_block(void *block)
+/*void delete_locals_in_block(void *block)
 {
     vector_foreach(SYMBOL_TABLE, i)
     {
@@ -138,7 +161,7 @@ void delete_locals_in_block(void *block)
             i--;
         }
     }
-}
+}*/
 
 void delete_all_locals(void)
 {
