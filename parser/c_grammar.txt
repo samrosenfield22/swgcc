@@ -143,8 +143,8 @@
 <m_misc1>		::= "++" {! handle_lvcontext parent.parent.0} {++post}
 <m_misc1>		::= "--" {! handle_lvcontext parent.parent.0} {--post}
 ;;;;;;;;;;;;;this is actually a problem -- the index of the {jumplabel} is dependent on whether or not there's an arglist
-;;;;<m_misc1>		::= "(" <arglist>? ")" {pushaddr 3} {jmp} {jumplabel 3} {pushv eax} {! swap_nodes parent.2, parent.parent.0}
-<m_misc1>		::= "(" <arglist>? ")" {pushaddr 3} {jmp} {jumplabel 3} {pushv eax} {! handle_lvcontext parent.parent.0}
+<m_misc1>		::= "(" <arglist>? ")" {pushaddr 3} {jmp} {jumplabel 3} {pushv eax} {! handle_lvcontext parent.parent.0} {! swap_nodes parent.2, parent.parent.0}
+;<m_misc1>		::= "(" <arglist>? ")" {pushaddr 3} {jmp} {jumplabel 3} {pushv eax} {! handle_lvcontext parent.parent.0}
 <arglist>		::= <comma> <margs>*
 <margs>			::= "," <comma>
 

@@ -12,7 +12,7 @@
 #include "utils/printcolor.h"
 
 
-void test_compiler(void);
+void test_compiler(bool verbose, int problem_case);
 
 
 int main(void)
@@ -26,7 +26,7 @@ int main(void)
     //dump_parse_table(g->parse_table);
 
     //run test cases
-    test_compiler();
+    test_compiler(SILENT, 17);
 
     //interpret forever
     launch_interpreter();
@@ -103,7 +103,7 @@ test_case test_cases[] =
     
 };
 
-void test_compiler(void)
+void test_compiler(bool verbose, int problem_case)
 {
     printf("\nrunning test cases..... ");
 
@@ -111,9 +111,11 @@ void test_compiler(void)
     int res;
     for(int i=0; i<sizeof(test_cases)/sizeof(test_cases[0]); i++)
     {
-        printfcol(GREEN_FONT, "testing: %s\n", test_cases[i].src);
+        printfcol(GREEN_FONT, "testing case %d: %s\n", i, test_cases[i].src);
+        if(i == problem_case)
+            verbose = VERBOSE;
 
-        int status = interpreter(&res, SILENT, test_cases[i].src);
+        int status = interpreter(&res, verbose, test_cases[i].src);
         if(status != test_cases[i].exp_status)
         {
             if(status == PASS)
