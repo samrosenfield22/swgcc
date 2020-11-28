@@ -9,6 +9,7 @@
 #include "lexer/lexer.h"
 #include "parser/recdesc.h"
 #include "parser/semantic.h"
+#include "intermediate.h"
 #include "simulator.h"
 #include "utils/printcolor.h"
 

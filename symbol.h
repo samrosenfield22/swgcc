@@ -38,7 +38,7 @@ struct symbol_s
 {
     symbol_type sym_type;
     char *name;
-    int *var;
+    char *var;
 
     //scope
     //lifetime
@@ -59,8 +59,8 @@ struct symbol_s
 void symbol_table_initialize(void);
 symbol *symbol_search(const char *name, symbol_type sym_type);
 symbol *symbol_search_local(const char *name, symbol_type sym_type, void *block);
-symbol *symbol_search_by_addr(int *varaddr);
-symbol *symbol_search_function_addr(int *varaddr);
+symbol *symbol_search_by_addr(char *varaddr);
+symbol *symbol_search_function_addr(char *varaddr);
 symbol *symbol_create(const char *name, symbol_type sym_type, typespec *type);
 //bool symbol_delete(const char *name);
 bool symbol_delete(symbol *sym);

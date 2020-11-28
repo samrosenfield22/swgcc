@@ -25,20 +25,26 @@ int main(int argc, char *argv[])
         {
             printfcol(YELLOW_FONT, "swgcc -- the swg c compiler\n");
             printf("(still in development)\n\n");
-            
+
             printf("format: swgcc {options}\n");
             printf("options:\n");
             printf("-h, --help\t\tdisplay this message\n");
-            printf("-s, --silent\t\trun interpreter without extra diagnostics (does not affect test verbosity)\n");
             printf("-t, --test\t\trun unit tests before launching interpreter\n");
+            printf("-q, --quiet\t\trun interpreter without extra diagnostics (tests are quiet regardless)\n");
             printf("\nfor more information on what features of the c language are supported, consult manual.txt\n");
             return 0;
         }
 
         else if(strcmp(argv[i], "-t")==0 || strcmp(argv[i], "--test")==0)
             run_tests = true;
-        else if(strcmp(argv[i], "-s")==0 || strcmp(argv[i], "--silent")==0)
+        else if(strcmp(argv[i], "-q")==0 || strcmp(argv[i], "--quiet")==0)
             verbosity = SILENT;
+        else
+        {
+            printf("invalid option \'%s\'\n", argv[i]);
+            printf("run \'%s -h\' for more details\n", argv[0]);
+            return 0;
+        }
     }
 
     banner();

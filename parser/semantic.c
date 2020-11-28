@@ -158,7 +158,10 @@ bool semantic_compiler_actions(node *pt)
 
 					//call the function
 					if(!aspec->action(sem[i], arg[0], arg[1]))
+					{
+						semantic_print_failure();
 						return false;
+					}
 
 					//
 					//printf("deleting derived semact: %s\n", sem[i]->str);

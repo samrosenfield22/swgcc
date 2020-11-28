@@ -59,7 +59,7 @@ symbol *symbol_search_local(const char *name, symbol_type sym_type, void *block)
 
 //returns a ptr to a symbol whose var addr matches, or if there is none, a symbol (of type function)
 //for whom the given varaddr is ahead of the symbol's (it's a memory address in the function)
-symbol *symbol_search_by_addr(int *varaddr)
+symbol *symbol_search_by_addr(char *varaddr)
 {
     symbol **match = vector_copy_filter(SYMBOL_TABLE, n->sym_type == SYM_IDENTIFIER && n->var == varaddr);
     symbol *m = vector_is_empty(match)? NULL : match[0];
@@ -68,7 +68,7 @@ symbol *symbol_search_by_addr(int *varaddr)
     return m;
 }
 
-symbol *symbol_search_function_addr(int *varaddr)
+symbol *symbol_search_function_addr(char *varaddr)
 {
     symbol **match = vector_copy_filter(SYMBOL_TABLE,
         n->sym_type == SYM_IDENTIFIER && strcmp(n->type->name, "function")==0 && n->var < varaddr);
