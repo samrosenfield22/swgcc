@@ -59,6 +59,7 @@ fail_type interpreter(int *result, bool verbose, char *code)
         printfcol(RED_FONT, "semantic fail\n");
         return SEMANTIC_FAIL;
     }
+    if(verbose) printf("\ntree after evaluating semantics:\n\n");
     if(verbose) ptree_print(parse_tree);
 
     if(verbose) printf("\n--- semacts ---\n");

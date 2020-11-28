@@ -188,36 +188,11 @@ void dump_symbol_table(void)
                     printf("static %s)(@ %d) = %d\n", sym->type->name, (int)(sym->var), *(sym->var));
                 else
                     printf("auto %s)(@ bp+%d)\n", sym->type->name, (int)(sym->var));
-            }
-            
+            }   
         }
-        /*else if(SYMBOL_TABLE[i]->sym_type==SYM_FUNCTION)
-        {
-            symbol *sym = SYMBOL_TABLE[i];
-            printf("symbol %d:\t\'%s\' (%s)(@ %d) = %d\n",
-                i, sym->name, sym->type->name, (int)(sym->var), *(sym->var));
-        }*/
-        /*
-        //if(SYMBOL_TABLE[i]->sym_type==SYM_IDENTIFIER)
-        printf("symbol %d:\t\'%s\'", i, SYMBOL_TABLE[i]->name);
-
-        if(SYMBOL_TABLE[i]->sym_type==SYM_IDENTIFIER)
-            printf(" (%s)(@ %d) = %d",
-                SYMBOL_TABLE[i]->type->name, (int)(SYMBOL_TABLE[i]->var), *(SYMBOL_TABLE[i]->var));
-        else if(SYMBOL_TABLE[i]->sym_type==SYM_TYPESPEC)
-            printf("\ttype, %d bytes", SYMBOL_TABLE[i]->tspec->bytes);
-        //else if(SYMBOL_TABLE[i]->sym_type==SYM_OTHER_KW)
-        //    printf("keyword");
-        else if(!SYMBOL_TABLE[i]->declared)
-            printf("undeclared variable");
-        //else if(!SYMBOL_TABLE[i].initialized)
-        //    printf("uninitialized variable");
-
-        printf("\n");
-        */
     }
 
-    printf("\n\n\n");
+    printf("\n");
 }
 
 void dump_symbol_table_oneline(void)

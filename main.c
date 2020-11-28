@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <getopt.h>
 
 #include "lexer/lexer.h"
 #include "parser/recdesc.h"
@@ -11,42 +12,17 @@
 #include "symbol.h"
 #include "utils/printcolor.h"
 
+void handle_cmdline_options(int argc, char *argv[]);
 void banner(void);
 void test_compiler(bool verbose, int problem_case);
 
+bool run_tests = false;
+bool verbosity = VERBOSE;
 
 int main(int argc, char *argv[])
 {
-    bool run_tests = false;
-    bool verbosity = VERBOSE;
-    for(int i=1; i<argc; i++)
-    {
-        if(strcmp(argv[i], "-h")==0 || strcmp(argv[i], "--help")==0)
-        {
-            printfcol(YELLOW_FONT, "swgcc -- the swg c compiler\n");
-            printf("(still in development)\n\n");
-
-            printf("format: swgcc {options}\n");
-            printf("options:\n");
-            printf("-h, --help\t\tdisplay this message\n");
-            printf("-t, --test\t\trun unit tests before launching interpreter\n");
-            printf("-q, --quiet\t\trun interpreter without extra diagnostics (tests are quiet regardless)\n");
-            printf("\nfor more information on what features of the c language are supported, consult manual.txt\n");
-            return 0;
-        }
-
-        else if(strcmp(argv[i], "-t")==0 || strcmp(argv[i], "--test")==0)
-            run_tests = true;
-        else if(strcmp(argv[i], "-q")==0 || strcmp(argv[i], "--quiet")==0)
-            verbosity = SILENT;
-        else
-        {
-            printf("invalid option \'%s\'\n", argv[i]);
-            printf("run \'%s -h\' for more details\n", argv[0]);
-            return 0;
-        }
-    }
-
+    
+    handle_cmdline_options(argc, argv);
     banner();
 
     symbol_table_initialize();
@@ -141,9 +117,16 @@ test_case test_cases[] =
 
 void test_compiler(bool verbose, int problem_case)
 {
-    printf("\nrunning test cases..... ");
+    printf("\nrunning test cases.....\n");
 
-    const char *fail_strings[] = {"", "lexer", "parser", "semantic"};
+    const char *fail_strings[] =
+    {
+        [PASS] = "",
+        [LEX_FAIL] = "lexer",
+        [PARSE_FAIL] = "parser",
+        [SEMANTIC_FAIL] = "semantic"
+    };
+
     int res;
     for(int i=0; i<sizeof(test_cases)/sizeof(test_cases[0]); i++)
     {
@@ -158,6 +141,7 @@ void test_compiler(bool verbose, int problem_case)
             {
                 printfcol(RED_FONT, "\nexpected failure on case %d (%s), passed instead\n",
                     i, fail_strings[test_cases[i].exp_status]);
+                exit(-1);
             }
             else
             {
@@ -177,13 +161,92 @@ void test_compiler(bool verbose, int problem_case)
     printfcol(GREEN_FONT, "\nall tests passed!\n");
 }
 
+//https://www.gnu.org/software/libc/manual/html_node/Getopt-Long-Option-Example.html
+void handle_cmdline_options(int argc, char *argv[])
+{
+    while (1)
+    {
+        static struct option long_options[] =
+        {
+            /* 
+            //options to set a flag (int)
+            {"verbose", no_argument,       &verbose_flag, 1},
+            {"brief",   no_argument,       &verbose_flag, 0},
+          
+            //options with a required arg
+            {"create",  required_argument, 0, 'c'},
+            {"file",    required_argument, 0, 'f'},
+            */
+
+            {"test",      no_argument,    0,  't'},
+            {"help",      no_argument,    0,  'h'},
+            {"quiet",     no_argument,    0,  'q'},
+            {0, 0, 0, 0}
+        };
+      
+        /* getopt_long stores the option index here. */
+        int option_index = 0;
+
+        //for required args put a colon after
+        //ex. getopt_long(argc, argv, "abc:d:f:, ...");
+        int c = getopt_long (argc, argv, "thq", long_options, &option_index);
+
+        /* Detect the end of the options. */
+        if (c == -1)
+            break;
+
+        switch(c)
+        {
+            case 0:
+                /* If this option set a flag, do nothing else now. */
+                if (long_options[option_index].flag != 0)
+                    break;
+                printf ("option %s", long_options[option_index].name);
+                if (optarg)
+                    printf (" with arg %s", optarg);
+                printf ("\n");
+                break;
+
+            case 't':
+                run_tests = true;
+                break;
+
+            case 'q':
+                verbosity = SILENT;
+                break;
+
+            case 'h':
+                printfcol(YELLOW_FONT, "swgcc -- the swg c compiler\n");
+                printf("(still in development)\n\n");
+
+                printf("format: swgcc {options}\n");
+                printf("options:\n");
+                printf("-h, --help\t\tdisplay this message\n");
+                printf("-t, --test\t\trun unit tests before launching interpreter\n");
+                printf("-q, --quiet\t\trun interpreter without extra diagnostics (tests are quiet regardless)\n");
+                printf("\nfor more information on what features of the c language are supported, consult manual.txt\n");
+                exit(0);
+                break;
+
+            case '?':
+                /* getopt_long already printed an error message. */
+                printf("run \'swgcc -h\' for more info\n");
+                exit(-1);
+                break;
+
+            default:
+                abort();
+        }
+
+    }
+}
+
 void banner(void)
 {
-
-const char *banner = "\n   _|_|_|  _|          _|    _|_|_|    _|_|_|    _|_|_|   \n\
- _|        _|          _|  _|        _|        _|           \n\
-   _|_|    _|    _|    _|  _|  _|_|  _|        _|           \n\
-       _|    _|  _|  _|    _|    _|  _|        _|           \n\
- _|_|_|        _|  _|        _|_|_|    _|_|_|    _|_|_| \n";
+    const char *banner = "\n       _|_|_|  _|          _|    _|_|_|    _|_|_|    _|_|_|   \n\
+     _|        _|          _|  _|        _|        _|           \n\
+       _|_|    _|    _|    _|  _|  _|_|  _|        _|           \n\
+           _|    _|  _|  _|    _|    _|  _|        _|           \n\
+     _|_|_|        _|  _|        _|_|_|    _|_|_|    _|_|_| \n";
     puts(banner);
 }

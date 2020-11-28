@@ -174,6 +174,13 @@ int run_intermediate_code(bool verbose)
         printf("\n");
     }
 
+    if(verbose)
+    {
+        printf("instruction");
+        for(int i=strlen("instruction"); i<dump_spaces; i++) putchar(' ');
+        printf("regs\t\tstack\n");
+    }
+
     for(ip=ip_start; ip<ip_end; )
     {
         jump_taken = false;
@@ -281,7 +288,7 @@ int print_reg_or_val(int arg)
 
 void dump_stack(void)
 {
-    printf("\tbp=%d sp=%d\t(", bp-sim_stack, sp-sim_stack);
+    printf("bp=%d sp=%d\t(", bp-sim_stack, sp-sim_stack);
     for(char *p=sim_stack; p<sp; p+=4)
     {
         print_reg_or_val(*(int*)p);
