@@ -107,6 +107,18 @@ test_case test_cases[] =
     {"int locfunc(void) {int loc1=5, loc2=6; int locres = loc1+loc2; return locres;}", PASS, 0},
     {"locfunc();", PASS, 11},
 
+    //args
+    {"int power(int base, int exp)  \
+    {                               \
+        int n=1;                    \
+        while(exp) {                \
+            n *= base;              \
+            exp--;                  \
+        }                           \
+        return n;                   \
+    }", PASS, 0},
+    {"power(3,4);", PASS, 81},
+
     //code that should fail
     //{"int 9a;", LEX_FAIL, 0},
     {"a = !!!;", LEX_FAIL, 0},
@@ -118,6 +130,8 @@ test_case test_cases[] =
     {"int q = q;", SEMANTIC_FAIL, 0},
     {"a = notdecld;", SEMANTIC_FAIL, 0},
     {"5 = a;", SEMANTIC_FAIL, 0},
+    {"power(1);", SEMANTIC_FAIL, 0},
+    {"fn(1);", SEMANTIC_FAIL, 0}
     //{";", , 0},
     
 };

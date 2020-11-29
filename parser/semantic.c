@@ -23,6 +23,7 @@ bool alloc_lcls(node *sem, node *dummy, node *dummy2);
 bool free_lcls(node *sem, node *dummy, node *dummy2);
 bool clean_args(node *sem, node *func_bid, node *dummy);
 bool check_args(node *sem, node *funcid, node *arglist);
+bool reverse_args(node *sem, node *arglist, node *dummy);
 bool swap_nodes(node *sem, node *n1, node *n2);
 bool define_function(node *sem, node *id, node *dummy);
 bool handle_lvcontext(node *sem, node *id, node *dummy);
@@ -41,7 +42,7 @@ static int get_nonterm_child_index(node *parent, char *ntstr);
 static int get_semact_child_index(node *parent, char *str);
 static bool is_semact_type(node *n, const char *sem);
 static bool is_semact_special(node *n);
-static node *get_nonterm_child_deep(node *parent, char *ntstr);
+//static node *get_nonterm_child_deep(node *parent, char *ntstr);
 static bool is_nonterm_type(node *n, const char *ntstr);
 static node *get_nonterm_ancestor(node *n, const char *ntstr);
 
@@ -98,7 +99,7 @@ sem_compiler_act COMPILER_ACTIONS[] =
 	{1, "declare_vars", 0, declare_vars},
 
 	{1, "check_args", 2, check_args},
-	//reverse_args
+	{1, "reverse_args", 1, reverse_args},
 
 	{2, "alloc_lcls", 0, alloc_lcls},
 	{2, "free_lcls", 0, free_lcls},
@@ -202,11 +203,11 @@ bool add_decl_var(node *sem, node *var, node *dummy)
 	//if(get_nonterm_child_deep(parent, "funcdef"))
 	if(vector_search(decl_func_list, (int)var) != -1)
 	{
-		printf("ignoring function var %s\n", var->str);
+		//printf("ignoring function var %s\n", var->str);
 		return true;
 	}
 
-	printfcol(GREEN_FONT, "adding decl var to the list: %s (%d)\n", var->str, (int)var); //getchar();
+	//printfcol(GREEN_FONT, "adding decl var to the list: %s (%d)\n", var->str, (int)var); //getchar();
 	vector_append(decl_var_list, var);
 	return true;
 
@@ -291,11 +292,11 @@ node *get_containing_block(node *n)
 //declare all vars in the list
 bool declare_vars(node *sem, node *dummy, node *dummy2)
 {
-	printf("declaring %d vars\n", vector_len(decl_var_list));
+	//printf("declaring %d vars\n", vector_len(decl_var_list));
 	vector_foreach(decl_var_list, i)
 	{
 		node *id = decl_var_list[i];
-		printfcol(GREEN_FONT, "declaring var %s\n", id->str);
+		//printfcol(GREEN_FONT, "declaring var %s\n", id->str);
 		
 		/* only look for a variable w matching name in the same scope! if there's a var (w same name)
 		in an outer scope, we can shadow it */
@@ -328,10 +329,7 @@ bool declare_vars(node *sem, node *dummy, node *dummy2)
 		id->sym->block = containing_block;
 		id->sym->scope = containing_block? BLOCK : INTERNAL;	//unless extern
 		id->sym->is_argument = get_nonterm_ancestor(id, "funcdeflist");
-		if(id->sym->is_argument)
-		{
-			printf("declaring local arg %s\n", id->str);
-		}
+		
 		assign_type_to_symbol(id->sym, type);
 		int varsize = define_var(id->sym);
 
@@ -392,6 +390,21 @@ bool check_args(node *sem, node *funcid, node *arglist)
 	return true;
 }
 
+bool reverse_args(node *sem, node *arglist, node *dummy)
+{
+	//node **temp = vector(*temp, vector_len(arglist->children));
+	int argc = vector_len(arglist->children);
+	node *temp[argc];
+
+	vector_foreach(arglist->children, i)
+	{
+		temp[i] = arglist->children[argc-i-1];
+	}
+
+	memcpy(arglist->children, temp, argc * sizeof(node *));
+	return true;
+}
+
 bool alloc_lcls(node *sem, node *dummy, node *dummy2)
 {
 	insert_local_allocations(sem, "incsp", true);
@@ -413,8 +426,8 @@ bool clean_args(node *sem, node *func_id, node *dummy)
 {
 	//decsp node->argbytes
 
-	printf("after calling %s, clean %d bytes off the stack\n",
-		func_id->str, func_id->sym->argbytes);
+	//printf("after calling %s, clean %d bytes off the stack\n",
+	//	func_id->str, func_id->sym->argbytes);
 	//getchar();
 
 	char buf[21];
@@ -497,7 +510,7 @@ bool define_function(node *sem, node *id, node *argdeflist)
 	}
 	id->sym->argbytes = bytes;
 	vector_destroy(defargs); vector_destroy(types);
-	printf("function %s has %d arg bytes\n", id->str, id->sym->argbytes);
+	//printf("function %s has %d arg bytes\n", id->str, id->sym->argbytes);
 	//getchar();
 
 	declaration_only = true;	//global
@@ -727,13 +740,13 @@ static bool is_semact_special(node *n)
 }
 
 //looks all the way through the tree, returns the first nonterm match
-static node *get_nonterm_child_deep(node *parent, char *ntstr)
+/*static node *get_nonterm_child_deep(node *parent, char *ntstr)
 {
 	node **matches = ptree_filter(parent, is_nonterm_type(n, ntstr) && n!=parent);
 	node *child = vector_len(matches)? matches[0] : NULL;
 	vector_destroy(matches);
 	return child;
-}
+}*/
 
 /*static node *get_semact_child(node *parent, char *ntstr)
 {

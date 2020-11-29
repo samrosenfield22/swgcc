@@ -148,9 +148,9 @@
 ;<m_misc1>		::= "(" <arglist>? ")" {pushaddr 3} {jmp} {jumplabel 3} {pushv eax} {! handle_lvcontext parent.parent.0}
 ;<m_misc1>		::= "(" <arglist>? ")" {pushaddr 3} {jmp} {jumplabel 3} {pushv eax} {! handle_lvcontext parent.parent.0} {! swap_nodes parent.2, parent.parent.0}
 
-<m_misc1>		::= "(" <arglist>? <fcall> {! check_args parent.parent.0.0, parent.1} {! reverse_args parent.1}
+<m_misc1>		::= "(" <arglist>? <fcall> {! check_args parent.parent.0.0, parent.1}
 <fcall>			::= ")" {pushaddr 3} {nop} {jmp} {jumplabel 3} {! clean_args parent.parent.parent.0.0} {pushv eax} {! handle_lvcontext parent.parent.parent.0} {! swap_nodes parent.2, parent.parent.parent.0}
-<arglist>		::= <assign> <margs>*
+<arglist>		::= <assign> <margs>* {! reverse_args parent}
 <margs>			::= "," <assign>
 
 <base>			::= <base_id>
