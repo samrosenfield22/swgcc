@@ -118,6 +118,7 @@ symbol *symbol_create(const char *name, symbol_type sym_type, typespec *type)
     vector_last(SYMBOL_TABLE)->scope = INTERNAL;
     vector_last(SYMBOL_TABLE)->block = NULL;
     vector_last(SYMBOL_TABLE)->is_argument = false;
+    vector_last(SYMBOL_TABLE)->argct = 0;
     vector_last(SYMBOL_TABLE)->argbytes = 0;
 
     //if we're defining a new type, add the type specification
@@ -205,7 +206,7 @@ void dump_symbol_table(void)
             printf("symbol %d:\t\'%s\' (", i, sym->name);
             if(strcmp(sym->type->name, "function") == 0)
             {
-                printf("%s)(@ %d)\n", sym->type->name, (int)(sym->var));
+                printf("%s, %d args)(@ %d)\n", sym->type->name, sym->argct, (int)(sym->var));
             }
             else
             {

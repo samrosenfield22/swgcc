@@ -46,6 +46,9 @@ struct symbol_s
     scopetype scope;
     void *block;    //if the var is block scope, this points to the containing block
     bool is_argument;
+
+    //for function symbols
+    size_t argct;
     size_t argbytes;    //number of argument bytes to get cleaned up by caller
 
     //type

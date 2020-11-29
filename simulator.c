@@ -8,6 +8,7 @@
 
 #include "simulator.h"
 
+int nop(int dummy);
 
 int sim_stack_push(int n);
 int sim_stack_pushv(int n);
@@ -98,6 +99,7 @@ struct op_entry
     int (*func)(int);
 } op_table[] =
 {
+    {"nop",     nop},
     {"push",    sim_stack_push},
     {"pushv",    sim_stack_pushv},
     {"pushl",   sim_stack_pushl},
@@ -280,9 +282,10 @@ int print_reg_or_val(int arg)
     else if(arg == (int)&sp)                return printf("sp");
     else if(arg == (int)&eax)               return printf("eax");
     else if(sym)                            return printfcol(YELLOW_FONT, "%s", sym->name);
+    else if(sim_stack<=carg && carg<=sp)    return printf("bp+%d", carg-bp);
     else if(carg >= (char*)ip_start)  return printfcol(YELLOW_FONT, "main+%03d", (int)(carg - (char*)ip_start));
     else if(func)     return printfcol(YELLOW_FONT, "%s+%d", func->name, carg - (char*)(func->var));
-    else if(sim_stack<=carg && carg<=sp) return printf("stack+%d", carg-sim_stack);
+    //else if(sim_stack<=carg && carg<=sp) return printf("stack+%d", carg-sim_stack);
     else return printf("%d", arg);
 }
 
@@ -299,6 +302,11 @@ void dump_stack(void)
 
 
 ///////////////////////
+
+int nop(int dummy)
+{
+    return 0;
+}
 
 int sim_stack_push(int n)
 {
@@ -319,7 +327,7 @@ int sim_stack_pushv(int n)
 
 int sim_stack_pushl(int n)
 {
-    int local = (int)(bp + n);
+    int *local = (int*)(bp + n);
     //*sp = (int)local;
     memcpy(sp, &local, 4);
     sp += 4;
@@ -328,8 +336,8 @@ int sim_stack_pushl(int n)
 
 int sim_stack_pushlv(int n)
 {
-    int local = (int)(bp + n);
-    int pushv = *(int*)local;
+    int *local = (int*)(bp + n);
+    int pushv = *local;
     //*sp = pushv;
     memcpy(sp, &pushv, 4);
     sp += 4;

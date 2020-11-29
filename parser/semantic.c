@@ -22,6 +22,7 @@ bool declare_vars(node *sem, node *dummy, node *dummy2);
 bool alloc_lcls(node *sem, node *dummy, node *dummy2);
 bool free_lcls(node *sem, node *dummy, node *dummy2);
 bool clean_args(node *sem, node *func_bid, node *dummy);
+bool check_args(node *sem, node *funcid, node *arglist);
 bool swap_nodes(node *sem, node *n1, node *n2);
 bool define_function(node *sem, node *id, node *dummy);
 bool handle_lvcontext(node *sem, node *id, node *dummy);
@@ -44,14 +45,15 @@ static node *get_nonterm_child_deep(node *parent, char *ntstr);
 static bool is_nonterm_type(node *n, const char *ntstr);
 static node *get_nonterm_ancestor(node *n, const char *ntstr);
 
-static void semantic_print_failure(void);
+//static void semantic_print_failure(void);
 
 enum semantic_status_type
 {
 	SEM_OK,
 	SEM_REDECLARED_VAR,
 	SEM_USING_UNDECLD_VAR,
-	BAD_LVAL
+	BAD_LVAL,
+	SEM_BAD_FUNC_CALL_ARGS
 } SEMANTIC_STATUS = SEM_OK;
 
 #define SEMANTIC_BAIL_IF_NOT_OK	if(SEMANTIC_STATUS != SEM_OK) {semantic_print_failure(); return false;}
@@ -89,10 +91,14 @@ typedef struct sem_compiler_act_s
 } sem_compiler_act;
 sem_compiler_act COMPILER_ACTIONS[] =
 {
+	{0, "define_function", 2, define_function},
+
 	{1, "add_decl_var", 1, add_decl_var},
 	{1, "check_decl_parent", 2, check_decl_parent},
 	{1, "declare_vars", 0, declare_vars},
-	{0, "define_function", 2, define_function},
+
+	{1, "check_args", 2, check_args},
+	//reverse_args
 
 	{2, "alloc_lcls", 0, alloc_lcls},
 	{2, "free_lcls", 0, free_lcls},
@@ -164,7 +170,7 @@ bool semantic_compiler_actions(node *pt)
 					//call the function
 					if(!aspec->action(sem[i], arg[0], arg[1]))
 					{
-						semantic_print_failure();
+						//semantic_print_failure();
 						return false;
 					}
 
@@ -206,6 +212,8 @@ bool add_decl_var(node *sem, node *var, node *dummy)
 
 }
 
+//make sure each variable is not being used before being declared (either already decld or marked to be)
+//also, if the var is already declared, assigns symbol to the id node
 bool check_decl_parent(node *sem, node *id, node *parent)
 {
 	/*	the node is inside a <decl>, it's already been marked to be declared -- all good
@@ -237,7 +245,7 @@ bool check_decl_parent(node *sem, node *id, node *parent)
 		return true;
 	else
 	{
-		assert(id->sym == NULL);
+		assert(id->sym == NULL);	//it's not declared so it shouldn't have a symbol
 
 		/* get all blocks that are possible scopes for the variable -- that way if one shadows another,
 		we get the one belonging to the innermost block
@@ -269,6 +277,7 @@ bool check_decl_parent(node *sem, node *id, node *parent)
 	}
 }
 
+//if the node is in the arg list of a function definition, this returns the function block
 node *get_containing_block(node *n)
 {
 	node *fdl = get_nonterm_ancestor(n, "funcdeflist");
@@ -356,10 +365,31 @@ bool declare_vars(node *sem, node *dummy, node *dummy2)
 	return true;
 }
 
-void function_dump_info(node *f)
+/*void function_dump_info(node *f)
 {
 	printf("func %s: arg bytes %d local bytes %d",
 		f->str, f->sym->argbytes, get_nonterm_child_deep(f, "block")->block_bytes);
+}*/
+
+bool check_args(node *sem, node *funcid, node *arglist)
+{
+	//count args passed
+	int passed = 0;
+	if(is_nonterm_type(arglist, "arglist"))	//optional nonterminal
+	{
+		node **passed_args = ptree_filter(arglist, is_nonterm_type(n, "margs"));	//args that come after a comma
+		passed = vector_len(passed_args)+1;
+		vector_destroy(passed_args);
+	}
+
+	int expected = funcid->sym->argct;
+	if(passed != expected)
+	{
+		printfcol(RED_FONT, "error: invalid call to %s (expected %d args, got %d)\n",
+			funcid->str, expected, passed);
+		return false;
+	}
+	return true;
 }
 
 bool alloc_lcls(node *sem, node *dummy, node *dummy2)
@@ -462,6 +492,7 @@ bool define_function(node *sem, node *id, node *argdeflist)
 	vector_foreach(types, i)
 	{
 		symbol *type = symbol_search(types[i]->str, SYM_TYPESPEC);
+		id->sym->argct++;
 		bytes += type->tspec->bytes;
 	}
 	id->sym->argbytes = bytes;
@@ -744,18 +775,19 @@ static node *get_nonterm_ancestor(node *n, const char *ntstr)
 }
 
 
-static void semantic_print_failure(void)
+/*static void semantic_print_failure(void)
 {
 	const char *failure_messages[] =
 	{
 		[SEM_REDECLARED_VAR] 		= "attempting to redeclare variable",
 		[SEM_USING_UNDECLD_VAR]		= "using undeclared variable(s)",
-		[BAD_LVAL]					= "bad expression(s) in lvalue context"
+		[BAD_LVAL]					= "bad expression(s) in lvalue context",
+		[SEM_BAD_FUNC_CALL_ARGS]	= "bad function call"
 	};
 
 	set_text_color(RED_FONT);
 	printf("error: ");
 	puts(failure_messages[SEMANTIC_STATUS]);
 	set_text_color(RESET_FONT);
-}
+}*/
 

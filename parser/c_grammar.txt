@@ -70,7 +70,7 @@
 ;if the function contains a return statement, this stores the return value in eax, then jumps to jumplabel 0,
 ;skipping the {push 0} {pop eax}
 ;if execution reaches the end of the block (without hitting a return statement), then we set eax=0
-<funcdef>		::= "(" <funcdeflist> ")" {enter} <block> {push 0} {pop eax} {jumplabel 0} {leave} {ret}
+<funcdef>		::= "(" <funcdeflist> ")" {! declare_vars} {enter} <block> {push 0} {pop eax} {jumplabel 0} {leave} {ret}
 <funcdeflist>	::= "void"
 <funcdeflist>	::= <funcdefarg> <mfuncdefarg>*
 ;<funcdefarg>	::= type {! add_decl_var parent.2.0} <base_id>
@@ -148,9 +148,9 @@
 ;<m_misc1>		::= "(" <arglist>? ")" {pushaddr 3} {jmp} {jumplabel 3} {pushv eax} {! handle_lvcontext parent.parent.0}
 ;<m_misc1>		::= "(" <arglist>? ")" {pushaddr 3} {jmp} {jumplabel 3} {pushv eax} {! handle_lvcontext parent.parent.0} {! swap_nodes parent.2, parent.parent.0}
 
-<m_misc1>		::= "(" <arglist>? <fcall>
+<m_misc1>		::= "(" <arglist>? <fcall> {! check_args parent.parent.0.0, parent.1} {! reverse_args parent.1}
 <fcall>			::= ")" {pushaddr 3} {nop} {jmp} {jumplabel 3} {! clean_args parent.parent.parent.0.0} {pushv eax} {! handle_lvcontext parent.parent.parent.0} {! swap_nodes parent.2, parent.parent.parent.0}
-<arglist>		::= <assign> <margs>* {! reverse_args}
+<arglist>		::= <assign> <margs>*
 <margs>			::= "," <assign>
 
 <base>			::= <base_id>
