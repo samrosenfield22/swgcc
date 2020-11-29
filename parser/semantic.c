@@ -37,8 +37,8 @@ void update_jump_semacts(node *loop, const char *jtype);
 
 static node *get_nonterm_child(node *parent, char *ntstr);
 static int get_nonterm_child_index(node *parent, char *ntstr);
-//static int get_semact_child_index(node *parent, char *str);
-//static bool is_semact_type(node *n, const char *sem);
+static int get_semact_child_index(node *parent, char *str);
+static bool is_semact_type(node *n, const char *sem);
 static bool is_semact_special(node *n);
 static node *get_nonterm_child_deep(node *parent, char *ntstr);
 static bool is_nonterm_type(node *n, const char *ntstr);
@@ -338,7 +338,10 @@ bool declare_vars(node *sem, node *dummy, node *dummy2)
 			fcn->sym->argbytes += varsize;
 			printf("adding %d argument bytes to function %s\n", varsize, fcn->str);
 		}
-		else */if(containing_block)
+		else */
+
+		//block_bytes is for allocing/deallocing locals, not arguments
+		if(containing_block && !(id->sym->is_argument))
 		{
 			containing_block->block_bytes += varsize;
 		}
@@ -376,22 +379,29 @@ bool free_lcls(node *sem, node *dummy, node *dummy2)
 	return true;
 }
 
-bool clean_args(node *sem, node *func_bid, node *dummy)
+bool clean_args(node *sem, node *func_id, node *dummy)
 {
 	//decsp node->argbytes
 
 	printf("after calling %s, clean %d bytes off the stack\n",
-		func_bid->children[0]->str, func_bid->children[0]->sym->argbytes);
+		func_id->str, func_id->sym->argbytes);
 	//getchar();
 
 	char buf[21];
-	int argbytes = func_bid->children[0]->sym->argbytes;
+	int argbytes = func_id->sym->argbytes;
 	if(argbytes)
 	{
 		snprintf(buf, 20, "decsp %d", argbytes);
 
 		node *newsem = node_create(false, SEMACT, buf, NULL);
-		node_add_child(node_get_parent(sem), newsem);
+		//node_add_child(node_get_parent(sem), newsem);
+		node *parent = node_get_parent(sem);
+		int index = get_semact_child_index(parent, sem->str) + 1;	//so it doesn't get deleted (mistaken for the ! sem)
+
+		//insert the semact node
+		vector_insert(&parent->children, index);
+		parent->children[index] = newsem;
+		newsem->parent = parent;
 	}
 	return true;
 }
@@ -456,7 +466,7 @@ bool define_function(node *sem, node *id, node *argdeflist)
 	}
 	id->sym->argbytes = bytes;
 	vector_destroy(defargs); vector_destroy(types);
-	//printf("function %s has %d arg bytes\n", id->str, id->sym->argbytes);
+	printf("function %s has %d arg bytes\n", id->str, id->sym->argbytes);
 	//getchar();
 
 	declaration_only = true;	//global
@@ -470,8 +480,6 @@ bool define_function(node *sem, node *id, node *argdeflist)
 //&expr, ++expr/expr++, expr.n, expr = ..., expr += ...
 bool handle_lvcontext(node *sem, node *context, node *dummy)
 {
-	printf("sem: %s\n", sem->str);
-	node_print(context, 0);
 
 	if(is_lval(context))
 	{
@@ -660,7 +668,7 @@ static int get_nonterm_child_index(node *parent, char *ntstr)
 	return -1;
 }
 
-/*static int get_semact_child_index(node *parent, char *str)
+static int get_semact_child_index(node *parent, char *str)
 {
 	vector_foreach(parent->children, i)
 	{
@@ -671,14 +679,14 @@ static int get_nonterm_child_index(node *parent, char *ntstr)
 			return i;
 	}
 	return -1;
-}*/
+}
 
-/*static bool is_semact_type(node *n, const char *sem)
+static bool is_semact_type(node *n, const char *sem)
 {
 	if(n->is_nonterminal || n->ntype!=SEMACT)
 		return false;
 	return (strcmp(n->str, sem)==0);
-}*/
+}
 
 static bool is_semact_special(node *n)
 {
