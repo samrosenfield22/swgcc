@@ -45,6 +45,8 @@ struct symbol_s
     bool lifetime;
     scopetype scope;
     void *block;    //if the var is block scope, this points to the containing block
+    bool is_argument;
+    size_t argbytes;    //number of argument bytes to get cleaned up by caller
 
     //type
     symbol *type;

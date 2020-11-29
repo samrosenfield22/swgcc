@@ -12,7 +12,7 @@
 //bool filter_assign_toks(node *n);
 
 bool define_functions(bool *decl_only, node *pt);
-int declare_new_vars(const char *typestr, node *bid, bool lifetime, scopetype scope, node *block);
+int declare_new_vars(const char *typestr, symbol *sym, bool lifetime, scopetype scope, node *block, bool is_arg);
 
 ////////// that new ish
 bool semantic_compiler_actions(node *pt);
@@ -21,20 +21,22 @@ bool check_decl_parent(node *sem, node *id, node *dummy);
 bool declare_vars(node *sem, node *dummy, node *dummy2);
 bool alloc_lcls(node *sem, node *dummy, node *dummy2);
 bool free_lcls(node *sem, node *dummy, node *dummy2);
+bool clean_args(node *sem, node *func_bid, node *dummy);
 bool swap_nodes(node *sem, node *n1, node *n2);
 bool define_function(node *sem, node *id, node *dummy);
 bool handle_lvcontext(node *sem, node *id, node *dummy);
 bool make_push(node *sem, node *bid, node *dummy);
 
 void insert_local_allocations(node *sem, const char *instr, bool at_start);
+node *get_containing_block(node *n);
 
 bool is_lval(node *n);
 bool is_conditional(node *n);
 
 void update_jump_semacts(node *loop, const char *jtype);
 
-//static node *get_nonterm_child(node *parent, char *ntstr);
-//static int get_nonterm_child_index(node *parent, char *ntstr);
+static node *get_nonterm_child(node *parent, char *ntstr);
+static int get_nonterm_child_index(node *parent, char *ntstr);
 //static int get_semact_child_index(node *parent, char *str);
 //static bool is_semact_type(node *n, const char *sem);
 static bool is_semact_special(node *n);
@@ -87,29 +89,32 @@ typedef struct sem_compiler_act_s
 } sem_compiler_act;
 sem_compiler_act COMPILER_ACTIONS[] =
 {
-	{0, "add_decl_var", 1, add_decl_var},
-	{0, "check_decl_parent", 2, check_decl_parent},
-	{0, "declare_vars", 0, declare_vars},
-	{0, "define_function", 1, define_function},
+	{1, "add_decl_var", 1, add_decl_var},
+	{1, "check_decl_parent", 2, check_decl_parent},
+	{1, "declare_vars", 0, declare_vars},
+	{0, "define_function", 2, define_function},
 
-	{1, "alloc_lcls", 0, alloc_lcls},
-	{1, "free_lcls", 0, free_lcls},
+	{2, "alloc_lcls", 0, alloc_lcls},
+	{2, "free_lcls", 0, free_lcls},
+	{2, "clean_args", 1, clean_args},
 
-	{4, "swap_nodes", 2, swap_nodes},
+	{5, "swap_nodes", 2, swap_nodes},
 
 	
-	{2, "handle_lvcontext", 1, handle_lvcontext},
-	{3, "make_push", 1, make_push}
+	{3, "handle_lvcontext", 1, handle_lvcontext},
+	{4, "make_push", 1, make_push}
 	//{"", 0, },
 };
 
-#define MAX_ORDER 4
-node **decl_var_list = NULL;//, **prev_decl_list;
+#define MAX_ORDER 5
+node **decl_var_list = NULL;	//list of id nodes to be declared
+node **decl_func_list = NULL;	//list of function id nodes
 bool semantic_compiler_actions(node *pt)
 {
-	if(decl_var_list)
-		vector_destroy(decl_var_list);
+	if(decl_var_list) vector_destroy(decl_var_list);
 	decl_var_list = vector(*decl_var_list, 0);
+	if(decl_func_list) vector_destroy(decl_func_list);
+	decl_func_list = vector(*decl_func_list, 0);
 
 	node **sem = ptree_filter(pt, is_semact_special(n));
 	for(int ord=0; ord<=MAX_ORDER; ord++)
@@ -165,7 +170,7 @@ bool semantic_compiler_actions(node *pt)
 
 					//
 					//printf("deleting derived semact: %s\n", sem[i]->str);
-					node_delete_from_parent(sem[i]);
+					//node_delete_from_parent(sem[i]);
 					vector_delete(&sem, i);
 					i--;
 					break;
@@ -174,19 +179,28 @@ bool semantic_compiler_actions(node *pt)
 		}
 	}
 
+	//i don't really want to delete nodes as we're going, as it could mess up the indexing for other semacts
+	sem = ptree_filter(pt, is_semact_special(n));
+	vector_foreach(sem, i)
+		node_delete_from_parent(sem[i]);
+
 	return true;
 }
 
 bool add_decl_var(node *sem, node *var, node *dummy)
 {
-	assert(is_nonterm_type(var, "base_id"));
+	//assert(is_nonterm_type(var, "base_id"));
 
-	//for now, ignore it if it's a function
-	node *parent = node_get_parent(var);
-	if(get_nonterm_child_deep(parent, "funcdef"))
+	//for now, ignore it if it's a function. eventually we'l want to declare functions here
+	//node *parent = node_get_parent(var);
+	//if(get_nonterm_child_deep(parent, "funcdef"))
+	if(vector_search(decl_func_list, (int)var) != -1)
+	{
+		printf("ignoring function var %s\n", var->str);
 		return true;
+	}
 
-	//printfcol(GREEN_FONT, "adding decl var to the list: %s\n", var->children[0]->str); //getchar();
+	printfcol(GREEN_FONT, "adding decl var to the list: %s (%d)\n", var->str, (int)var); //getchar();
 	vector_append(decl_var_list, var);
 	return true;
 
@@ -194,13 +208,32 @@ bool add_decl_var(node *sem, node *var, node *dummy)
 
 bool check_decl_parent(node *sem, node *id, node *parent)
 {
-	/*	the node is inside a <decl>, it's already been added to the decl var list -- all good
+	/*	the node is inside a <decl>, it's already been marked to be declared -- all good
 		the node is not inside a <decl>, and the id is in the symbol table -- all good
 		the node is not inside a <decl>, and the id is not in the symbol table -- using undecld variable!
 		*/
 	
+	//assert(is_nonterm_type(id, "base_id"));
 	assert(parent == node_get_ancestor(id, 2));
-	if(is_nonterm_type(parent, "decl") || is_nonterm_type(parent, "mdecl_assign"))
+
+	/*node *declspec = get_nonterm_child(parent, "declspec");
+	if(declspec)
+	{
+		if(get_nonterm_child(declspec, "funcdef"))
+		{
+			printf("skipping decl check for function ")
+			return true;
+		}
+	}*/
+	if(vector_search(decl_func_list, (int)id) != -1)
+	{
+		return true;
+	}
+
+	//if(is_nonterm_type(parent, "decl") || is_nonterm_type(parent, "mdecl_assign"))
+	//	return true;
+	//printf("searching list of soon-to-be-declds for %d (%s)\n", (int)id, id->str);
+	if(vector_search(decl_var_list, (int)id) != -1)
 		return true;
 	else
 	{
@@ -209,12 +242,14 @@ bool check_decl_parent(node *sem, node *id, node *parent)
 		/* get all blocks that are possible scopes for the variable -- that way if one shadows another,
 		we get the one belonging to the innermost block
 		this list must include NULL so we also look for a global variable */
-		node *b = get_nonterm_ancestor(id, "block");
+		//node *b = get_nonterm_ancestor(id, "block");
+		node *b = get_containing_block(id);
 		node **blocks = vector(*blocks, 0);
 		while(b)
 		{
 			vector_append(blocks, b);
-			b = get_nonterm_ancestor(b, "block");
+			//b = get_nonterm_ancestor(b, "block");
+			b = get_containing_block(b);
 		}
 		vector_append(blocks, NULL);
 
@@ -234,16 +269,30 @@ bool check_decl_parent(node *sem, node *id, node *parent)
 	}
 }
 
+node *get_containing_block(node *n)
+{
+	node *fdl = get_nonterm_ancestor(n, "funcdeflist");
+	if(fdl)
+		return get_nonterm_child(node_get_parent(fdl), "block");
+	//else if forloop
+	else
+		return get_nonterm_ancestor(n, "block");
+}
+
+//declare all vars in the list
 bool declare_vars(node *sem, node *dummy, node *dummy2)
 {
+	printf("declaring %d vars\n", vector_len(decl_var_list));
 	vector_foreach(decl_var_list, i)
 	{
-		node *id = decl_var_list[i]->children[0];
+		node *id = decl_var_list[i];
+		printfcol(GREEN_FONT, "declaring var %s\n", id->str);
 		
 		/* only look for a variable w matching name in the same scope! if there's a var (w same name)
 		in an outer scope, we can shadow it */
 		node **blocks = vector(*blocks, 1);
-		blocks[0] = get_nonterm_ancestor(id, "block");
+		node *containing_block = get_containing_block(id);
+		blocks[0] = containing_block;
 		bool var_same_name_in_scope = symbol_search_local(id->str, SYM_IDENTIFIER, (void**)blocks);
 		vector_destroy(blocks);
 
@@ -256,23 +305,58 @@ bool declare_vars(node *sem, node *dummy, node *dummy2)
 		id->sym = symbol_create(id->str, SYM_IDENTIFIER, NULL);
 
 		//get variable attributes from the context
-		node *decl = get_nonterm_ancestor(decl_var_list[i], "decl");
+		node *decl = get_nonterm_ancestor(id, "funcdefarg");	//could use this to know if it's is_argument
+		if(!decl)
+			decl = get_nonterm_ancestor(id, "decl");
 		char *type = decl->children[0]->str;	//decl->type->str
-		node *containing_block = get_nonterm_ancestor(decl, "block");
-		bool lifetime = containing_block? AUTO : STATIC;		//unless it's explicitly made static
+		/*bool lifetime = containing_block? AUTO : STATIC;		//unless it's explicitly made static
 		scopetype scope = containing_block? BLOCK : INTERNAL;	//unless extern
+		bool is_arg = get_nonterm_ancestor(decl, "funcdeflist");*/
 
-		int varsize = declare_new_vars(type, decl_var_list[i], lifetime, scope, containing_block);	//this 
-		if(SEMANTIC_STATUS != SEM_OK)
-			return false;
+		//int varsize = declare_new_vars(type, id->sym, lifetime, scope, containing_block, is_arg);	//this 
+		id->sym->declared = true;
+		id->sym->lifetime = containing_block? AUTO : STATIC;	//unless explicitly made static
+		id->sym->block = containing_block;
+		id->sym->scope = containing_block? BLOCK : INTERNAL;	//unless extern
+		id->sym->is_argument = get_nonterm_ancestor(id, "funcdeflist");
+		if(id->sym->is_argument)
+		{
+			printf("declaring local arg %s\n", id->str);
+		}
+		assign_type_to_symbol(id->sym, type);
+		int varsize = define_var(id->sym);
 
-		if(containing_block)
+		//if(SEMANTIC_STATUS != SEM_OK)
+		//	return false;
+
+		/*printf("%d\n", containing_block);
+		if(id->sym->is_argument)
+		{
+			//get the function (ancestor decl -> child base_id)
+			node *fdecl = get_nonterm_ancestor(id, "decl");
+			node *fcn = get_nonterm_child(fdecl, "base_id")->children[0];
+			fcn->sym->argbytes += varsize;
+			printf("adding %d argument bytes to function %s\n", varsize, fcn->str);
+		}
+		else */if(containing_block)
+		{
 			containing_block->block_bytes += varsize;
+		}
+
+		//getchar();
 	}
 
 	vector_destroy(decl_var_list);
 	decl_var_list = vector(*decl_var_list, 0);
+	//vector_destroy(decl_func_list);
+	//decl_func_list = vector(*decl_func_list, 0);
 	return true;
+}
+
+void function_dump_info(node *f)
+{
+	printf("func %s: arg bytes %d local bytes %d",
+		f->str, f->sym->argbytes, get_nonterm_child_deep(f, "block")->block_bytes);
 }
 
 bool alloc_lcls(node *sem, node *dummy, node *dummy2)
@@ -289,6 +373,26 @@ bool free_lcls(node *sem, node *dummy, node *dummy2)
 	//node *block = get_nonterm_ancestor(sem, "block");
 	//delete_locals_in_block(block);
 
+	return true;
+}
+
+bool clean_args(node *sem, node *func_bid, node *dummy)
+{
+	//decsp node->argbytes
+
+	printf("after calling %s, clean %d bytes off the stack\n",
+		func_bid->children[0]->str, func_bid->children[0]->sym->argbytes);
+	//getchar();
+
+	char buf[21];
+	int argbytes = func_bid->children[0]->sym->argbytes;
+	if(argbytes)
+	{
+		snprintf(buf, 20, "decsp %d", argbytes);
+
+		node *newsem = node_create(false, SEMACT, buf, NULL);
+		node_add_child(node_get_parent(sem), newsem);
+	}
 	return true;
 }
 
@@ -333,7 +437,7 @@ bool swap_nodes(node *sem, node *n1, node *n2)
 	return true;
 }
 
-bool define_function(node *sem, node *id, node *dummy)
+bool define_function(node *sem, node *id, node *argdeflist)
 {
 	//id (decl->children[1]->children[0])
 	id->sym = symbol_create(id->str, SYM_IDENTIFIER, NULL);
@@ -341,7 +445,23 @@ bool define_function(node *sem, node *id, node *dummy)
 	id->sym->var = get_code_addr();
 	id->sym->declared = true;
 
+	//get number of argument bytes
+	node **defargs = ptree_filter(argdeflist, is_nonterm_type(n, "funcdefarg"));
+	node **types = vector_map(defargs, n->children[0]);
+	size_t bytes = 0;
+	vector_foreach(types, i)
+	{
+		symbol *type = symbol_search(types[i]->str, SYM_TYPESPEC);
+		bytes += type->tspec->bytes;
+	}
+	id->sym->argbytes = bytes;
+	vector_destroy(defargs); vector_destroy(types);
+	//printf("function %s has %d arg bytes\n", id->str, id->sym->argbytes);
+	//getchar();
+
 	declaration_only = true;	//global
+
+	vector_append(decl_func_list, id);
 
 	//printfcol(GREEN_FONT, "defined function: %s\n", id->sym->name);
 	return true;
@@ -350,6 +470,9 @@ bool define_function(node *sem, node *id, node *dummy)
 //&expr, ++expr/expr++, expr.n, expr = ..., expr += ...
 bool handle_lvcontext(node *sem, node *context, node *dummy)
 {
+	printf("sem: %s\n", sem->str);
+	node_print(context, 0);
+
 	if(is_lval(context))
 	{
 		//mark the node as an lval, as well as relevant children (single-chain children and children in parens)
@@ -470,27 +593,33 @@ bool is_conditional(node *n)
 
 
 //on
-int declare_new_vars(const char *typestr, node *bid, bool lifetime, scopetype scope, node *block)
+int declare_new_vars(const char *typestr, symbol *decl_sym, bool lifetime, scopetype scope, node *block, bool is_arg)
 {
-	assert(is_nonterm_type(bid, "base_id"));
+	/*assert(is_nonterm_type(bid, "base_id"));
 	
 	symbol *decl_sym = bid->children[0]->sym;
 	if(decl_sym->declared)
 	{
 		printfcol(RED_FONT, "redeclaring variable %s\n", bid->children[0]->str);
+		assert(0);
 		SEMANTIC_STATUS = SEM_REDECLARED_VAR;
 		return 0;
 	}
 	else
-	{
+	{*/
 		//declare and define the variable
 		decl_sym->declared = true;
 		decl_sym->lifetime = lifetime;
 		decl_sym->block = block;
 		decl_sym->scope = scope;
+		decl_sym->is_argument = is_arg;
+		if(is_arg)
+		{
+			//printf("declaring argument %s\n", )
+		}
 		assign_type_to_symbol(decl_sym, typestr);
 		return define_var(decl_sym);
-	}
+	//}
 }
 
 void update_jump_semacts(node *loop, const char *jtype)
@@ -514,14 +643,14 @@ void update_jump_semacts(node *loop, const char *jtype)
 }
 
 //returns the first child that matches
-/*static node *get_nonterm_child(node *parent, char *ntstr)
+static node *get_nonterm_child(node *parent, char *ntstr)
 {
 
 	int index = get_nonterm_child_index(parent, ntstr);
 	return (index==-1)? NULL : parent->children[index];
-}*/
+}
 
-/*static int get_nonterm_child_index(node *parent, char *ntstr)
+static int get_nonterm_child_index(node *parent, char *ntstr)
 {
 	vector_foreach(parent->children, i)
 	{
@@ -529,7 +658,7 @@ void update_jump_semacts(node *loop, const char *jtype)
 			return i;
 	}
 	return -1;
-}*/
+}
 
 /*static int get_semact_child_index(node *parent, char *str)
 {

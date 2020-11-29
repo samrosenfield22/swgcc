@@ -104,6 +104,8 @@ test_case test_cases[] =
     {"a;", PASS, 6},
     {"{int a=1; {int a=2; {int a=3;} b=a;} b;}", PASS, 0},
     {"b;", PASS, 2},
+    {"int locfunc(void) {int loc1=5, loc2=6; int locres = loc1+loc2; return locres;}", PASS, 0},
+    {"locfunc();", PASS, 11},
 
     //code that should fail
     //{"int 9a;", LEX_FAIL, 0},
@@ -126,7 +128,7 @@ void test_compiler(bool verbose, int problem_case)
 
     const char *fail_strings[] =
     {
-        [PASS] = "",
+        [PASS] = "pass",
         [LEX_FAIL] = "lexer",
         [PARSE_FAIL] = "parser",
         [SEMANTIC_FAIL] = "semantic"

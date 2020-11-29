@@ -13,4 +13,6 @@ bool check_variable_declarations(node *pt);
 bool handle_lvals(node *pt);
 bool set_conditional_jumps(node *pt);
 
+void function_dump_info(node *fid);
+
 #endif //SEMANTIC_H_

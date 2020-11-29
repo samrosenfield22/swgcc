@@ -54,7 +54,7 @@ symbol *symbol_search_local(const char *name, symbol_type sym_type, void **block
     /*symbol **match = vector_copy_filter(SYMBOL_TABLE, 
         (n->sym_type == sym_type || sym_type==SYM_ANY) && strcmp(name, n->name)==0 && n->block==block);
     symbol *m = vector_is_empty(match)? NULL : match[0];*/
-    
+
     symbol **match = vector_copy_filter(SYMBOL_TABLE, 
         (n->sym_type == sym_type || sym_type==SYM_ANY) && strcmp(name, n->name)==0);
     if(vector_is_empty(match))
@@ -117,6 +117,8 @@ symbol *symbol_create(const char *name, symbol_type sym_type, typespec *type)
     vector_last(SYMBOL_TABLE)->lifetime = STATIC;
     vector_last(SYMBOL_TABLE)->scope = INTERNAL;
     vector_last(SYMBOL_TABLE)->block = NULL;
+    vector_last(SYMBOL_TABLE)->is_argument = false;
+    vector_last(SYMBOL_TABLE)->argbytes = 0;
 
     //if we're defining a new type, add the type specification
     if(type)

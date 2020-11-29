@@ -13,7 +13,7 @@
 
 <stmtlist>		::= <stmt>
 <stmtlist>		::= <block>
-<block>			::= "{" {! alloc_lcls} <stmtlist>* {! free_lcls} "}"
+<block>			::= "{" {! alloc_lcls} <stmtlist>* {! free_lcls} {! declare_vars} "}"
 
 <stmt>			::= <mstmt>
 <stmt>			::= <if>
@@ -26,12 +26,13 @@
 <mstmt>			::= <decl>
 
 ;maybe lol
-<decl>			::= type <base_id> {! add_decl_var parent.1} <declspec> {! handle_lvcontext parent.1}
+<decl>			::= type {! add_decl_var parent.2.0} <base_id> <declspec> {! handle_lvcontext parent.2}
+
 <declspec>		::= <decl_assign> <mdecl_assign>* ";" {! declare_vars} {pop}
 <declspec>		::= <mdecl_assign>* ";" {! declare_vars} {pop}
-<declspec>		::= <funcdef> {! define_function parent.parent.1.0}
+<declspec>		::= <funcdef> {! define_function parent.parent.2.0, parent.0.1}
 <declspec>		::= ";" {! declare_vars} {pop}
-<mdecl_assign>	::= "," {pop} <base_id> {! add_decl_var parent.2} <decl_assign>?  {! handle_lvcontext parent.2}
+<mdecl_assign>	::= "," {pop} {! add_decl_var parent.3.0} <base_id> <decl_assign>?  {! handle_lvcontext parent.3}
 
 <decl_assign>	::= <var_assign>
 <decl_assign>	::= <array_assign>
@@ -72,7 +73,7 @@
 <funcdef>		::= "(" <funcdeflist> ")" {enter} <block> {push 0} {pop eax} {jumplabel 0} {leave} {ret}
 <funcdeflist>	::= "void"
 <funcdeflist>	::= <funcdefarg> <mfuncdefarg>*
-<funcdefarg>	::= type id?
+<funcdefarg>	::= type {! add_decl_var parent.2.0} <base_id>
 <mfuncdefarg>	::= "," <funcdefarg>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -143,10 +144,13 @@
 <m_misc1>		::= "++" {! handle_lvcontext parent.parent.0} {++post}
 <m_misc1>		::= "--" {! handle_lvcontext parent.parent.0} {--post}
 ;;;;;;;;;;;;;this is actually a problem -- the index of the {jumplabel} is dependent on whether or not there's an arglist
-<m_misc1>		::= "(" <arglist>? ")" {pushaddr 3} {jmp} {jumplabel 3} {pushv eax} {! handle_lvcontext parent.parent.0} {! swap_nodes parent.2, parent.parent.0}
 ;<m_misc1>		::= "(" <arglist>? ")" {pushaddr 3} {jmp} {jumplabel 3} {pushv eax} {! handle_lvcontext parent.parent.0}
-<arglist>		::= <comma> <margs>*
-<margs>			::= "," <comma>
+;<m_misc1>		::= "(" <arglist>? ")" {pushaddr 3} {jmp} {jumplabel 3} {pushv eax} {! handle_lvcontext parent.parent.0} {! swap_nodes parent.2, parent.parent.0}
+
+<m_misc1>		::= "(" <arglist>? <fcall> {! clean_args parent.parent.0}
+<fcall>			::= ")" {pushaddr 3} {jmp} {jumplabel 3} {pushv eax} {! handle_lvcontext parent.parent.parent.0} {! swap_nodes parent.1, parent.parent.parent.0}
+<arglist>		::= <assign> <margs>* {! reverse_args}
+<margs>			::= "," <assign>
 
 <base>			::= <base_id>
 <base>			::= <base_num>
