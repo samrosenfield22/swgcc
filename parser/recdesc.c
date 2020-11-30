@@ -27,7 +27,7 @@ lextok *lex_tok;
 #define grammar_start_symbol (0)
 
 
-node *parse(lextok *lex_tokens_in, bool verbose)
+pnode *parse(lextok *lex_tokens_in, bool verbose)
 {
 	PARSER_STATUS = P_OK;
 
@@ -35,7 +35,7 @@ node *parse(lextok *lex_tokens_in, bool verbose)
 	lex_tok = lex_tokens;
 
 	//parse the token string, according to productions for the start symbol. generate the parse tree.
-	node *tree = parse_nonterm(grammar_start_symbol);
+	pnode *tree = parse_nonterm(grammar_start_symbol);
 
 	//error if something went wrong, or if we didn't reach the end of the lex token string
 	if(PARSER_STATUS==P_FAIL || lex_tok->str != NULL)
@@ -58,12 +58,12 @@ node *parse(lextok *lex_tokens_in, bool verbose)
 //#define BAIL_IF_PARSER_FAILED if(PARSER_STATUS != P_OK) return NULL
 //#define BAIL_IF_PARSER_FAILED if(PARSER_STATUS != P_OK) {ptree_traverse_dfs(root, NULL, node_delete, false); return NULL;}
 
-node *parse_nonterm(nonterminal_type nt)
+pnode *parse_nonterm(nonterminal_type nt)
 {
 	//printf("\nparsing nonterminal: %s\n", gg.nonterminals[nt]);
 	//printf("\tlookahead at lex tok %d (%s)\n", lex_tok-lex_tokens, lex_tok->str);
 
-	node *root = node_create(true, nt, "", NULL);
+	pnode *root = pnode_create(true, nt, "", NULL);
 
 	//look in the parse table, get the next production to apply
 	int prod_index = parse_table_lookup(nt);
@@ -96,7 +96,7 @@ node *parse_nonterm(nonterminal_type nt)
 					PARSER_FAILURE;
 				break;
 
-			case SEMACT:	node_add_child(root, node_create(false, tok->ntype, tok->str, NULL)); break;
+			case SEMACT:	node_add_child(root, pnode_create(false, tok->ntype, tok->str, NULL)); break;
 			case EXPR: 		break;
 		}
 	}
@@ -106,7 +106,7 @@ node *parse_nonterm(nonterminal_type nt)
 }
 
 //bool consume_nonterm(node *root, int *ci, prod_tok *tok, prod_tok *next_tok)
-bool consume_nonterm(node *root, prod_tok *tok, prod_tok *next_tok)
+bool consume_nonterm(pnode *root, prod_tok *tok, prod_tok *next_tok)
 {
 	//printf("consuming nonterm %s\n", loaded_grammar->nonterminals[tok->nonterm]);
 	//printf("\tlookahead at lex tok %d (%s)\n", lex_tok-lex_tokens, lex_tok->str);
@@ -138,7 +138,7 @@ bool consume_nonterm(node *root, prod_tok *tok, prod_tok *next_tok)
 	return true;
 }
 
-bool consume_term_or_ident(node *root, prod_tok *tok)
+bool consume_term_or_ident(pnode *root, prod_tok *tok)
 {
 	//printf("\t\tconsuming term/ident %s\n", tok->str);
 	if(!match(tok))
@@ -148,7 +148,7 @@ bool consume_term_or_ident(node *root, prod_tok *tok)
 	}
 
 	symbol *sym = (tok->ntype==IDENT)? lex_tok->sym : NULL;
-	node_add_child(root, node_create(false, tok->ntype, lex_tok->str, sym));
+	node_add_child(root, pnode_create(false, tok->ntype, lex_tok->str, sym));
 	next();
 	return true;
 }

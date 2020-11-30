@@ -15,11 +15,11 @@ typedef struct meta_op_s
 } meta_op;
 
 //
-static void generate_instruction(node *n, int depth);
+static void generate_instruction(void *n, int depth);
 static void generate_instruction_from_str(char *str);
 static void resolve_jump_addresses(void);
 static meta_op *meta_op_lookup(const char *mop);
-static bool filter_semact(node *n);
+static bool filter_semact(void *n);
 
 //
 intermediate_spec *code = NULL;
@@ -29,7 +29,7 @@ int local_var_addr = 0, local_arg_addr = -12;     //bp offsets
 
 
 
-void generate_intermediate_code(node *n)
+void generate_intermediate_code(pnode *n)
 {
     if(code) vector_destroy(code);
     code = vector(*code, 0);
@@ -56,16 +56,18 @@ void generate_intermediate_code(node *n)
     ip_end = cp;
 }
 
-static void generate_instruction(node *n, int depth)
+static void generate_instruction(void *n, int depth)
 {
+    pnode *nn = (pnode *)n;
+
     //when we define a function, the function name is a base_id which gets pushed onto the stack.
     //we don't want this
-    if(strcmp(n->str, "enter")==0)
+    if(strcmp(nn->str, "enter")==0)
     {
         vector_delete(&code, vector_len(code)-1);
     }
     
-    meta_op *meta = meta_op_lookup(n->str);
+    meta_op *meta = meta_op_lookup(nn->str);
     if(meta)
     {
         //declaration_only = true;
@@ -73,7 +75,7 @@ static void generate_instruction(node *n, int depth)
             generate_instruction_from_str(*p);
     }
     else
-        generate_instruction_from_str(n->str);
+        generate_instruction_from_str(nn->str);
 }
 
 static void generate_instruction_from_str(char *str)
@@ -201,7 +203,8 @@ static meta_op *meta_op_lookup(const char *mop)
     return NULL;
 }
 
-static bool filter_semact(node *n)
+static bool filter_semact(void *n)
 {
-	return (!(n->is_nonterminal) && n->ntype == SEMACT);
+    pnode *nn = (pnode *)n;
+	return (!(nn->is_nonterminal) && nn->ntype == SEMACT);
 }
