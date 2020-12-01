@@ -21,6 +21,11 @@ bool verbosity = VERBOSE;
 
 int main(int argc, char *argv[])
 {
+    int (*n)[20];
+    printf("%d\n", sizeof(n));
+    void *p = &p;
+    int a = a;  
+    return 0;
     
     handle_cmdline_options(argc, argv);
     banner();
