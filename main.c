@@ -19,13 +19,14 @@ void test_compiler(bool verbose, int problem_case);
 bool run_tests = false;
 bool verbosity = VERBOSE;
 
+void print_the_string(void *t)
+{
+    char *str = ((node*)t)->str;
+    puts(str);
+}
+
 int main(int argc, char *argv[])
 {
-    int (*n)[20];
-    printf("%d\n", sizeof(n));
-    void *p = &p;
-    int a = a;  
-    return 0;
     
     handle_cmdline_options(argc, argv);
     banner();

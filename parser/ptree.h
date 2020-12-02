@@ -13,6 +13,7 @@
 extern const char *t_strings[];
 
 //parse tree node
+//extend the tree node type
 typedef struct pnode_s pnode;
 struct pnode_s
 {
@@ -43,11 +44,11 @@ pnode *pnode_create(bool is_nonterminal, int ntype, const char *str, symbol *sym
 //bool filter_by_ref_node(node *n);
 void ptree_print(void *pt);
 void pnode_print(void *pt);
-void pnode_print_str(void *pt, int depth);
-void semact_print(void *pt, int depth);
+void pnode_print_str(void *pt);
+void semact_print(void *pt);
 
 #define ptree_action		tree_action
-#define ptree_traverse_dfs 	tree_traverse_dfs
+#define ptree_traverse 		tree_traverse
 #define ptree_filter 		tree_filter
 
 #endif //PTREE_H_

@@ -123,7 +123,7 @@ bool semantic_compiler_actions(pnode *pt)
 	if(decl_func_list) vector_destroy(decl_func_list);
 	decl_func_list = vector(*decl_func_list, 0);
 
-	pnode **sem = tree_filter(pt, is_semact_special(n));
+	pnode **sem = tree_filter(pt, is_semact_special(n), true);
 	for(int ord=0; ord<=MAX_ORDER; ord++)
 	{
 		vector_foreach(sem, i)
@@ -149,7 +149,7 @@ bool semantic_compiler_actions(pnode *pt)
 						arg[ai] = sem[i];
 						while(1)
 						{
-							if(strstr(match, "parent")==match)	arg[ai] = node_get_parent(arg[ai]);
+							if(strstr(match, "parent")==match)	arg[ai] = tree_get_parent(arg[ai]);
 							else arg[ai] = arg[ai]->children[atoi(match)];
 
 							//advance to the next delimiter
@@ -187,7 +187,7 @@ bool semantic_compiler_actions(pnode *pt)
 	}
 
 	//i don't really want to delete nodes as we're going, as it could mess up the indexing for other semacts
-	sem = tree_filter(pt, is_semact_special(n));
+	sem = tree_filter(pt, is_semact_special(n), true);
 	vector_foreach(sem, i)
 		node_delete_from_parent(sem[i]);
 
@@ -199,7 +199,7 @@ bool add_decl_var(pnode *sem, pnode *var, pnode *dummy)
 	//assert(is_nonterm_type(var, "base_id"));
 
 	//for now, ignore it if it's a function. eventually we'l want to declare functions here
-	//pnode *parent = node_get_parent(var);
+	//pnode *parent = tree_get_parent(var);
 	//if(get_nonterm_child_deep(parent, "funcdef"))
 	if(vector_search(decl_func_list, (int)var) != -1)
 	{
@@ -223,7 +223,7 @@ bool check_decl_parent(pnode *sem, pnode *id, pnode *parent)
 		*/
 	
 	//assert(is_nonterm_type(id, "base_id"));
-	assert(parent == node_get_ancestor(id, 2));
+	assert(parent == tree_get_ancestor(id, 2));
 
 	/*pnode *declspec = get_nonterm_child(parent, "declspec");
 	if(declspec)
@@ -283,7 +283,7 @@ pnode *get_containing_block(pnode *n)
 {
 	pnode *fdl = get_nonterm_ancestor(n, "funcdeflist");
 	if(fdl)
-		return get_nonterm_child(node_get_parent(fdl), "block");
+		return get_nonterm_child(tree_get_parent(fdl), "block");
 	//else if forloop
 	else
 		return get_nonterm_ancestor(n, "block");
@@ -375,7 +375,7 @@ bool check_args(pnode *sem, pnode *funcid, pnode *arglist)
 	int passed = 0;
 	if(is_nonterm_type(arglist, "arglist"))	//optional nonterminal
 	{
-		pnode **passed_args = tree_filter(arglist, is_nonterm_type(n, "margs"));	//args that come after a comma
+		pnode **passed_args = tree_filter(arglist, is_nonterm_type(n, "margs"), true);	//args that come after a comma
 		passed = vector_len(passed_args)+1;
 		vector_destroy(passed_args);
 	}
@@ -437,8 +437,8 @@ bool clean_args(pnode *sem, pnode *func_id, pnode *dummy)
 		snprintf(buf, 20, "decsp %d", argbytes);
 
 		pnode *newsem = pnode_create(false, SEMACT, buf, NULL);
-		//node_add_child(node_get_parent(sem), newsem);
-		pnode *parent = node_get_parent(sem);
+		//tree_add_child(tree_get_parent(sem), newsem);
+		pnode *parent = tree_get_parent(sem);
 		int index = get_semact_child_index(parent, sem->str) + 1;	//so it doesn't get deleted (mistaken for the ! sem)
 
 		//insert the semact pnode
@@ -452,7 +452,7 @@ bool clean_args(pnode *sem, pnode *func_id, pnode *dummy)
 void insert_local_allocations(pnode *sem, const char *instr, bool at_start)
 {
 	char buf[21];
-	pnode *parent = node_get_parent(sem);
+	pnode *parent = tree_get_parent(sem);
 	assert(is_nonterm_type(parent, "block"));
 	size_t bytes = parent->block_bytes;
 	
@@ -475,11 +475,11 @@ bool swap_nodes(pnode *sem, pnode *n1, pnode *n2)
 	node_print(n1, 0);
 	node_print(n2, 0);*/
 
-	pnode *p1 = node_get_parent(n1);
+	pnode *p1 = tree_get_parent(n1);
 	int ind1 = vector_search(p1->children, (int)n1);
 	assert(ind1 != -1);
 
-	pnode *p2 = node_get_parent(n2);
+	pnode *p2 = tree_get_parent(n2);
 	int ind2 = vector_search(p2->children, (int)n2);
 	assert(ind2 != -1);
 
@@ -499,7 +499,7 @@ bool define_function(pnode *sem, pnode *id, pnode *argdeflist)
 	id->sym->declared = true;
 
 	//get number of argument bytes
-	pnode **defargs = tree_filter(argdeflist, is_nonterm_type(n, "funcdefarg"));
+	pnode **defargs = tree_filter(argdeflist, is_nonterm_type(n, "funcdefarg"), true);
 	pnode **types = vector_map(defargs, n->children[0]);
 	size_t bytes = 0;
 	vector_foreach(types, i)
@@ -559,7 +559,7 @@ bool handle_lvcontext(pnode *sem, pnode *context, pnode *dummy)
 bool make_push(pnode *sem, pnode *base, pnode *dummy)
 {
 	//bool local = get_nonterm_ancestor(bid, "block") &&
-	//(is_nonterm_type(node_get_parent(bid), "decl") || is_nonterm_type(node_get_parent(bid), "mdecl_assign"));
+	//(is_nonterm_type(tree_get_parent(bid), "decl") || is_nonterm_type(tree_get_parent(bid), "mdecl_assign"));
 
 	char instr[21], buf[21];
 	int arg;
@@ -590,7 +590,7 @@ bool make_push(pnode *sem, pnode *base, pnode *dummy)
 	snprintf(buf, 20, "%s %d", instr, arg);
 
 	pnode *pushact = pnode_create(false, SEMACT, buf, NULL);
-	node_add_child(base, pushact);
+	tree_add_child(base, pushact);
 	return true;
 }
 
@@ -604,7 +604,8 @@ bool set_conditional_jumps(pnode *pt)
 {
 
 	//pnode **all_conditionals = tree_filter(pt, is_conditional, -1, false);	//get the deepest ones first
-	pnode **all_conditionals = (pnode **)ptree_traverse_dfs(pt, is_conditional, NULL, -1, false);
+	//pnode **all_conditionals = (pnode **)ptree_traverse_dfs(pt, is_conditional, NULL, -1, true);
+	pnode **all_conditionals = tree_filter(pt, is_conditional(n), false);
 	vector_foreach(all_conditionals, i)
 	{
 		update_jump_semacts(all_conditionals[i], "pushaddr");
@@ -679,7 +680,7 @@ void update_jump_semacts(pnode *loop, const char *jtype)
 	assert(strcmp(jtype, "pushaddr")==0 || strcmp(jtype, "jumplabel")==0);
 
 	char buf[41];
-	pnode **jsemacts = tree_filter(loop, !(n->is_nonterminal) && n->ntype==SEMACT && strstr(n->str, jtype));
+	pnode **jsemacts = tree_filter(loop, !(n->is_nonterminal) && n->ntype==SEMACT && strstr(n->str, jtype), true);
 	vector_foreach(jsemacts, i)
 	{
 		//int jid = *(jsemacts[i]->str + strlen(jtype) + 1)-'0';	//+1 for the space after "pushaddr"/"jumplabel"
@@ -778,7 +779,7 @@ static pnode *get_nonterm_ancestor(pnode *n, const char *ntstr)
 	assert(n);
 	while(1)
 	{
-		n = node_get_parent(n);
+		n = tree_get_parent(n);
 		if(!n) break;
 		
 		if(is_nonterm_type(n, ntstr))

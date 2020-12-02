@@ -23,6 +23,8 @@ bool vector_delete(void *v, size_t index);
 void *vector_copy(void *v);
 void vector_intersect(void *vunion, void *a_only, void *b_only, void *a, void *b);
 bool vector_swap(void *v, size_t a, size_t b);
+void vector_merge(void *head, void *tail);
+void vector_reverse(void *v);
 int vector_search(void *v, int term);
 int vector_search_str(char **v, const char *str);
 void *vector_nth(void *v, size_t index);
@@ -30,20 +32,24 @@ size_t vector_len(void *v);								//returns the vector length (number of elemen
 bool vector_is_empty(void *v);
 size_t vector_internal_len(void *v);					//
 size_t vector_elem_size(void *v);						//
+size_t vector_array_size(void *v);
 size_t vector_total_size(void *v);						//
 
 #define vector_last(v) v[vector_len(v)-1]
 #define vector_append(v, item)	do {vector_inc(&v); vector_last(v) = item;} while(0)
 #define vector_foreach(v, i)	for(int i=0; i<vector_len(v); i++)
 
-//if we just pass {a,b,c,d...} the array gets interpreted as multiple args instead of a single arg, so we wrap it in parenthesis
+/*if we just pass {a,b,c,d...} the array gets interpreted as multiple args instead of a single arg,
+so we wrap it in parenthesis:
+int *a = vector_from_arr((int[]){5,6,4,3});
+*/
 #define ARRAY_LEN(a) (sizeof(a)/sizeof(a[0]))
 #define vector_from_arr(...)  vector_from_arr_wrap( (__VA_ARGS__) )
 #define vector_from_arr_wrap(arr) vector_from_arr_internal(arr, ARRAY_LEN(arr), sizeof(arr[0]))
 
 //stack macros
 #define vector_push		vector_append
-#define vector_pop(v) 	({void *last = vector_last(v); vector_dec(&v); last;})
+#define vector_pop(v) 	({void *last = vector_last(v); vector_dec(&v); last;}) //or maybe typeof(*v) last
 
 
 //map is an expression of the variable n

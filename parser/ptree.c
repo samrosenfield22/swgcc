@@ -21,7 +21,7 @@ const char *t_strings[] =
 
 pnode *pnode_create(bool is_nonterminal, int ntype, const char *str, symbol *sym)
 {
-	pnode *n = node_create_extra(sizeof(*n), str);
+	pnode *n = tree_create_extra(sizeof(*n), str);
 	assert(n);
 
 	n->is_nonterminal = is_nonterminal;
@@ -82,13 +82,13 @@ void pnode_print(void *t)
 	if(is_semact)
 		printf("%s", pt->str);
 	else
-		ptree_action(pt, pnode_print_str, false);
+		ptree_action(pt, pnode_print_str(n), false);
 
 	putchar('\n');
 }
 
 //build and print the string by recursively adding substrings from child nodes
-void pnode_print_str(void *pt, int depth)
+void pnode_print_str(void *pt)
 {
 	pnode *p = (pnode *)pt;
 	if(!(p->is_nonterminal) && p->ntype != SEMACT)
@@ -96,7 +96,7 @@ void pnode_print_str(void *pt, int depth)
 			printf("%s ", p->str);
 }
 
-void semact_print(void *pt, int depth)
+void semact_print(void *pt)
 {
 	pnode *p = (pnode *)pt;
 	if(!(p->is_nonterminal) && p->ntype == SEMACT)

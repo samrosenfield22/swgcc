@@ -147,9 +147,11 @@ bool vector_delete(void *vv, size_t index)
 void *vector_copy(void *v)
 {
 	vector_hdr *vhdr = vec_header(v);
-	void *copy = vector_create_internal(vhdr->elem_size, vhdr->len);
-	memcpy(copy, v, vhdr->elem_size * vhdr->len);
-	return copy;
+	//void *copy = vector_create_internal(vhdr->elem_size, vhdr->len);
+	//memcpy(copy, v, vhdr->elem_size * vhdr->len);
+	vector_hdr *copy = malloc(vector_total_size(v));
+	memcpy(copy, vhdr, vector_total_size(v));
+	return copy+1;
 }
 
 //int *anotb, *bnota, *aandb;
@@ -210,6 +212,40 @@ bool vector_swap(void *v, size_t a, size_t b)
 	return true;
 }
 
+//merge(&head, tail)
+//destroys tail
+void vector_merge(void *head, void *tail)
+{
+	//vector_hdr *hd = *((vector_hdr**)head);
+    vector_hdr *h = (*((vector_hdr**)head))-1;
+    vector_hdr *t = ((vector_hdr*)tail)-1;
+    
+    assert(h->elem_size == t->elem_size);
+
+    size_t head_len = h->len;
+    vector_resize(head, head_len + t->len);
+    void *copy_to = vector_nth((*((vector_hdr**)head)), head_len);
+    memcpy(copy_to, tail, vector_array_size(tail));
+
+    vector_destroy(tail);
+}
+
+void vector_reverse(void *v)
+{
+    char buf[vector_array_size(v)];
+    size_t elem_size = vector_elem_size(v);
+
+    int to = vector_len(v)-1;
+    vector_foreach(v, from)
+    {
+        memcpy(buf+to*elem_size, vector_nth(v, from), elem_size);
+        to--;
+    }
+
+    //copy back
+    memcpy(v, buf, vector_array_size(v));
+}
+
 int vector_search(void *v, int term)
 {
 	for(int i=0; i<vector_len(v); i++)
@@ -258,6 +294,11 @@ size_t vector_elem_size(void *v)
 {
 	CHECK(v, return 0);
 	return vec_header(v)->elem_size;
+}
+
+size_t vector_array_size(void *v)
+{
+	return vector_len(v) * vector_elem_size(v);
 }
 
 size_t vector_total_size(void *v)

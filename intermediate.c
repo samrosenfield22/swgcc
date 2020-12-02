@@ -15,7 +15,7 @@ typedef struct meta_op_s
 } meta_op;
 
 //
-static void generate_instruction(void *n, int depth);
+static void generate_instruction(void *n);
 static void generate_instruction_from_str(char *str);
 static void resolve_jump_addresses(void);
 static meta_op *meta_op_lookup(const char *mop);
@@ -39,7 +39,8 @@ void generate_intermediate_code(pnode *n)
     local_var_addr = 0;
     local_arg_addr = -12;
 
-    ptree_traverse_dfs(n, filter_semact, generate_instruction, -1, true);
+    //make instructions for all semantics
+    tree_traverse(n, if(filter_semact(n)) generate_instruction(n), true);
 
     //printf("~~~ instructions before resolving jumps ~~~\n");
     //dump_intermediate();
@@ -56,7 +57,7 @@ void generate_intermediate_code(pnode *n)
     ip_end = cp;
 }
 
-static void generate_instruction(void *n, int depth)
+static void generate_instruction(void *n)
 {
     pnode *nn = (pnode *)n;
 

@@ -96,7 +96,7 @@ pnode *parse_nonterm(nonterminal_type nt)
 					PARSER_FAILURE;
 				break;
 
-			case SEMACT:	node_add_child(root, pnode_create(false, tok->ntype, tok->str, NULL)); break;
+			case SEMACT:	tree_add_child(root, pnode_create(false, tok->ntype, tok->str, NULL)); break;
 			case EXPR: 		break;
 		}
 	}
@@ -130,7 +130,7 @@ bool consume_nonterm(pnode *root, prod_tok *tok, prod_tok *next_tok)
 			return true;
 
 		skip_first_check:
-		node_add_child(root, parse_nonterm(tok->nonterm));
+		tree_add_child(root, parse_nonterm(tok->nonterm));
 		if(PARSER_STATUS != P_OK)
 			return false;
 	} while(repeat);
@@ -148,7 +148,7 @@ bool consume_term_or_ident(pnode *root, prod_tok *tok)
 	}
 
 	symbol *sym = (tok->ntype==IDENT)? lex_tok->sym : NULL;
-	node_add_child(root, pnode_create(false, tok->ntype, lex_tok->str, sym));
+	tree_add_child(root, pnode_create(false, tok->ntype, lex_tok->str, sym));
 	next();
 	return true;
 }

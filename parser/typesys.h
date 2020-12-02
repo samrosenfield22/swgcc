@@ -15,6 +15,7 @@ typedef struct typetree_s
 	    char *str;
 	};
 
+	
 
 } typetree;
 

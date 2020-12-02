@@ -7,44 +7,46 @@
 
 #include "tree.h"
 
+/*#ifdef NDEBUG
+	#define tree_sanity_check(t)	//nothing
+#endif	//NDEBUG*/
+
+static node *node_create(size_t size, const char *str);
+static void node_add_child(node *root, node *child);
+//static node *node_has_direct_child(void *n, bool (*filter)(void *n));
+static void node_delete(node *t, int dummy);
 
 //
 static void tree_print_pretty_rec(void *t, int depth, void (*print)(void *t));
 
-
-void *node_create(const char *str)
+void *tree_create(const char *str)
 {
-	return node_create_extra(sizeof(node), str);
+	node *n = node_create(sizeof(*n), str);
+	n->parent = NULL;
+	return n;
 }
 
-//if we create a library that wraps this one (i.e. to make a node w extra elements), we can use this to allocate
-//a node of given size (providing the extra elements come after the base node)
-void *node_create_extra(size_t size, const char *str)
+void *tree_create_extra(size_t size, const char *str)
 {
-	node *n = malloc(size);
-    assert(n);
-
+	node *n = node_create(size, str);
     n->parent = NULL;
-    n->children = vector(node *, 0);
-    n->str = strdup(str);
     return n;
 }
 
-void node_add_child(void *root, void *child)
+void tree_add_child(void *root, void *child)
 {
-	node *r=root; node *c=child;
-
-	vector_append(r->children, child);
-	c->parent = root;
+	//node *r=root;
+	node_add_child(root, child);
+	((node*)child)->parent = root;
 }
 
-void *node_get_parent(void *n)
+void *tree_get_parent(void *n)
 {
 	node *nn=n;
 	return nn->parent;
 }
 
-void *node_get_ancestor(void *n, size_t cnt)
+void *tree_get_ancestor(void *n, size_t cnt)
 {
 	node *nn=n;
 	for(int i=0; i<cnt; i++)
@@ -52,74 +54,6 @@ void *node_get_ancestor(void *n, size_t cnt)
 			nn = nn->parent;
 	return nn;
 }
-
-
-/*node **ptree_filter(node *n, bool (*filter)(node *n), int depth, bool node_then_children)
-{
-	return ptree_traverse_dfs(n, filter, NULL, -1, node_then_children);
-}*/
-
-void tree_action(void *n, void (*action)(void *n, int arg), bool node_then_children)
-{
-	tree_traverse_dfs(n, NULL, action, -1, node_then_children);
-}
-
-void **tree_traverse_dfs
-	(void *t, bool (*filter)(void *n), void (*action)(void *n, int arg), int depth, bool node_then_children)
-{
-	void **collect = vector(*collect, 0);
-	tree_traverse_dfs_recursive(t, filter, action, &collect, 0, depth, node_then_children);
-	return collect;
-}
-
-void tree_traverse_dfs_recursive
-	(void *t, bool (*filter)(void *n), void (*action)(void *n, int depth),
-	void ***collect, int depth, int max_depth, bool node_then_children)
-{
-	if(node_then_children)
-	{
-		if((filter && filter(t)) || (filter == NULL))
-		{
-			if(action)
-				action(t, depth);
-			if(collect)
-				vector_append((*collect), t);
-		}
-	}
-
-	if(depth < max_depth || max_depth == -1)
-		for(int ci=0; ci<vector_len(((node*)t)->children); ci++)
-		{
-			tree_traverse_dfs_recursive(((node*)t)->children[ci], filter, action, collect, depth+1, max_depth, node_then_children);
-		}
-
-	if(!node_then_children)
-	{
-		if((filter && filter(t)) || (filter == NULL))
-		{
-			if(action)
-				action(t, depth);
-			if(collect)
-				vector_append((*collect), t);
-		}
-	}
-}
-
-
-
-
-//returns the first one that matches, or NULL
-node *node_has_direct_child(void *n, bool (*filter)(void *n))
-{
-	node *nn = (node*)n;
-	for(int ci=0; ci<vector_len(nn->children); ci++)
-	{
-		if(filter(nn->children[ci]))
-			return nn->children[ci];
-	}
-	return NULL;
-}
-
 
 int *branch_list, *branch_ct;	//node lists for tracking branches during print_pretty
 
@@ -194,18 +128,81 @@ static void tree_print_pretty_rec(void *t, int depth, void (*print)(void *t))
 }
 
 
+////////////////////////////////////////////////
+//dag
 
-void node_delete(void *t, int dummy)
+void *dag_create(const char *str)
 {
-	node *tt = (node*)t;
-	vector_destroy(tt->children);
+	node *n = node_create(sizeof(*n), str);
+	n->parents = vector(*(n->parents), 0);
+	return n;
+}
+
+void *dag_create_extra(size_t size, const char *str)
+{
+	node *n = node_create(size, str);
+    n->parents = vector(*(n->parents), 0);
+    return n;
+}
+
+
+void dag_add_child(void *root, void *child)
+{
+	node_add_child(root, child);
+	node **parents = ((node*)child)->parents;
+	vector_append(parents, root);
+}
+
+
+
+
+
+////////////////////////////////////////////////
+
+//if we create a library that wraps this one (i.e. to make a node w extra elements), we can use this to allocate
+//a node of given size (providing the extra elements come after the base node)
+static node *node_create(size_t size, const char *str)
+{
+	node *n = malloc(size);
+    assert(n);
+
+    //n->parent = NULL;
+    n->children = vector(node *, 0);
+    n->str = strdup(str);
+    return n;
+}
+
+static void node_add_child(node *root, node *child)
+{
+	vector_append(root->children, child);
+	//c->parent = root;
+}
+
+
+//returns the first one that matches, or NULL
+/*static node *node_has_direct_child(void *n, bool (*filter)(void *n))
+{
+	node *nn = (node*)n;
+	for(int ci=0; ci<vector_len(nn->children); ci++)
+	{
+		if(filter(nn->children[ci]))
+			return nn->children[ci];
+	}
+	return NULL;
+}*/
+
+static void node_delete(node *t, int dummy)
+{
+	//node *tt = (node*)t;
+	vector_destroy(t->children);
 	free(t);
 }
 
+//ok this one is really tree-specific but we'll leave it here for now
 void node_delete_from_parent(void *n)
 {
 	node *nn = (node*)n;
-	node *parent = node_get_parent(nn);
+	node *parent = tree_get_parent(nn);
 	int index = vector_search(parent->children, (int)n);
 	assert(index != -1);
 
