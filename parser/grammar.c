@@ -29,26 +29,20 @@ const char *tm_strings[] =
 };
 
 
-#define SOME_BIG_NUMBER (800)
-
 static void build_production(char *bp);
 
 static prod_tok *consume_token(char *s);
-//static char *consume_token(char *s);
-static prod_tok *consume_thing(char **s, char start, char end);
+static prod_tok *consume_thing(char **s, char start, char end, prod_tok_type ntype);
 static prod_tok *consume_ident(char **s);
-static int search_ident_name(char *s);
 
 static prod_tok *add_classname(char *name, prod_tok_type type);
-static int search_nonterm_name(char *name);
-static int search_term_name(char *name);
 static void print_production_rule(int i);
 
 static void productions_to_parse_table(void);
 static void mark_entries_for_nonterminal(nonterminal_type nt);
 static void mark_parse_table(int nt, int alpha, int val);
 
-static void dump_parse_table_entry(int *ptab, char *ntname);
+void dump_parse_table_entry(int *ptab, char *ntname);
 
 
 //vectors
@@ -86,14 +80,12 @@ grammar *load_grammar(const char *fname)
     }
 
     //load everything into the grammar structure
-    gg = (grammar){production_rules, nonterminal_names, terminal_names, vector_len(terminal_names)+ident_len};
-        //vector_len(nonterminal_names), vector_len(production_rules)};
-
+    gg = (grammar){production_rules, nonterminal_names, terminal_names,
+        vector_len(terminal_names)+ident_len, NULL};
     //dump_productions(&gg); getchar();
 
     //build the parse table
     productions_to_parse_table();
-
     //dump_parse_table_entry(gg.parse_table, "dcltor"); getchar();
 
     return &gg;
@@ -109,36 +101,27 @@ static void build_production(char *bp)
 
     vector_inc(&production_rules);
     production_rule *prod = &vector_last(production_rules);
-    //prod->rhs = calloc(80, sizeof(prod_tok *));
     prod->rhs = vector(prod_tok *, 0);
 
     //load first token into production's lhs
     prod->lhs = consume_token(bp)->nonterm;
 
     //load tokens into production's rhs
-    //prod_tok **rhs_tok = prod->rhs;
     while(1)
     {
         prod_tok *p = consume_token(NULL);
         if(!p)
             break;
-        //*rhs_tok++ = p;
         vector_append(prod->rhs, p);
-    }
-
-    //vector_append(prod->rhs, NULL);    
+    }  
 }
 
 //consumes tokens until we reach the end of the string
 static prod_tok *consume_token(char *s)
 {
     static char *sp;
-    if(s)
-        sp = s;
-    if(*sp == '\0')
-        return NULL;
-
-    prod_tok *t;
+    if(s)               sp = s;
+    if(*sp == '\0')     return NULL;
 
     //skip past whitespace and other chars we don't care about
     while(*sp==' ' || *sp=='\t' || *sp==':' || *sp=='=')
@@ -146,84 +129,43 @@ static prod_tok *consume_token(char *s)
     
     switch(*sp)
     {
-        case '<':   t = consume_thing(&sp, '<', '>'); break;  //nonterminal,
-        case '"':   t = consume_thing(&sp, '"', '"'); break;   //
-        case '{':   t = consume_thing(&sp, '{', '}'); break;  //semact
-
-        case '+': case '*': case '?':
-            t = add_classname((char[]){*sp, '\0'}, EXPR);
-            sp++; break;
-
-        //case ' ': case '\t': case ':': case '=':
-        //    sp++; break;
-
-        default:
-            if(search_ident_name(sp) != -1)
-                t = consume_ident(&sp);
-            else
-                {printf("found bad char in grammar:\n%s\n", sp); assert(0);}
-            break;
+        case '<':                       return consume_thing(&sp, '<', '>', NONTERMINAL);
+        case '"':                       return consume_thing(&sp, '"', '"', TERMINAL);
+        case '{':                       return consume_thing(&sp, '{', '}', SEMACT);
+        case '+': case '*': case '?':   return add_classname((char[]){*sp++, '\0'}, EXPR);
+        default:                        return consume_ident(&sp);
     }
-
-    return t;
 }
 
-static prod_tok *consume_thing(char **s, char start, char end)
+static prod_tok *consume_thing(char **s, char start, char end, prod_tok_type ntype)
 {
+    //get start
     assert(**s == start);
     (*s)++;
 
+    //get end, replace it with nul
     char *cn_end = strchr((*s)+1, end);    //was just (s, end)
     assert(cn_end);
     *cn_end = '\0';
-
-    prod_tok_type ntype;
-    switch(start)
-    {
-        case '<': ntype = NONTERMINAL; break;
-        case '{': ntype = SEMACT; break;
-        case '"': ntype = TERMINAL; break;
-        default: assert(0);
-    }
 
     prod_tok *t = add_classname(*s, ntype);
     *s = cn_end+1;
     return t;
 }
 
-static int search_ident_name(char *s)
-{
-    char *end;
-    for(end=s; !(*end==' ' || *end=='\t' || *end=='*' || *end=='+' || *end=='?' || *end=='\0'); end++);
-    //char temp = *end;
-    //*end = '\0';
-
-    char buf[81];
-    strncpy(buf, s, end-s);
-    buf[end-s] = '\0';
-
-    int index = -1;
-    //for(int i=0; i<sizeof(ident_table)/sizeof(ident_table[0]); i++)
-    for(int i=0; i<ident_len; i++)
-    {
-      if(strcmp(buf, ident_table[i])==0)
-      {
-        index = i;
-        break;
-      }
-    }
-
-    //*end = temp;
-    return index;
-}
-
 static prod_tok *consume_ident(char **s)
 {
-    char *end;
-    for(end=*s; !(*end==' ' || *end=='\t' || *end=='*' || *end=='+' || *end=='?' || *end=='\0'); end++);
-
+    //nul-terminate after the ident
+    char *end = firstchr(*s, " \t*+?");
     char temp = *end;
     *end = '\0';
+
+    if(arr_search_str(ident_table, ident_len, *s) == -1)
+    {
+        printf("found bad char in grammar:\n%s\n", *s);
+        assert(0);
+    }
+
     prod_tok *t = add_classname(*s, IDENT);  //save the string
     *end = temp;
 
@@ -241,69 +183,42 @@ static prod_tok *add_classname(char *name, prod_tok_type ntype)
     //if the token is a nonterm or term, it gets added to those lists
     if(ntype == NONTERMINAL)
     {
-        if(search_nonterm_name(name) == -1)
+        int ntindex = vector_search_str(nonterminal_names, name);
+        if(ntindex == -1)
             vector_append(nonterminal_names, strdup(name));
 
         //nonterminal tokens (in the buffer) don't store their strings -- just an index to the nonterminal list
-        t->nonterm = search_nonterm_name(name);
+        t->nonterm = vector_search_str(nonterminal_names, name);
     }
     else if(ntype == TERMINAL)
     {
-        if(search_term_name(name) == -1)
+        if(vector_search_str(terminal_names, name) == -1)
             vector_append(terminal_names, strdup(name));
     }
 
     return t;
 }
 
-static int search_nonterm_name(char *name)
-{
-    //for(int i=0; i<ntn_index; i++)
-    for(int i=0; i<vector_len(nonterminal_names); i++)
-    {
-        if(strcmp(nonterminal_names[i], name)==0)
-            return i;
-    }
-    return -1;
-}
-
-static int search_term_name(char *name)
-{
-    //for(int i=1; i<tn_index; i++)   //start at 1 to skip the NULL entry for idents
-    //for(int i=0; i<tn_index; i++)
-    for(int i=0; i<vector_len(terminal_names); i++)
-    {
-        if(strcmp(terminal_names[i], name)==0)
-            return i;
-    }
-    return -1;
-}
-
 void dump_classnames(void)
 {
     printf("\nnonterminals:\n-----------------\n");
-    //for(int i=0; i<ntn_index; i++)
-    for(int i=0; i<vector_len(nonterminal_names); i++)
-    {
-      printf("%s %d\n", nonterminal_names[i], i);
-    }
+    vector_foreach(nonterminal_names, i)
+        printf("%s %d\n", nonterminal_names[i], i);
 
     printf("\nterminals:\n-----------------\n");
-    //for(int i=0; i<tn_index; i++)
-    for(int i=0; i<vector_len(terminal_names); i++)
-    {
-      printf("%s %d\n", terminal_names[i], i);
-    }
+    vector_foreach(terminal_names, i)
+        printf("%s %d\n", terminal_names[i], i);
+
     printf("\n");
 }
 
 void dump_productions(grammar *g)
 {
-    printf("grammar length:\t%d\n", vector_len(g->rules)/*g->grammar_len*/);
+    printf("grammar length:\t%d\n", vector_len(g->rules));
     printf("alphabet length:\t%d\n", g->alphabet_len);
-    printf("nonterm length:\t%d\n", vector_len(g->nonterminals)/*g->nonterm_len*/);
+    printf("nonterm length:\t%d\n", vector_len(g->nonterminals));
 
-    for(int i=0; i<vector_len(g->rules)/*g->grammar_len*/; i++)
+    vector_foreach(g->rules, i)
     {
         printf("production %d:\n\t", i);
         //printf("(%s)(nonterminal %d) ::= ", nonterminal_names[production_rules[i].lhs], production_rules[i].lhs);
@@ -345,24 +260,24 @@ bool *production_marked;
 static void productions_to_parse_table(void)
 {
 	//init parse table structure
-	int table_entries = gg.alphabet_len * vector_len(gg.nonterminals);//gg.nonterm_len;
+	int table_entries = gg.alphabet_len * vector_len(gg.nonterminals);
 	parse_table = malloc(table_entries * sizeof(*parse_table));
 	assert(parse_table);
 	for(int i=0; i<table_entries; i++)
 		parse_table[i] = -1;
 
 	//init array that tracks which productions have already been marked in the parse table
-	production_marked = malloc(vector_len(gg.rules) /*gg.grammar_len*/ * sizeof(*production_marked));
+	production_marked = malloc(vector_len(gg.rules) * sizeof(*production_marked));
 	assert(production_marked);
-	for(int i=0; i<vector_len(gg.rules)/*gg.grammar_len*/; i++)
+    vector_foreach(gg.rules, i)
 		production_marked[i] = false;
 
 	//mark entries for each production
-	for(int i=0; i<vector_len(gg.rules)/*gg.grammar_len*/; i++)
+    vector_foreach(gg.rules, i)
 		mark_entries_for_nonterminal(i);
 
-  gg.parse_table = parse_table;
-
+    gg.parse_table = parse_table;
+    free(production_marked);
 }
 
 /*
@@ -416,48 +331,34 @@ static void mark_entries_for_nonterminal(nonterminal_type nt)
 
 			case TERMINAL:
 			case IDENT:
-        //this whole thing could just be
-        //find_parse_table_column(firsttok)
-        //if we changed find_parse_table_column() to take a prod_tok
-				/*if(firsttok->type == IDENT)
-        {
-					//alpha_col = 0;
-          alpha_col = search_ident_name(firsttok->str);
-          assert(alpha_col != -1);
-        }
-				else
-				{
-					alpha_col = find_parse_table_column(firsttok->str) + ident_len;
-					assert(alpha_col != -1);
-				}*/
 
-        alpha_col = find_parse_table_column(firsttok->str, firsttok->ntype);
-        assert(alpha_col != -1);
+                alpha_col = find_parse_table_column(firsttok->str, firsttok->ntype);
+                assert(alpha_col != -1);
 
 				//parse_table[table_entry(nt, alpha_col)] = i;
-        mark_parse_table(nt, alpha_col, i);
+                mark_parse_table(nt, alpha_col, i);
 				break;
 
 			case NONTERMINAL:
 
-			//make sure that's the ONLY production for that nonterminal
-			//for now we're just assuming that's the case...
-			//...or does this code work?
-			/*for(int j=i+1; j<gg.grammar_len; j++)
-				if(gg.rules[j].lhs == nt)
-					assert(0);*/
+    			//make sure that's the ONLY production for that nonterminal
+    			//for now we're just assuming that's the case...
+    			//...or does this code work?
+    			/*for(int j=i+1; j<gg.grammar_len; j++)
+    				if(gg.rules[j].lhs == nt)
+    					assert(0);*/
 
-			//recurse on that nonterminal
-			mark_entries_for_nonterminal(firsttok->nonterm);
+    			//recurse on that nonterminal
+    			mark_entries_for_nonterminal(firsttok->nonterm);
 
-			//copy all the ones that aren't -1
-			for(int j=0; j<gg.alphabet_len; j++)
-			{
-				if(parse_table[table_entry(firsttok->nonterm, j)] != -1)
-					//parse_table[table_entry(nt, j)] = i;
-                    mark_parse_table(nt, j, i);
-			}
-            break;
+    			//copy all the ones that aren't -1
+    			for(int j=0; j<gg.alphabet_len; j++)
+    			{
+    				if(parse_table[table_entry(firsttok->nonterm, j)] != -1)
+    					//parse_table[table_entry(nt, j)] = i;
+                        mark_parse_table(nt, j, i);
+    			}
+                break;
 
             default:
                 printf("crashed (invalid token type %d) in production:\n", firsttok->ntype);
@@ -470,11 +371,11 @@ static void mark_entries_for_nonterminal(nonterminal_type nt)
 	production_marked[nt] = true;
 }
 
-static void dump_parse_table_entry(int *ptab, char *ntname)
+void dump_parse_table_entry(int *ptab, char *ntname)
 {
     printf("productions for \'%s\':\n", ntname);
 
-    int ntindex = search_nonterm_name(ntname);
+    int ntindex = vector_search_str(nonterminal_names, ntname);
     if(ntindex == -1)
     {
         printf("can't dump parse table entry for %s, not found!\n", ntname);
@@ -485,21 +386,21 @@ static void dump_parse_table_entry(int *ptab, char *ntname)
     for(int j=0; j<gg.alphabet_len; j++)
     {
         int trans = ptab[index*gg.alphabet_len+j];
-        if(trans != -1)
+        if(trans == -1)
+            continue;
+
+        char *term = (j<ident_len)? ident_table[j] : gg.terminals[j-ident_len];
+        //int becomes = gg.rules[trans].rhs[0]->nonterm;
+        //printf("\t%s : %s (%d)\n", term, gg.nonterminals[becomes], trans);
+        printf("\t%s :: ", term);
+        //print_production_rule(gg.rules[trans].rhs[0]->nonterm);
+        vector_foreach(gg.rules[trans].rhs, tok)
         {
-            char *term = (j<ident_len)? ident_table[j] : gg.terminals[j-ident_len];
-            //int becomes = gg.rules[trans].rhs[0]->nonterm;
-            //printf("\t%s : %s (%d)\n", term, gg.nonterminals[becomes], trans);
-            printf("\t%s :: ", term);
-            //print_production_rule(gg.rules[trans].rhs[0]->nonterm);
-            vector_foreach(gg.rules[trans].rhs, tok)
+            if(gg.rules[trans].rhs[tok]->ntype == NONTERMINAL)
             {
-                if(gg.rules[trans].rhs[tok]->ntype == NONTERMINAL)
-                {
-                    int first_rhs_nt = gg.rules[trans].rhs[tok]->nonterm;
-                    printf("%s\n", gg.nonterminals[first_rhs_nt]);
-                    break;
-                }
+                int first_rhs_nt = gg.rules[trans].rhs[tok]->nonterm;
+                printf("%s\n", gg.nonterminals[first_rhs_nt]);
+                break;
             }
         }
     }
@@ -520,33 +421,17 @@ static void mark_parse_table(int nt, int alpha, int val)
     parse_table[index] = val;
 }
 
-/*int find_parse_table_column(const char *symbol)
-{
-	//for(int col=1; col < sizeof(parse_table_columns)/sizeof(parse_table_columns[0]); col++)
-	//for(int col=1; col<gg.alphabet_len; col++)
-  for(int col=0; col<gg.alphabet_len; col++)
-	{
-		//if(strcmp(parse_table_columns[col], symbol) == 0)
-		if(strcmp(gg.terminals[col], symbol) == 0)
-		{
-			return col;
-		}
-	}
-
-	return -1;	//not found
-}*/
-
 int find_parse_table_column(char *str, prod_tok_type ntype)
 {
   int index;
   if(ntype == IDENT)
   {
-      index = search_ident_name(str);
+      index = arr_search_str(ident_table, ident_len, str);
       assert(index != -1);
   }
   else if(ntype == TERMINAL)
   {
-      index = search_term_name(str);
+      index = vector_search_str(terminal_names, str);
       if(index == -1)
       {
         printf("\'%s\' is a lex terminal but it's not in the parser/grammar!\n", str);

@@ -24,6 +24,8 @@ pnode *pnode_create(bool is_nonterminal, int ntype, const char *str, symbol *sym
 	pnode *n = tree_create_extra(sizeof(*n), str);
 	assert(n);
 
+	assert(sym == NULL);	//if this never triggers, get rid of the argument
+
 	n->is_nonterminal = is_nonterminal;
     n->ntype = ntype;
     n->sym = sym;

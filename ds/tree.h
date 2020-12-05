@@ -23,6 +23,9 @@ struct node_s
 void *tree_create(const char *str);
 void *tree_create_extra(size_t size, const char *str);
 void tree_add_child(void *root, void *child);
+void tree_insert_child(void *parent, void *child, int index);
+void tree_add_sibling(void *n, void *sibl, int distance);
+int tree_get_parent_index(void *nn);
 void *tree_get_parent(void *n);
 void *tree_get_ancestor(void *n, size_t cnt);
 void tree_print_pretty(void *t, void (*print)(void *t));

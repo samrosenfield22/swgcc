@@ -41,9 +41,6 @@ typedef struct regex_action_pair_s
 regex_action_pair regex_table[] =
 {
     
-
-    //{"whatever", "; | { | } | = | , | \\&\\& | \\|\\| | \\^ | \\& | \\| | \\^ | == | != | < | > | <= | >= | << | >> | \\+ | - | \\* | \\/ | \\% | \\( | \\) | \\+= | -= | \\*= | \\/= | %= | <<= | >>= | \\&= | \\|= | \\^= | ++ | -- | ~",
-    //NULL, LEXTOK_TERM, NULL},
     {"", "== | != | < | > | <= | >=", NULL, LEXTOK_TERM, NULL},
     {"", "\\+= | -= | \\*= | \\/= | %= | <<= | >>= | \\&= | \\|= | \\^= | ++ | --", NULL, LEXTOK_TERM, NULL},
     {"", "; | { | } | \\[ | \\] | \\( | \\) | = | , ", NULL, LEXTOK_TERM, NULL},
@@ -52,13 +49,11 @@ regex_action_pair regex_table[] =
     {"", "if | else | for | while | do | void | return", NULL, LEXTOK_TERM, NULL},
 
     {"type", "int|char|short|long", NULL, LEXTOK_IDENT(2), NULL},
-    //{"id", "[a-z]+", NULL, LEXTOK_IDENT(0), make_identifier},
     {"id", "[A-Za-z]([A-Za-z0-9]|_)*", NULL, LEXTOK_IDENT(0), make_identifier},
     {"num", "[0-9]+", NULL, LEXTOK_IDENT(1), make_decimal},
     {"num", "0x[0-9A-Fa-f]+", NULL, LEXTOK_IDENT(1), make_hex},
     {"num", "0b(0|1)+", NULL, LEXTOK_IDENT(1), make_bin},
     {"num", "\'[ -~]\'", NULL, LEXTOK_IDENT(1), make_charlit}
-    //{"num", "\\'[A-Za-z]\\'", NULL, LEXTOK_IDENT(1), make_charlit}
 };
 
 char *ident_table[] =

@@ -5,22 +5,6 @@
 
 #include "../symbol.h"
 #include "regex.h"
-//#include "../swglib/automata/nfa/nfa.h"
-
-/*typedef enum lex_tok_type_e
-{
-    LITERAL,
-    IDENTIFIER,
-    OPERATOR
-} lex_tok_type;
-
-typedef struct lex_token_s
-{
-    lex_tok_type type;
-    int litval;
-    char *opstr;
-    symbol *sym;
-} lex_token;*/
 
 typedef struct lextok_s
 {

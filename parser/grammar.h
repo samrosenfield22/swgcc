@@ -6,6 +6,7 @@
 #include "../lexer/lexer.h"
 #include "../ds/vector.h"
 #include "recdesc_types.h"
+#include "../utils/misc.h"
 
 extern grammar gg;
 extern char *ident_table[];

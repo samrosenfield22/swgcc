@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 
     //run test cases
     if(run_tests)
-        test_compiler(SILENT, 29);
+        test_compiler(SILENT, -1);
 
     //interpret forever
     launch_interpreter(verbosity);

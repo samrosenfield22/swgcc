@@ -40,6 +40,32 @@ void tree_add_child(void *root, void *child)
 	((node*)child)->parent = root;
 }
 
+void tree_insert_child(void *parent, void *child, int index)
+{
+	node *p=parent, *c=child;
+
+	vector_insert(&(p->children), index);
+	p->children[index] = c;
+	c->parent = p;
+}
+
+//distance describes where the sibling is in relation to the node, i.e. 
+//-2 means add the sibling 2 spaces to the left
+void tree_add_sibling(void *n, void *sibl, int distance)
+{
+	int index = tree_get_parent_index(n) + distance;
+	tree_insert_child(((node*)n)->parent, sibl, index);
+}
+
+//returns the node's index within its parent's "children" vector
+int tree_get_parent_index(void *nn)
+{
+	node *n = (node*)nn;
+	int index = vector_search(n->parent->children, (int)n);
+	assert(index != -1);
+	return index;
+}
+
 void *tree_get_parent(void *n)
 {
 	node *nn=n;

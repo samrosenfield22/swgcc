@@ -153,8 +153,6 @@
 <misc2_context>	::= "--" <misc1> {--pre} {! handle_lvcontext parent.1}
 <misc2_lval>	::= "*" <misc2> {*deref}
 
-;<misc1>			::= <base>
-
 <misc1>			::= <misc1_context>
 <misc1>			::= <base_num>
 <misc1_context>	::= <base_id> <m_misc1>?
@@ -170,13 +168,7 @@
 <arglist>		::= <assign> <margs>* {! reverse_args parent}
 <margs>			::= "," <assign>
 
-<base>			::= <base_id>
-<base>			::= <base_num>
-<base>			::= <base_expr>
-
-;<base_id>		::= id {! check_decl_parent parent.0, parent.parent} {push %s}
-<base_id>		::= id {! check_decl_parent parent.0, parent.parent} {! make_push parent}
-;<base_num>		::= num {push %s}
+<base_id>		::= id {! check_decl_var parent.0} {! make_push parent}
 <base_num>		::= num {! make_push parent}
 <base_expr>		::= "(" <comma> ")"
 

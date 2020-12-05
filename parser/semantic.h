@@ -6,6 +6,7 @@
 #include "ptree.h"
 #include "../simulator.h"
 #include "../utils/printcolor.h"
+#include "../utils/misc.h"
 
 bool all_semantic_checks(bool *decl_only, pnode *pt);
 

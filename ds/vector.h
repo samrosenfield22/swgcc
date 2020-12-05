@@ -43,9 +43,9 @@ size_t vector_total_size(void *v);						//
 so we wrap it in parenthesis:
 int *a = vector_from_arr((int[]){5,6,4,3});
 */
-#define ARRAY_LEN(a) (sizeof(a)/sizeof(a[0]))
+#define ARRAY_LEN_V(a) (sizeof(a)/sizeof(a[0]))
 #define vector_from_arr(...)  vector_from_arr_wrap( (__VA_ARGS__) )
-#define vector_from_arr_wrap(arr) vector_from_arr_internal(arr, ARRAY_LEN(arr), sizeof(arr[0]))
+#define vector_from_arr_wrap(arr) vector_from_arr_internal(arr, ARRAY_LEN_V(arr), sizeof(arr[0]))
 
 //stack macros
 #define vector_push		vector_append
