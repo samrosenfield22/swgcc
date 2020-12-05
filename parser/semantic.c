@@ -33,8 +33,8 @@ bool is_conditional(void *n);
 
 void update_jump_semacts(pnode *loop, const char *jtype);
 
-//static pnode *get_nonterm_child(pnode *parent, char *ntstr);
-//static int get_nonterm_child_index(pnode *parent, char *ntstr);
+static pnode *get_nonterm_child(pnode *parent, char *ntstr);
+static int get_nonterm_child_index(pnode *parent, char *ntstr);
 static pnode *get_semact_child(pnode *parent, char *ntstr);
 //static int get_semact_child_index(pnode *parent, char *str);
 //static bool is_semact_type(pnode *n, const char *sem);
@@ -146,6 +146,16 @@ bool semantic_compiler_actions(pnode *pt)
 						while(1)
 						{
 							if(strstr(match, "parent")==match)	arg[ai] = tree_get_parent(arg[ai]);
+							else if('a'<=*match && *match<='z')
+							{
+								char *end = firstchr(match, ".,");
+								char buf[65];
+								strncpy(buf, match, end-match);
+								buf[end-match] = '\0';
+
+								//printf("moving to sibling %s\n", buf); getchar();
+								arg[ai] = get_nonterm_child(arg[ai], buf);
+							}
 							else arg[ai] = arg[ai]->children[atoi(match)];
 
 							//advance to the next delimiter
@@ -283,6 +293,7 @@ pnode *get_containing_block(pnode *n)
 		pnode *func_decl = get_nonterm_ancestor(n, "decl");
 		return get_nonterm_child_deep(func_decl, "block");
 	}
+	//else if(get_nonterm_ancestor(n, "forloop"))
 	else
 		return get_nonterm_ancestor(n, "block");
 }
@@ -358,7 +369,8 @@ bool check_args(pnode *sem, pnode *funcid, pnode *arglist)
 {
 	//count args passed
 	int passed = 0;
-	if(is_nonterm_type(arglist, "arglist"))	//optional nonterminal
+	//if(is_nonterm_type(arglist, "arglist"))	//optional nonterminal
+	if(arglist)	//optional nonterminal
 	{
 		pnode **passed_args = tree_filter(arglist, is_nonterm_type(n, "margs"), true);	//args that come after a comma
 		passed = vector_len(passed_args)+1;
@@ -642,7 +654,7 @@ void update_jump_semacts(pnode *loop, const char *jtype)
 }
 
 //returns the first child that matches
-/*static pnode *get_nonterm_child(pnode *parent, char *ntstr)
+static pnode *get_nonterm_child(pnode *parent, char *ntstr)
 {
 
 	int index = get_nonterm_child_index(parent, ntstr);
@@ -657,7 +669,7 @@ static int get_nonterm_child_index(pnode *parent, char *ntstr)
 			return i;
 	}
 	return -1;
-}*/
+}
 
 /*static int get_semact_child_index(pnode *parent, char *str)
 {

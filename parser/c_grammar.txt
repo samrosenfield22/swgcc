@@ -43,15 +43,15 @@
 ; i think the parser doesn't like the repeat expression
 ; <opt_assign>? <more_declare>*
 
-<decl>			::= type {! add_decl_var parent.2} <full_dcltor> {! handle_lvcontext parent.2} <first_assign>
+<decl>			::= type {! add_decl_var parent.full_dcltor} <full_dcltor> {! handle_lvcontext parent.full_dcltor} <first_assign>
 <first_assign>	::= <opt_assign> <more_declare>* ";" {! seqpt} {pop}
 <first_assign>	::= <more_declare>* ";" {! seqpt} {pop}
 <first_assign>	::= ";" {! seqpt} {pop}
-<first_assign>	::= <funcdef> {! define_function parent.parent.2}
+<first_assign>	::= <funcdef> {! define_function parent.parent.full_dcltor}
 
 
 ;<decl>			::= type <declare> <more_declare>* ";" {! seqpt} {pop}
-<declare>		::= {! add_decl_var parent.1} <full_dcltor> {! handle_lvcontext parent.1} <opt_assign>?
+<declare>		::= {! add_decl_var parent.full_dcltor} <full_dcltor> {! handle_lvcontext parent.full_dcltor} <opt_assign>?
 <more_declare>	::= "," {pop} <declare>
 
 <full_dcltor>	::= <dcltor> {! seqpt}
@@ -64,23 +64,16 @@
 
 <opt_assign>	::= "=" <assign> {=}
 
-
-
-<comma>       	::= <assign> <mcomma>*
-<mcomma>      	::= "," {pop} <assign> {,}
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; conditionals
 
 <if>			::= "if" "(" <comma> ")" {pushaddr 1} {jz} <stmtlist> {jumplabel 1}
 
-;the comma and stmtlist branches get swapped
-<while>			::= "while" "(" {pushaddr 1} {jmp} {jumplabel 2} <comma> ")" {jumplabel 1} <stmtlist> {pushaddr 2} {jnz} {! swap_nodes parent.5, parent.8}
+<while>			::= "while" "(" {pushaddr 1} {jmp} {jumplabel 2} <comma> ")" {jumplabel 1} <stmtlist> {pushaddr 2} {jnz} {! swap_nodes parent.comma, parent.stmtlist}
 
 <dowhile>		::= "do" {jumplabel 1} <stmtlist> "while" "(" <comma> ")" {pushaddr 1} {jnz}
 
-;the condition (first comma) and stmtlist get swapped
-<forloop>		::= "for" "(" <mstmt>? {pushaddr 1} {jmp} {jumplabel 2} ";" <comma>? ";" <comma>? {jumplabel 1} ")" <stmtlist> {pushaddr 2} {jnz}
+<forloop>		::= "for" "(" <mstmt>? {pushaddr 1} {jmp} {jumplabel 2} <comma>? ";" {! seqpt} <comma>? {! seqpt} {pop} {jumplabel 1} ")" <stmtlist> {pushaddr 2} {jnz} {! swap_nodes parent.comma, parent.stmtlist}
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; functions
@@ -91,24 +84,27 @@
 <funcdef>		::= {! seqpt} {enter} <block> {push 0} {pop eax} {jumplabel 0} {leave} {ret}
 <funcdeflist>	::= "void"
 <funcdeflist>	::= <funcdefarg> <mfuncdefarg>*
-<funcdefarg>	::= type {! add_decl_var parent.2} <full_dcltor>
+<funcdefarg>	::= type {! add_decl_var parent.full_dcltor} <full_dcltor>
 <mfuncdefarg>	::= "," <funcdefarg>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; expressions (arithmetic, logical, bitwise, assignment)
 
+<comma>       	::= <assign> <mcomma>*
+<mcomma>      	::= "," {pop} <assign> {,}
+
 <assign>		::= <logical> <massign>?
-<massign> 		::= "=" <assign> {=} {! handle_lvcontext parent.parent.0}
-<massign> 		::= "+=" <assign> {+=} {! handle_lvcontext parent.parent.0}
-<massign> 		::= "-=" <assign> {-=} {! handle_lvcontext parent.parent.0}
-<massign> 		::= "*=" <assign> {*=} {! handle_lvcontext parent.parent.0}
-<massign> 		::= "/=" <assign> {/=} {! handle_lvcontext parent.parent.0}
-<massign> 		::= "%=" <assign> {%=} {! handle_lvcontext parent.parent.0}
-<massign> 		::= "<<=" <assign> {<<=} {! handle_lvcontext parent.parent.0}
-<massign> 		::= ">>=" <assign> {>>=} {! handle_lvcontext parent.parent.0}
-<massign> 		::= "&=" <assign> {&=} {! handle_lvcontext parent.parent.0}
-<massign> 		::= "|=" <assign> {|=} {! handle_lvcontext parent.parent.0}
-<massign> 		::= "^=" <assign> {^=} {! handle_lvcontext parent.parent.0}
+<massign> 		::= "=" <assign> {=} {! handle_lvcontext parent.parent.logical}
+<massign> 		::= "+=" <assign> {+=} {! handle_lvcontext parent.parent.logical}
+<massign> 		::= "-=" <assign> {-=} {! handle_lvcontext parent.parent.logical}
+<massign> 		::= "*=" <assign> {*=} {! handle_lvcontext parent.parent.logical}
+<massign> 		::= "/=" <assign> {/=} {! handle_lvcontext parent.parent.logical}
+<massign> 		::= "%=" <assign> {%=} {! handle_lvcontext parent.parent.logical}
+<massign> 		::= "<<=" <assign> {<<=} {! handle_lvcontext parent.parent.logical}
+<massign> 		::= ">>=" <assign> {>>=} {! handle_lvcontext parent.parent.logical}
+<massign> 		::= "&=" <assign> {&=} {! handle_lvcontext parent.parent.logical}
+<massign> 		::= "|=" <assign> {|=} {! handle_lvcontext parent.parent.logical}
+<massign> 		::= "^=" <assign> {^=} {! handle_lvcontext parent.parent.logical}
 
 
 <logical>		::= <bitwise> <mlogical>*
@@ -148,9 +144,9 @@
 <misc2>			::= <misc2_context>
 <misc2>			::= "!" <misc2> {!}
 <misc2>			::= "~" <misc2> {~}
-<misc2_context>	::= "&" <misc1> {&addr} {! handle_lvcontext parent.1}
-<misc2_context>	::= "++" <misc1> {++pre} {! handle_lvcontext parent.1}
-<misc2_context>	::= "--" <misc1> {--pre} {! handle_lvcontext parent.1}
+<misc2_context>	::= "&" <misc1> {&addr} {! handle_lvcontext parent.misc1}
+<misc2_context>	::= "++" <misc1> {++pre} {! handle_lvcontext parent.misc1}
+<misc2_context>	::= "--" <misc1> {--pre} {! handle_lvcontext parent.misc1}
 <misc2_lval>	::= "*" <misc2> {*deref}
 
 <misc1>			::= <misc1_context>
@@ -159,11 +155,7 @@
 <misc1_context>	::= <base_expr> <m_misc1>?
 <m_misc1>		::= "++" {! handle_lvcontext parent.parent.0} {++post}
 <m_misc1>		::= "--" {! handle_lvcontext parent.parent.0} {--post}
-;;;;;;;;;;;;;this is actually a problem -- the index of the {jumplabel} is dependent on whether or not there's an arglist
-;<m_misc1>		::= "(" <arglist>? ")" {pushaddr 3} {jmp} {jumplabel 3} {pushv eax} {! handle_lvcontext parent.parent.0}
-;<m_misc1>		::= "(" <arglist>? ")" {pushaddr 3} {jmp} {jumplabel 3} {pushv eax} {! handle_lvcontext parent.parent.0} {! swap_nodes parent.2, parent.parent.0}
-
-<m_misc1>		::= "(" <arglist>? <fcall> {! check_args parent.parent.0.0, parent.1}
+<m_misc1>		::= "(" <arglist>? <fcall> {! check_args parent.parent.0.0, parent.arglist}
 <fcall>			::= ")" {pushaddr 3} {nop} {jmp} {jumplabel 3} {! clean_args parent.parent.parent.0.0} {pushv eax} {! handle_lvcontext parent.parent.parent.0} {! swap_nodes parent.2, parent.parent.parent.0}
 <arglist>		::= <assign> <margs>* {! reverse_args parent}
 <margs>			::= "," <assign>
