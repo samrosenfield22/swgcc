@@ -63,10 +63,10 @@ static void generate_instruction(void *n)
 
     //when we define a function, the function name is a base_id which gets pushed onto the stack.
     //we don't want this
-    if(strcmp(nn->str, "enter")==0)
+    /*if(strcmp(nn->str, "enter")==0)
     {
         vector_delete(&code, vector_len(code)-1);
-    }
+    }*/
     
     meta_op *meta = meta_op_lookup(nn->str);
     if(meta)

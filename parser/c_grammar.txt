@@ -13,7 +13,7 @@
 
 <stmtlist>		::= <stmt>
 <stmtlist>		::= <block>
-<block>			::= "{" {! alloc_lcls} <stmtlist>* {! free_lcls} {! declare_vars} "}"
+<block>			::= "{" {! alloc_lcls} <stmtlist>* {! free_lcls} {! seqpt} "}"
 
 <stmt>			::= <mstmt>
 <stmt>			::= <if>
@@ -22,29 +22,47 @@
 <stmt>			::= <forloop>
 <stmt>			::= "return" <comma> ";" {pop eax} {pushaddr 0} {jmp}
 
-<mstmt>			::= <comma> ";" {! declare_vars} {pop}
+<mstmt>			::= <comma> ";" {! seqpt} {pop}
 <mstmt>			::= <decl>
 
-;maybe lol
-<decl>			::= type {! add_decl_var parent.2.0} <base_id> <declspec> {! handle_lvcontext parent.2}
+;
+;
+; this grammar mandates that functions have a ; after the block (i.e.)
+; int fn(void) {return 5;};
+; the type of declarator determines whether the <opt_assign> is a variable/array assign (or multiple)(ends w semicolon)
+; or if it's a function block (no semicolon)
+;
+; if the lextok after the declarator is a "{", it's a function
+; if the lextok is "=", ",", ";", it's a var
+;
+;<decl>			::= type <full_dcltor> <first_assign>
+;<first_assign>	::= <opt_assign>? <more_declare>* ";"
+;<first_assign>	::= <funcdef>
+;
+;
+; i think the parser doesn't like the repeat expression
+; <opt_assign>? <more_declare>*
 
-<declspec>		::= <decl_assign> <mdecl_assign>* ";" {! declare_vars} {pop}
-<declspec>		::= <mdecl_assign>* ";" {! declare_vars} {pop}
-<declspec>		::= <funcdef> {! define_function parent.parent.2.0, parent.0.1}
-<declspec>		::= ";" {! declare_vars} {pop}
-<mdecl_assign>	::= "," {pop} {! add_decl_var parent.3.0} <base_id> <decl_assign>?  {! handle_lvcontext parent.3}
+<decl>			::= type {! add_decl_var parent.2} <full_dcltor> {! handle_lvcontext parent.2} <first_assign>
+<first_assign>	::= <opt_assign> <more_declare>* ";" {! seqpt} {pop}
+<first_assign>	::= <more_declare>* ";" {! seqpt} {pop}
+<first_assign>	::= ";" {! seqpt} {pop}
+<first_assign>	::= <funcdef> {! define_function parent.parent.2}
 
-<decl_assign>	::= <var_assign>
-<decl_assign>	::= <array_assign>
 
-<var_assign>	::= "=" <assign> {=}
+;<decl>			::= type <declare> <more_declare>* ";" {! seqpt} {pop}
+<declare>		::= {! add_decl_var parent.1} <full_dcltor> {! handle_lvcontext parent.1} <opt_assign>?
+<more_declare>	::= "," {pop} <declare>
 
-<array_assign>	::= "[" <array_def>
-<array_def>		::= <base_num> "]" <array_init>?
-<array_def>		::= "]" <array_init>
-<array_init>	::= "=" "{" <array_vals> "}"
-<array_vals>	::= <base> <array_more>*
-<array_more>	::= "," <base>
+<full_dcltor>	::= <dcltor> {! seqpt}
+<dcltor>		::= <dclptr>* <dcltor>
+<dcltor>		::= <base_id> <dclsuffix>?
+<dclsuffix>		::= "(" <funcdeflist> ")"
+<dclsuffix>		::= <dclarr>*
+<dclptr>		::= "*"
+<dclarr>		::= "[" "]"
+
+<opt_assign>	::= "=" <assign> {=}
 
 
 
@@ -70,11 +88,10 @@
 ;if the function contains a return statement, this stores the return value in eax, then jumps to jumplabel 0,
 ;skipping the {push 0} {pop eax}
 ;if execution reaches the end of the block (without hitting a return statement), then we set eax=0
-<funcdef>		::= "(" <funcdeflist> ")" {! declare_vars} {enter} <block> {push 0} {pop eax} {jumplabel 0} {leave} {ret}
+<funcdef>		::= {! seqpt} {enter} <block> {push 0} {pop eax} {jumplabel 0} {leave} {ret}
 <funcdeflist>	::= "void"
 <funcdeflist>	::= <funcdefarg> <mfuncdefarg>*
-;<funcdefarg>	::= type {! add_decl_var parent.2.0} <base_id>
-<funcdefarg>	::= type {! add_decl_var parent.2} id
+<funcdefarg>	::= type {! add_decl_var parent.2} <full_dcltor>
 <mfuncdefarg>	::= "," <funcdefarg>
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

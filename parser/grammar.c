@@ -48,6 +48,8 @@ static void productions_to_parse_table(void);
 static void mark_entries_for_nonterminal(nonterminal_type nt);
 static void mark_parse_table(int nt, int alpha, int val);
 
+static void dump_parse_table_entry(int *ptab, char *ntname);
+
 
 //vectors
 production_rule *production_rules;
@@ -87,8 +89,12 @@ grammar *load_grammar(const char *fname)
     gg = (grammar){production_rules, nonterminal_names, terminal_names, vector_len(terminal_names)+ident_len};
         //vector_len(nonterminal_names), vector_len(production_rules)};
 
+    //dump_productions(&gg); getchar();
+
+    //build the parse table
     productions_to_parse_table();
 
+    //dump_parse_table_entry(gg.parse_table, "dcltor"); getchar();
 
     return &gg;
 }
@@ -375,18 +381,35 @@ static void mark_entries_for_nonterminal(nonterminal_type nt)
 	int alpha_col;
 
 	//iterate through all productions for this nonterminal
-	for(int i=0; i<vector_len(gg.rules)/*gg.grammar_len*/; i++)
+	for(int i=0; i<vector_len(gg.rules); i++)
 	{
 		if(gg.rules[i].lhs != nt)
 			continue;
-		//printf("\tmarking entries from production %d w lhs %d (nonterm %d)\n",
-		//	i, productions[i].lhs, nt);
 
-		//grab the first token of the production's rhs
-		prod_tok **rhs = gg.rules[i].rhs;
+        
+
+		//grab the first token of the production's rhs (skipping semacts and exprs)
+        prod_tok *firsttok = NULL;
+        vector_foreach(gg.rules[i].rhs, ptok)
+        {
+            prod_tok *tok = gg.rules[i].rhs[ptok];
+            if(!(tok->ntype==SEMACT || tok->ntype==EXPR))
+            {
+                firsttok = tok;
+                break;
+            }
+        }
+        assert(firsttok);
+
+		/*prod_tok **rhs = gg.rules[i].rhs;
 		prod_tok *firsttok = *rhs;
         while(firsttok->ntype==SEMACT || firsttok->ntype==EXPR)
+        {
+            printf("production for \'%s\' leads with semact/expr %s\n", gg.nonterminals[nt], firsttok->str);
+            problem_child = true;
+            getchar();
             firsttok++;
+        }*/
 		switch(firsttok->ntype)
 		{
 			case SEMACT: case EXPR: assert(0); /*break;*/
@@ -432,13 +455,54 @@ static void mark_entries_for_nonterminal(nonterminal_type nt)
 			{
 				if(parse_table[table_entry(firsttok->nonterm, j)] != -1)
 					//parse_table[table_entry(nt, j)] = i;
-          mark_parse_table(nt, j, i);
+                    mark_parse_table(nt, j, i);
 			}
+            break;
+
+            default:
+                printf("crashed (invalid token type %d) in production:\n", firsttok->ntype);
+                print_production_rule(i);
+                assert(0);
 		}
 	}
 
 	//mark this production as complete
 	production_marked[nt] = true;
+}
+
+static void dump_parse_table_entry(int *ptab, char *ntname)
+{
+    printf("productions for \'%s\':\n", ntname);
+
+    int ntindex = search_nonterm_name(ntname);
+    if(ntindex == -1)
+    {
+        printf("can't dump parse table entry for %s, not found!\n", ntname);
+        exit(-1);
+    }
+
+    int index = ntindex;
+    for(int j=0; j<gg.alphabet_len; j++)
+    {
+        int trans = ptab[index*gg.alphabet_len+j];
+        if(trans != -1)
+        {
+            char *term = (j<ident_len)? ident_table[j] : gg.terminals[j-ident_len];
+            //int becomes = gg.rules[trans].rhs[0]->nonterm;
+            //printf("\t%s : %s (%d)\n", term, gg.nonterminals[becomes], trans);
+            printf("\t%s :: ", term);
+            //print_production_rule(gg.rules[trans].rhs[0]->nonterm);
+            vector_foreach(gg.rules[trans].rhs, tok)
+            {
+                if(gg.rules[trans].rhs[tok]->ntype == NONTERMINAL)
+                {
+                    int first_rhs_nt = gg.rules[trans].rhs[tok]->nonterm;
+                    printf("%s\n", gg.nonterminals[first_rhs_nt]);
+                    break;
+                }
+            }
+        }
+    }
 }
 
 static void mark_parse_table(int nt, int alpha, int val)

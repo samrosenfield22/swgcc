@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 
     //run test cases
     if(run_tests)
-        test_compiler(SILENT, -1);
+        test_compiler(SILENT, 29);
 
     //interpret forever
     launch_interpreter(verbosity);
@@ -133,7 +133,6 @@ test_case test_cases[] =
     {"a = ((5);", PARSE_FAIL, 0},
     {"= a + 1;", PARSE_FAIL, 0},
     {"int p;", SEMANTIC_FAIL, 0},
-    {"int q = q;", SEMANTIC_FAIL, 0},
     {"a = notdecld;", SEMANTIC_FAIL, 0},
     {"5 = a;", SEMANTIC_FAIL, 0},
     {"power(1);", SEMANTIC_FAIL, 0},

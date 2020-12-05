@@ -47,7 +47,6 @@ void pnode_print(void *pt);
 void pnode_print_str(void *pt);
 void semact_print(void *pt);
 
-#define ptree_action		tree_action
 #define ptree_traverse 		tree_traverse
 #define ptree_filter 		tree_filter
 

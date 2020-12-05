@@ -63,7 +63,7 @@ fail_type interpreter(int *result, bool verbose, char *code)
     if(verbose) ptree_print(parse_tree);
 
     if(verbose) printf("\n--- semacts ---\n");
-    if(verbose) ptree_action(parse_tree, semact_print(n), true);
+    if(verbose) ptree_traverse(parse_tree, semact_print(n), true);
     if(verbose) printf("----------------\n\n");
 
     //////////// intermediate ////////////

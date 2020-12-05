@@ -35,8 +35,6 @@ me: "mom can we can some lambdas"
 mom: "we have lambdas at home"
 the lambdas:
 */
-#define tree_action(tree, action, root_first)	tree_traverse(tree, action, root_first)
-
 #define tree_filter(tree, filter, root_first)										\
 ({                             														\
 	typeof(tree)* v = vector(*v, 0);           										\

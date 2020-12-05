@@ -18,7 +18,7 @@ int declare_new_vars(const char *typestr, symbol *sym, bool lifetime, scopetype 
 bool semantic_compiler_actions(pnode *pt);
 bool add_decl_var(pnode *sem, pnode *var, pnode *dummy);
 bool check_decl_parent(pnode *sem, pnode *id, pnode *dummy);
-bool declare_vars(pnode *sem, pnode *dummy, pnode *dummy2);
+bool seqpt(pnode *sem, pnode *dummy, pnode *dummy2);
 bool alloc_lcls(pnode *sem, pnode *dummy, pnode *dummy2);
 bool free_lcls(pnode *sem, pnode *dummy, pnode *dummy2);
 bool clean_args(pnode *sem, pnode *func_bid, pnode *dummy);
@@ -39,10 +39,11 @@ void update_jump_semacts(pnode *loop, const char *jtype);
 
 static pnode *get_nonterm_child(pnode *parent, char *ntstr);
 static int get_nonterm_child_index(pnode *parent, char *ntstr);
+static pnode *get_semact_child(pnode *parent, char *ntstr);
 static int get_semact_child_index(pnode *parent, char *str);
 static bool is_semact_type(pnode *n, const char *sem);
 static bool is_semact_special(pnode *n);
-//static pnode *get_nonterm_child_deep(pnode *parent, char *ntstr);
+static pnode *get_nonterm_child_deep(pnode *parent, char *ntstr);
 static bool is_nonterm_type(pnode *n, const char *ntstr);
 static pnode *get_nonterm_ancestor(pnode *n, const char *ntstr);
 
@@ -92,11 +93,11 @@ typedef struct sem_compiler_act_s
 } sem_compiler_act;
 sem_compiler_act COMPILER_ACTIONS[] =
 {
-	{0, "define_function", 2, define_function},
+	{0, "define_function", 1, define_function},
 
 	{1, "add_decl_var", 1, add_decl_var},
 	{1, "check_decl_parent", 2, check_decl_parent},
-	{1, "declare_vars", 0, declare_vars},
+	{1, "seqpt", 0, seqpt},
 
 	{1, "check_args", 2, check_args},
 	{1, "reverse_args", 1, reverse_args},
@@ -160,7 +161,17 @@ bool semantic_compiler_actions(pnode *pt)
 								if(*match == ' ') match++;
 								break;
 							}
-							else if(*match == '\0') goto args_loaded;
+							else if(*match == '\0')
+							{
+								if(ai+1 == aspec->argc)
+									goto args_loaded;
+								else
+								{
+									printf("internal error: semact \'%s\' expects %d args, only given %d\n",
+										aspec->str, aspec->argc, ai+1);
+									exit(-1);
+								}
+							}
 							else if(*match == '.') match++;
 							else assert(0);
 						}
@@ -184,6 +195,10 @@ bool semantic_compiler_actions(pnode *pt)
 				}
 			}
 		}
+
+		//reload the semacts in case one got deleted (this only works between semacts of different orders)
+		vector_destroy(sem);
+		sem = tree_filter(pt, is_semact_special(n), true);
 	}
 
 	//i don't really want to delete nodes as we're going, as it could mess up the indexing for other semacts
@@ -194,21 +209,30 @@ bool semantic_compiler_actions(pnode *pt)
 	return true;
 }
 
-bool add_decl_var(pnode *sem, pnode *var, pnode *dummy)
+bool add_decl_var(pnode *sem, pnode *dcltor, pnode *dummy)
 {
 	//assert(is_nonterm_type(var, "base_id"));
 
 	//for now, ignore it if it's a function. eventually we'l want to declare functions here
 	//pnode *parent = tree_get_parent(var);
 	//if(get_nonterm_child_deep(parent, "funcdef"))
-	if(vector_search(decl_func_list, (int)var) != -1)
+
+	
+	assert(is_nonterm_type(dcltor, "full_dcltor"));
+	pnode *id = get_nonterm_child_deep(dcltor, "base_id")->children[0];
+	//else if(is_nonterm_type(var, "base_id"))
+	//	id = var->children[0];
+
+	printfcol(GREEN_FONT, "marking var for declaration: %s\n", id->str);
+
+	if(vector_search(decl_func_list, (int)id) != -1)
 	{
-		//printf("ignoring function var %s\n", var->str);
+		printf("...skipping %s\n", id->str);
 		return true;
 	}
 
 	//printfcol(GREEN_FONT, "adding decl var to the list: %s (%d)\n", var->str, (int)var); //getchar();
-	vector_append(decl_var_list, var);
+	vector_append(decl_var_list, id);
 	return true;
 
 }
@@ -283,19 +307,29 @@ pnode *get_containing_block(pnode *n)
 {
 	pnode *fdl = get_nonterm_ancestor(n, "funcdeflist");
 	if(fdl)
-		return get_nonterm_child(tree_get_parent(fdl), "block");
-	//else if forloop
+	{
+		//return get_nonterm_child(tree_get_parent(fdl), "block");
+
+		pnode *func_decl = get_nonterm_ancestor(n, "decl");
+		return get_nonterm_child_deep(func_decl, "block");
+	}
 	else
 		return get_nonterm_ancestor(n, "block");
 }
 
 //declare all vars in the list
-bool declare_vars(pnode *sem, pnode *dummy, pnode *dummy2)
+bool seqpt(pnode *sem, pnode *dummy, pnode *dummy2)
 {
-	//printf("declaring %d vars\n", vector_len(decl_var_list));
+	printf("declaring %d vars\n", vector_len(decl_var_list));
 	vector_foreach(decl_var_list, i)
 	{
 		pnode *id = decl_var_list[i];
+
+		/*if(vector_search(decl_func_list, (int)id) != -1)
+		{
+			printf("...skipping %s\n", id->str);
+			continue;
+		}*/
 		//printfcol(GREEN_FONT, "declaring var %s\n", id->str);
 		
 		/* only look for a variable w matching name in the same scope! if there's a var (w same name)
@@ -490,8 +524,12 @@ bool swap_nodes(pnode *sem, pnode *n1, pnode *n2)
 	return true;
 }
 
-bool define_function(pnode *sem, pnode *id, pnode *argdeflist)
+bool define_function(pnode *sem, pnode *dcltor, pnode *dummy)
 {
+	assert(is_nonterm_type(dcltor, "full_dcltor"));
+	pnode *id = get_nonterm_child_deep(dcltor, "base_id")->children[0];
+	//printfcol(GREEN_FONT, "\tdefining function: %s\n", id->str); getchar();
+
 	//id (decl->children[1]->children[0])
 	id->sym = symbol_create(id->str, SYM_IDENTIFIER, NULL);
 	assign_type_to_symbol(id->sym, "function");
@@ -499,6 +537,7 @@ bool define_function(pnode *sem, pnode *id, pnode *argdeflist)
 	id->sym->declared = true;
 
 	//get number of argument bytes
+	pnode *argdeflist = get_nonterm_child_deep(dcltor, "funcdeflist");
 	pnode **defargs = tree_filter(argdeflist, is_nonterm_type(n, "funcdefarg"), true);
 	pnode **types = vector_map(defargs, n->children[0]);
 	size_t bytes = 0;
@@ -516,6 +555,30 @@ bool define_function(pnode *sem, pnode *id, pnode *argdeflist)
 	declaration_only = true;	//global
 
 	vector_append(decl_func_list, id);
+
+	//remove the "push" semact
+	/*int push_index = get_semact_child_index(id->parent, "! make_push parent");
+	assert(push_index != -1);
+	printf("deleting push for %s\n", id->str);
+	printf("\tpush semact at index %d (%d children)\n", push_index, vector_len(id->parent->children));*/
+
+	/*pnode *pushsem = get_semact_child(id->parent, "! make_push parent");
+	assert(pushsem);
+	node_delete_from_parent(pushsem);*/
+
+	//eliminate the push semacts for the function and its args (those are pushed by the caller,
+	//not during definition)
+	pnode **pushsems = tree_filter(dcltor, is_nonterm_type(n, "base_id"), true);
+	vector_foreach(pushsems, i)
+	{
+		pnode *ps = get_semact_child(pushsems[i], "! make_push parent");
+		assert(ps);
+		node_delete_from_parent(ps);
+	}
+	vector_destroy(pushsems);
+
+	//vector_delete(&(id->parent->children), push_index);
+	//getchar();
 
 	//printfcol(GREEN_FONT, "defined function: %s\n", id->sym->name);
 	return true;
@@ -537,8 +600,13 @@ bool handle_lvcontext(pnode *sem, pnode *context, pnode *dummy)
 				vector_delete(&n->children, 2);	//delete the '*' pnode
 			}
 
+			//if the node is a full declarator, its id is an lval
+			if(is_nonterm_type(n, "full_dcltor"))
+				n = get_nonterm_child_deep(n, "base_id");
+
 			//next one
-			if(vector_len(n->children)==1) n = n->children[0];
+			else if(vector_len(n->children)==1) n = n->children[0];
+			//if(chldcnt == 1)						n = n->chil
 			else if(is_nonterm_type(n, "base_expr")) n = n->children[1];
 			else break;
 		}
@@ -626,6 +694,7 @@ bool set_conditional_jumps(pnode *pt)
 bool is_lval(pnode *n)
 {
 	if(is_nonterm_type(n, "base_id"))		return true;
+	if(is_nonterm_type(n, "full_dcltor"))	return true;
 	if(is_nonterm_type(n, "misc2_lval"))	return true;
 	if(is_nonterm_type(n, "base_expr"))		return is_lval(n->children[1]);	//the expr between the ()
 	if(vector_len(n->children)==1)			return is_lval(n->children[0]);
@@ -741,15 +810,15 @@ static bool is_semact_special(pnode *n)
 }
 
 //looks all the way through the tree, returns the first nonterm match
-/*static pnode *get_nonterm_child_deep(pnode *parent, char *ntstr)
+static pnode *get_nonterm_child_deep(pnode *parent, char *ntstr)
 {
-	pnode **matches = tree_filter(parent, is_nonterm_type(n, ntstr) && n!=parent);
+	pnode **matches = tree_filter(parent, is_nonterm_type(n, ntstr) && n!=parent, true);
 	pnode *child = vector_len(matches)? matches[0] : NULL;
 	vector_destroy(matches);
 	return child;
-}*/
+}
 
-/*static pnode *get_semact_child(pnode *parent, char *ntstr)
+static pnode *get_semact_child(pnode *parent, char *ntstr)
 {
 	vector_foreach(parent->children, i)
 	{
@@ -758,7 +827,7 @@ static bool is_semact_special(pnode *n)
 			return parent->children[i];
 	}
 	return NULL;
-}*/
+}
 
 static bool is_nonterm_type(pnode *n, const char *ntstr)
 {
