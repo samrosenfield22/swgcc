@@ -326,7 +326,9 @@ bool seqpt(pnode *sem, pnode *dummy, pnode *dummy2)
 		id->sym->scope = containing_block? BLOCK : INTERNAL;	//unless extern
 		id->sym->is_argument = get_nonterm_ancestor(id, "funcdeflist");
 		
+		resolve_type(id->sym, get_nonterm_ancestor(id, "full_dcltor"), type);
 		assign_type_to_symbol(id->sym, type);
+
 		int varsize = define_var(id->sym);
 
 		//if(SEMANTIC_STATUS != SEM_OK)

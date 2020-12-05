@@ -84,7 +84,7 @@ void pnode_print(void *t)
 	if(is_semact)
 		printf("%s", pt->str);
 	else
-		ptree_traverse(pt, pnode_print_str(n), false);
+		ptree_traverse(pt, pnode_print_str(n), true);
 
 	putchar('\n');
 }

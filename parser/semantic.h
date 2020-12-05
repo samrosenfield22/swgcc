@@ -4,6 +4,7 @@
 #define SEMANTIC_H_
 
 #include "ptree.h"
+#include "typesys.h"
 #include "../simulator.h"
 #include "../utils/printcolor.h"
 #include "../utils/misc.h"

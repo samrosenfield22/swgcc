@@ -3,7 +3,9 @@
 #ifndef TYPESYS_H_
 #define TYPESYS_H_
 
-#include "../ds/tree.h"
+#include "ptree.h"
+#include "../ds/vector.h"
+//#include "../ds/tree.h"
 //#include "../symbol.h"
 
 typedef struct typetree_s
@@ -18,5 +20,8 @@ typedef struct typetree_s
 	
 
 } typetree;
+
+void init_type_system(void);
+void resolve_type(symbol *sym, pnode *dcltor, char *type);
 
 #endif //TYPESYS_H_

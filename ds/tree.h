@@ -30,6 +30,10 @@ void *tree_get_parent(void *n);
 void *tree_get_ancestor(void *n, size_t cnt);
 void tree_print_pretty(void *t, void (*print)(void *t));
 
+void *dag_create(const char *str);
+void *dag_create_extra(size_t size, const char *str);
+void dag_add_child(void *root, void *child);
+
 void node_delete_from_parent(void *n);
 
 

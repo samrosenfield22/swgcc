@@ -10,6 +10,7 @@
 #include "parser/recdesc.h"
 #include "interpreter.h"
 #include "symbol.h"
+#include "parser/typesys.h"
 #include "utils/printcolor.h"
 
 void handle_cmdline_options(int argc, char *argv[]);
@@ -32,6 +33,7 @@ int main(int argc, char *argv[])
     banner();
 
     symbol_table_initialize();
+    init_type_system();
     lexer_initialize();
 
     load_grammar("parser/c_grammar.txt");
