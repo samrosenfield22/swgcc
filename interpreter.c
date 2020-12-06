@@ -29,6 +29,7 @@ void launch_interpreter(bool verbose)
             printf("lmao\n");
             assert(0);
         }
+        if(outfile) printf("%s\n", in);
 
         interpreter(NULL, verbose, in);
     }
@@ -94,6 +95,9 @@ char *read_stmtlist(void)
     int brackets=0;
     strbuf[0] = '\0';
     
+    fflush(stdin);
+    memset(inbuf, 0, sizeof(inbuf));
+
     printf(">> ");
     do
     {

@@ -5,6 +5,7 @@
 
 #include "../symbol.h"
 #include "regex.h"
+#include "../utils/printcolor.h"
 
 typedef struct lextok_s
 {

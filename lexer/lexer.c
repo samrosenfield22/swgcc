@@ -44,9 +44,9 @@ regex_action_pair regex_table[] =
     {"", "== | != | < | > | <= | >=", NULL, LEXTOK_TERM, NULL},
     {"", "\\+= | -= | \\*= | \\/= | %= | <<= | >>= | \\&= | \\|= | \\^= | ++ | --", NULL, LEXTOK_TERM, NULL},
     {"", "; | { | } | \\[ | \\] | \\( | \\) | = | , ", NULL, LEXTOK_TERM, NULL},
-    {"", "\\&\\& | \\|\\| | \\^ | \\& | \\| | \\^ | ~", NULL, LEXTOK_TERM, NULL},
+    {"", "\\&\\& | \\|\\| | ! | \\^ | \\& | \\| | \\^ | ~", NULL, LEXTOK_TERM, NULL},
     {"", "<< | >> | \\+ | - | \\* | \\/ | \\%", NULL, LEXTOK_TERM, NULL},
-    {"", "if | else | for | while | do | void | return", NULL, LEXTOK_TERM, NULL},
+    {"", "if | else | for | while | do | void | return | break | continue", NULL, LEXTOK_TERM, NULL},
 
     {"type", "int|char|short|long", NULL, LEXTOK_IDENT(2), NULL},
     {"id", "[A-Za-z]([A-Za-z0-9]|_)*", NULL, LEXTOK_IDENT(0), make_identifier},

@@ -584,8 +584,8 @@ bool make_push(pnode *sem, pnode *base, pnode *dummy)
 
 ////////////////////////////////////////////
 
-
-int jlpair = 4;		//track jump addr/label pairs. this is a kludgey solution -- it can't be confused for any
+#define JMPLABEL_MAX (6)
+int jlpair = JMPLABEL_MAX;		//track jump addr/label pairs. this is a kludgey solution -- it can't be confused for any
 					//addr/labels w id 0 or 1 (conditionals/loops) or 2 (function exit)
 
 bool set_conditional_jumps(pnode *pt)
@@ -598,7 +598,7 @@ bool set_conditional_jumps(pnode *pt)
 	{
 		update_jump_semacts(all_conditionals[i], "pushaddr");
 		update_jump_semacts(all_conditionals[i], "jumplabel");
-		jlpair += 4;	//if we have multiple conditionals, this avoids them sharing jumplabel/pushaddr ids
+		jlpair += JMPLABEL_MAX;	//if we have multiple conditionals, this avoids them sharing jumplabel/pushaddr ids
 	}
 	vector_destroy(all_conditionals);
 

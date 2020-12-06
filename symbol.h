@@ -7,6 +7,7 @@
 //#include "simulator.h"
 
 #include "ds/vector.h"
+#include "utils/printcolor.h"
 
 typedef enum symbol_type_e
 {

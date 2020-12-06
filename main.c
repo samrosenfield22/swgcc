@@ -16,9 +16,12 @@
 void handle_cmdline_options(int argc, char *argv[]);
 void banner(void);
 void test_compiler(bool verbose, int problem_case);
+void close_outfile(void);
 
+//environment variables that are set by cmdline options
 bool run_tests = false;
 bool verbosity = VERBOSE;
+FILE **diag_printfile = &outfile;
 
 void print_the_string(void *t)
 {
@@ -129,7 +132,7 @@ test_case test_cases[] =
 
     //code that should fail
     //{"int 9a;", LEX_FAIL, 0},
-    {"a = !!!;", LEX_FAIL, 0},
+    //{"a = !!!;", LEX_FAIL, 0},
     {"a + -;", PARSE_FAIL, 0},
     {"int int;", PARSE_FAIL, 0},
     {"a = ((5);", PARSE_FAIL, 0},
@@ -192,6 +195,8 @@ void test_compiler(bool verbose, int problem_case)
 //https://www.gnu.org/software/libc/manual/html_node/Getopt-Long-Option-Example.html
 void handle_cmdline_options(int argc, char *argv[])
 {
+    FILE *fp;
+
     while (1)
     {
         static struct option long_options[] =
@@ -200,15 +205,14 @@ void handle_cmdline_options(int argc, char *argv[])
             //options to set a flag (int)
             {"verbose", no_argument,       &verbose_flag, 1},
             {"brief",   no_argument,       &verbose_flag, 0},
-          
-            //options with a required arg
-            {"create",  required_argument, 0, 'c'},
-            {"file",    required_argument, 0, 'f'},
             */
 
             {"help",      no_argument,    0,  'h'},
             {"test",      no_argument,    0,  't'},
             {"quiet",     no_argument,    0,  'q'},
+
+            //options with a required arg
+            {"output",  required_argument, 0, 'o'},
             {0, 0, 0, 0}
         };
 
@@ -216,7 +220,8 @@ void handle_cmdline_options(int argc, char *argv[])
         {
             "display this message",                                                     //--help
             "run unit tests before launching interpreter",                              //--test
-            "run interpreter without extra diagnostics (tests are quiet regardless)"    //--quiet  
+            "run interpreter without extra diagnostics (tests are quiet regardless)",    //--quiet 
+            "outputs diagnostics to the given file" 
         };
       
         /* getopt_long stores the option index here. */
@@ -224,7 +229,7 @@ void handle_cmdline_options(int argc, char *argv[])
 
         //for options which require an arg, put a colon after
         //ex. getopt_long(argc, argv, "abc:d:f:, ...");
-        int c = getopt_long (argc, argv, "thq", long_options, &option_index);
+        int c = getopt_long (argc, argv, "tho:q", long_options, &option_index);
 
         /* Detect the end of the options. */
         if (c == -1)
@@ -250,6 +255,19 @@ void handle_cmdline_options(int argc, char *argv[])
                 verbosity = SILENT;
                 break;
 
+            case 'o':
+                //printf("outputting to file %s\n", optarg);
+                //exit(-1);
+                fp = fopen(optarg, "w");
+                if(!fp)
+                {
+                    printf("error: failed to open output file %s\n", optarg);
+                    exit(-1);
+                }
+                *diag_printfile = fp;
+                atexit(close_outfile);
+                break;
+
             case 'h':
                 printfcol(YELLOW_FONT, "swgcc -- the swg c compiler\n");
                 printf("(still in development)\n\n");
@@ -258,8 +276,13 @@ void handle_cmdline_options(int argc, char *argv[])
                 printf("options:\n");
                 for(int i=0; i<sizeof(explanations)/sizeof(explanations[0]); i++)
                 {
-                    printf("-%c, --%s\t\t%s\n",
-                        long_options[i].val, long_options[i].name, explanations[i]);
+                    bool has_arg = long_options[i].has_arg == required_argument;
+                    const char *argh = has_arg? " {arg}" : "";
+                    
+                    int spaces = printf("-%c%s, --%s%s",
+                        long_options[i].val, argh, long_options[i].name, argh);
+                    for(int i=spaces; i<32; i++) putchar(' ');
+                    puts(explanations[i]);
                 }
                 printf("\nfor more information on what features of the c language are supported, consult manual.txt\n");
                 exit(0);
@@ -286,4 +309,9 @@ void banner(void)
            _|    _|  _|  _|    _|    _|  _|        _|           \n\
      _|_|_|        _|  _|        _|_|_|    _|_|_|    _|_|_| \n";
     puts(banner);
+}
+
+void close_outfile(void)
+{
+    fclose(*diag_printfile);
 }

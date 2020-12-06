@@ -5,6 +5,7 @@
 
 
 #include <stdbool.h>
+#include "utils/printcolor.h"
 
 #define VERBOSE true
 #define SILENT false

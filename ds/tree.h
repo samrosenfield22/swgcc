@@ -7,6 +7,8 @@
 
 #include "vector.h"
 
+#include "../utils/printcolor.h"	//
+
 //tree node
 typedef struct node_s node;
 struct node_s
