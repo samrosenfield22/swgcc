@@ -19,7 +19,7 @@ extern FILE *outfile;
 #define set_text_color(color)	system(color);
 
 #define printf(...)	({int cc = printf(__VA_ARGS__); if(outfile) fprintf(outfile, __VA_ARGS__); cc;})
-#define puts(s)		({int cc = puts(s); if(outfile) fputs(s, outfile); fputc('\n', outfile); cc;})
+#define puts(s)		({int cc = puts(s); if(outfile) {fputs(s, outfile); fputc('\n', outfile);} cc;})
 #define putchar(c)	({int cc = putchar(c); if(outfile) fputc(c, outfile); cc;})
 
 #define printfcol(color, ...)			\

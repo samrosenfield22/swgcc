@@ -13,6 +13,9 @@
 #include "parser/typesys.h"
 #include "utils/printcolor.h"
 
+_Static_assert(sizeof(long) == sizeof(int*),
+    "size of long and int* need to be the same, or the simulator won't work!");
+
 void handle_cmdline_options(int argc, char *argv[]);
 void banner(void);
 void test_compiler(bool verbose, int problem_case);

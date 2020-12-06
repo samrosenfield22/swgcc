@@ -39,7 +39,7 @@ struct symbol_s
 {
     symbol_type sym_type;
     char *name;
-    char *var;
+    long *var;
 
     //scope
     //lifetime

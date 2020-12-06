@@ -84,7 +84,7 @@ symbol *symbol_search_local(const char *name, symbol_type sym_type, void **block
 //for whom the given varaddr is ahead of the symbol's (it's a memory address in the function)
 symbol *symbol_search_by_addr(char *varaddr)
 {
-    symbol **match = vector_copy_filter(SYMBOL_TABLE, n->sym_type == SYM_IDENTIFIER && n->var == varaddr);
+    symbol **match = vector_copy_filter(SYMBOL_TABLE, n->sym_type == SYM_IDENTIFIER && n->var == (long*)varaddr);
     symbol *m = vector_is_empty(match)? NULL : match[0];
     vector_destroy(match);
 
@@ -94,7 +94,7 @@ symbol *symbol_search_by_addr(char *varaddr)
 symbol *symbol_search_function_addr(char *varaddr)
 {
     symbol **match = vector_copy_filter(SYMBOL_TABLE,
-        n->sym_type == SYM_IDENTIFIER && strcmp(n->type->name, "function")==0 && n->var < varaddr);
+        n->sym_type == SYM_IDENTIFIER && strcmp(n->type->name, "function")==0 && n->var < (long*)varaddr);
     symbol *m = vector_is_empty(match)? NULL : vector_last(match);  //assumes that functions are stored in the symbol
     vector_destroy(match);
 
@@ -211,7 +211,7 @@ void dump_symbol_table(void)
             else
             {
                 if(sym->lifetime==STATIC)
-                    printf("static %s)(@ %d) = %d\n", sym->type->name, (int)(sym->var), *(sym->var));
+                    printf("static %s)(@ %d) = %ld\n", sym->type->name, (int)(sym->var), *(sym->var));
                 else
                     printf("auto %s)(@ bp+%d)\n", sym->type->name, (int)(sym->var));
             }   
@@ -227,7 +227,7 @@ void dump_symbol_table_oneline(void)
     for(int i=0; i<vector_len(SYMBOL_TABLE); i++)
     {
         if(SYMBOL_TABLE[i]->sym_type == SYM_IDENTIFIER && strcmp(SYMBOL_TABLE[i]->type->name, "function")!=0)
-            printf("%s=%d   ", SYMBOL_TABLE[i]->name, *SYMBOL_TABLE[i]->var);
+            printf("%s=%ld   ", SYMBOL_TABLE[i]->name, *SYMBOL_TABLE[i]->var);
             //printf("%s=%d   ", SYMBOL_TABLE[i]->name, *get_var_addr(SYMBOL_TABLE[i]));
 
     }

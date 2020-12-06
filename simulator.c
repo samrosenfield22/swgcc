@@ -8,61 +8,61 @@
 
 #include "simulator.h"
 
-int nop(int dummy);
+long nop(long dummy);
 
-int sim_stack_push(int n);
-int sim_stack_pushv(int n);
-int sim_stack_pushl(int n);
-int sim_stack_pushlv(int n);
-int sim_stack_pop(int);
+long sim_stack_push(long n);
+long sim_stack_pushv(long n);
+long sim_stack_pushl(long n);
+long sim_stack_pushlv(long n);
+long sim_stack_pop(long);
 
-int incsp(int bytes);
-int decsp(int bytes);
+long incsp(long bytes);
+long decsp(long bytes);
 
-int add_op(int);
-int sub_op(int);
-int mult_op(int);
-int div_op(int);
-int mod_op(int);
-int shl_op(int);
-int shr_op(int);
-int gt_op(int);
-int lt_op(int);
-int leq_op(int);
-int geq_op(int);
-int eq_op(int);
-int neq_op(int);
-int bw_and_op(int);
-int bw_or_op(int);
-int bw_xor_op(int);
-int log_and_op(int);
-int log_or_op(int);
-int comma_op(int);
+long add_op(long);
+long sub_op(long);
+long mult_op(long);
+long div_op(long);
+long mod_op(long);
+long shl_op(long);
+long shr_op(long);
+long gt_op(long);
+long lt_op(long);
+long leq_op(long);
+long geq_op(long);
+long eq_op(long);
+long neq_op(long);
+long bw_and_op(long);
+long bw_or_op(long);
+long bw_xor_op(long);
+long log_and_op(long);
+long log_or_op(long);
+long comma_op(long);
 
-int preinc_op(int);
-int predec_op(int);
-int addr_op(int);
-int deref_op(int);
-int log_not_op(int);
-int bin_not_op(int);
-int postinc_op(int);
-int postdec_op(int);
+long preinc_op(long);
+long predec_op(long);
+long addr_op(long);
+long deref_op(long);
+long log_not_op(long);
+long bin_not_op(long);
+long postinc_op(long);
+long postdec_op(long);
 
-int assign_eq_op(int);
-int assign_add_op(int);
-int assign_sub_op(int);
-int assign_mult_op(int);
-int assign_div_op(int);
-int assign_mod_op(int);
-int assign_shl_op(int);
-int assign_shr_op(int);
-int assign_and_op(int);
-int assign_or_op(int);
-int assign_xor_op(int);
+long assign_eq_op(long);
+long assign_add_op(long);
+long assign_sub_op(long);
+long assign_mult_op(long);
+long assign_div_op(long);
+long assign_mod_op(long);
+long assign_shl_op(long);
+long assign_shr_op(long);
+long assign_and_op(long);
+long assign_or_op(long);
+long assign_xor_op(long);
 
-int jmp_op(int);
-int jz_op(int);
-int jnz_op(int);
+long jmp_op(long);
+long jz_op(long);
+long jnz_op(long);
 
 
 
@@ -73,7 +73,7 @@ bool jump_taken;//, declaration_only;
 //external variables (declared in simulator.h)
 char SIM_MEM[0x10000];
 char *sp = sim_stack, *bp = sim_stack;
-int eax;
+long eax;
 intermediate_spec *ip, *ip_start=(intermediate_spec *)(SIM_MEM + SIM_CODE_OFFSET), *ip_end;
 
 
@@ -84,7 +84,7 @@ intermediate_spec *ip, *ip_start=(intermediate_spec *)(SIM_MEM + SIM_CODE_OFFSET
     if(variable->lifetime == STATIC)
         return variable->var;
     else
-        return (int)bp + variable->var;
+        return (long)bp + variable->var;
 }*/
 
 void *get_code_addr(void)
@@ -96,7 +96,7 @@ void *get_code_addr(void)
 struct op_entry
 {
     char *op;
-    int (*func)(int);
+    long (*func)(long);
 } op_table[] =
 {
     {"nop",     nop},
@@ -159,14 +159,14 @@ struct op_entry
 };
 
 
-int run_intermediate_code(bool verbose)
+long run_intermediate_code(bool verbose)
 {
     //verbose = true;
     jump_taken = false;
-    int res = 0;
-    const int dump_spaces = 24;
+    long res = 0;
+    const long dump_spaces = 24;
 
-    int cursor;
+    long cursor;
     if(verbose)
     {
         printf("\n-------------------\nexecution dump:\n");
@@ -179,7 +179,7 @@ int run_intermediate_code(bool verbose)
     if(verbose)
     {
         printf("instruction");
-        for(int i=strlen("instruction"); i<dump_spaces; i++) putchar(' ');
+        for(long i=strlen("instruction"); i<dump_spaces; i++) putchar(' ');
         printf("regs\t\tstack\n");
     }
 
@@ -196,7 +196,7 @@ int run_intermediate_code(bool verbose)
 
         //execute the instruction
         bool valid_instr = false;
-        for(int i=0; i<sizeof(op_table)/sizeof(op_table[0]); i++)
+        for(long i=0; i<sizeof(op_table)/sizeof(op_table[0]); i++)
         {
             if(strcmp(ip->op, op_table[i].op)==0)
             {
@@ -222,11 +222,11 @@ int run_intermediate_code(bool verbose)
         if(ip > ip_end)
         {
             printfcol(RED_FONT, "error: ip past end of code\n");
-            printf("ip:\t\t%d\t", (int)ip);             print_reg_or_val((int)ip);
-            printf("\nip_start:\t%d\t", (int)ip_start);   print_reg_or_val((int)ip_start);
-            printf("\nip_end:\t\t%d\t", (int)ip_end);     print_reg_or_val((int)ip_end);
+            printf("ip:\t\t%ld\t", (long)ip);             print_reg_or_val((long)ip);
+            printf("\nip_start:\t%ld\t", (long)ip_start);   print_reg_or_val((long)ip_start);
+            printf("\nip_end:\t\t%ld\t", (long)ip_end);     print_reg_or_val((long)ip_end);
             printf("\n");
-            print_reg_or_val((int)((char*)ip-(char*)ip_start));
+            print_reg_or_val((long)((char*)ip-(char*)ip_start));
             printf("\n");
 
             //dump_intermediate();
@@ -252,11 +252,11 @@ void skip_code(void)
     ip = ip_start = ip_end;
 }
 
-int print_instr(intermediate_spec *instr)
+long print_instr(intermediate_spec *instr)
 {
     //
     printf("(");
-    int cursor = print_reg_or_val((int)instr) + 2;
+    long cursor = print_reg_or_val((long)instr) + 2;
     printf(")");
 
     //
@@ -270,23 +270,23 @@ int print_instr(intermediate_spec *instr)
     return cursor + print_reg_or_val(instr->arg);
 }
 
-int print_reg_or_val(int arg)
+long print_reg_or_val(long arg)
 {
     char *carg = (char*)arg;
 
     symbol *sym = symbol_search_by_addr(carg);
     symbol *func = symbol_search_function_addr(carg);
     
-    //else if(ip->arg == (int)&ip) return printf("ip");
-    if(arg == (int)&bp)                     return printf("bp");
-    else if(arg == (int)&sp)                return printf("sp");
-    else if(arg == (int)&eax)               return printf("eax");
+    //else if(ip->arg == (long)&ip) return printf("ip");
+    if(arg == (long)&bp)                     return printf("bp");
+    else if(arg == (long)&sp)                return printf("sp");
+    else if(arg == (long)&eax)               return printf("eax");
     else if(sym)                            return printfcol(YELLOW_FONT, "%s", sym->name);
     else if(sim_stack<=carg && carg<=sp)    return printf("bp+%d", carg-bp);
-    else if(carg >= (char*)ip_start)  return printfcol(YELLOW_FONT, "main+%03d", (int)(carg - (char*)ip_start));
+    else if(carg >= (char*)ip_start)  return printfcol(YELLOW_FONT, "main+%03ld", (long)(carg - (char*)ip_start));
     else if(func)     return printfcol(YELLOW_FONT, "%s+%d", func->name, carg - (char*)(func->var));
-    //else if(sim_stack<=carg && carg<=sp) return printf("stack+%d", carg-sim_stack);
-    else return printf("%d", arg);
+    //else if(sim_stack<=carg && carg<=sp) return printf("stack+%ld", carg-sim_stack);
+    else return printf("%ld", arg);
 }
 
 void dump_stack(void)
@@ -294,7 +294,7 @@ void dump_stack(void)
     printf("bp=%d sp=%d\t(", bp-sim_stack, sp-sim_stack);
     for(char *p=sim_stack; p<sp; p+=4)
     {
-        print_reg_or_val(*(int*)p);
+        print_reg_or_val(*(long*)p);
         printf(" ");
     }
     printf(")\n");
@@ -303,67 +303,67 @@ void dump_stack(void)
 
 ///////////////////////
 
-int nop(int dummy)
+long nop(long dummy)
 {
     return 0;
 }
 
-int sim_stack_push(int n)
+long sim_stack_push(long n)
 {
     memcpy(sp, &n, 4);
     sp += 4;
     return 0;
 }
 
-int sim_stack_pushv(int n)
+long sim_stack_pushv(long n)
 {
-    //*sp++ = *(int*)n;
-    int pushv = *(int*)n;
+    //*sp++ = *(long*)n;
+    long pushv = *(long*)n;
     //*sp = pushv;
     memcpy(sp, &pushv, 4);
     sp += 4;
     return 0;
 }
 
-int sim_stack_pushl(int n)
+long sim_stack_pushl(long n)
 {
-    int *local = (int*)(bp + n);
-    //*sp = (int)local;
+    long *local = (long*)(bp + n);
+    //*sp = (long)local;
     memcpy(sp, &local, 4);
     sp += 4;
     return 0;
 }
 
-int sim_stack_pushlv(int n)
+long sim_stack_pushlv(long n)
 {
-    int *local = (int*)(bp + n);
-    int pushv = *local;
+    long *local = (long*)(bp + n);
+    long pushv = *local;
     //*sp = pushv;
     memcpy(sp, &pushv, 4);
     sp += 4;
     return 0;
 }
 
-int sim_stack_pop(int d)
+long sim_stack_pop(long d)
 {
     assert(sp > sim_stack);    //underflow
     sp -= 4;
-    //int popval = *(int*)sp;
-    int popval;
+    //long popval = *(long*)sp;
+    long popval;
     memcpy(&popval, sp, 4);
     if(d)
-        *(int*)d = popval;
+        *(long*)d = popval;
     return popval;
 }
 
-int incsp(int bytes)
+long incsp(long bytes)
 {
     assert(bytes > 0);
     sp += bytes;
     return 0;
 }
 
-int decsp(int bytes)
+long decsp(long bytes)
 {
     assert(bytes > 0);
     sp -= bytes;
@@ -372,38 +372,38 @@ int decsp(int bytes)
 
 //all binary operators follow the same semantic action format
 #define def_binary_op(name,op)     \
-    int name##_op(int d)      \
+    long name##_op(long d)      \
     {                             \
-        int b = sim_stack_pop(0);  \
-        int a = sim_stack_pop(0);  \
+        long b = sim_stack_pop(0);  \
+        long a = sim_stack_pop(0);  \
         sim_stack_push(a op b);   \
         return 0;                 \
     }
 
 #define def_unary_prefix_op(name,op,by_val)     \
-    int name##_op(int d)      \
+    long name##_op(long d)      \
     {                             \
-        int a = sim_stack_pop(0);  \
+        long a = sim_stack_pop(0);  \
         if(by_val)                      \
-            sim_stack_push((int)op(*(int*)a));     \
+            sim_stack_push((long)op(*(long*)a));     \
         else                                \
-            sim_stack_push((int)op(a));     \
+            sim_stack_push((long)op(a));     \
         return 0;                 \
     }
 
 #define def_unary_postfix_op(name,op)     \
-    int name##_op(int d)      \
+    long name##_op(long d)      \
     {                             \
-        int *a = (int*)sim_stack_pop(0);  \
+        long *a = (long*)sim_stack_pop(0);  \
         sim_stack_push((*a)op);     \
         return 0;                 \
     }
 
 #define def_assign_op(name,op)              \
-    int assign_##name##_op(int d)            \
+    long assign_##name##_op(long d)            \
     {                                       \
-        int b = sim_stack_pop(0);            \
-        int *lv = (int*)sim_stack_pop(0);    \
+        long b = sim_stack_pop(0);            \
+        long *lv = (long*)sim_stack_pop(0);    \
         *lv op b;                           \
         sim_stack_push(*lv);                \
         return 0;                           \
@@ -413,10 +413,10 @@ int decsp(int bytes)
 #define BY_REFERENCE false
 
 #define def_jump_op(name, cond)             \
-    int name##_op(int d)                     \
+    long name##_op(long d)                     \
     {                                       \
-        int jaddr = sim_stack_pop(0);        \
-        int arg = sim_stack_pop(0);          \
+        long jaddr = sim_stack_pop(0);        \
+        long arg = sim_stack_pop(0);          \
                                             \
         if(arg cond)                        \
         {                                   \
@@ -474,15 +474,15 @@ def_jump_op(jnz, != 0)
 
 
 
-int comma_op(int d)
+long comma_op(long d)
 {
-    int b = sim_stack_pop(0);
+    long b = sim_stack_pop(0);
     sim_stack_pop(0);    //throw away value
     sim_stack_push(b);
     return 0;
 }
 
-int jmp_op(int d)
+long jmp_op(long d)
 {
     ip = (intermediate_spec *)sim_stack_pop(0);
     jump_taken = true;

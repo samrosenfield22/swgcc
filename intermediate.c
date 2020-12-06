@@ -24,7 +24,7 @@ static bool filter_semact(void *n);
 //
 intermediate_spec *code = NULL;
 
-int local_var_addr = 0, local_arg_addr = -12;     //bp offsets
+long local_var_addr = 0, local_arg_addr = -12;     //bp offsets
 
 
 
@@ -90,13 +90,13 @@ static void generate_instruction_from_str(char *str)
     subs = strtok(NULL, " ");
     if(subs)
     {
-        if(strcmp(subs, "bp")==0)       vector_last(code).arg = (int)&bp;
-        else if(strcmp(subs, "sp")==0)  vector_last(code).arg = (int)&sp;
-        else if(strcmp(subs, "ip")==0)  vector_last(code).arg = (int)&ip;
-        //else if(strcmp(subs, "ret")==0)  vector_last(code).arg = (int)(ip_start + vector_len(code) + 3-2);
+        if(strcmp(subs, "bp")==0)       vector_last(code).arg = (long)&bp;
+        else if(strcmp(subs, "sp")==0)  vector_last(code).arg = (long)&sp;
+        else if(strcmp(subs, "ip")==0)  vector_last(code).arg = (long)&ip;
+        //else if(strcmp(subs, "ret")==0)  vector_last(code).arg = (long)(ip_start + vector_len(code) + 3-2);
             //a func call takes 3 instrs. but by the time we're generating this instruction, we've already
             //made 2 extra instructions
-        else if(strcmp(subs, "eax")==0)  vector_last(code).arg = (int)&eax;
+        else if(strcmp(subs, "eax")==0)  vector_last(code).arg = (long)&eax;
         //else if(strcmp(subs, "ret")==0)  vector_last(code).arg = 123456;
         else vector_last(code).arg = strtol(subs, NULL, 10);
     }
@@ -118,7 +118,7 @@ void dump_intermediate(void)
 
 void resolve_jump_addresses(void)
 {
-    int *labels = vector(*labels, 0);
+    long *labels = vector(*labels, 0);
     
     //get all label addresses
     vector_foreach(code, i)
@@ -128,7 +128,7 @@ void resolve_jump_addresses(void)
             while(vector_len(labels) <= code[i].arg)
                 vector_append(labels, 0);
             assert(labels[code[i].arg] == 0);       //there must not be multiple labels with the same val
-            labels[code[i].arg] = (int)&(ip_start[i]);
+            labels[code[i].arg] = (long)&(ip_start[i]);
             vector_delete(&code, i);
         }
     }
@@ -153,7 +153,7 @@ void resolve_jump_addresses(void)
 }
 
 
-int define_var(symbol *sym)
+long define_var(symbol *sym)
 {
 	static char *var_addr = SIM_MEM + SIM_VARS_OFFSET;
 
@@ -164,7 +164,7 @@ int define_var(symbol *sym)
     //allocate the var
     if(sym->lifetime == STATIC)
     {
-        sym->var = var_addr;
+        sym->var = (long*)var_addr;
         var_addr += bytes;
         return 0;
     }
@@ -172,14 +172,14 @@ int define_var(symbol *sym)
     {
     	if(sym->is_argument)	//bp - offset
     	{
-    		sym->var = (char*)local_arg_addr;
+    		sym->var = (long*)local_arg_addr;
     		local_arg_addr -= bytes;
 	    	return bytes;
 	        
 	    }
 	    else	//local var (bp + offset)
 	    {
-	    	sym->var = (char*)local_var_addr;
+	    	sym->var = (long*)local_var_addr;
 	        local_var_addr += bytes;
 	        return bytes;
 	    }
@@ -196,7 +196,7 @@ meta_op META_OPS[] =
 
 static meta_op *meta_op_lookup(const char *mop)
 {
-    for(int i=0; i<sizeof(META_OPS)/sizeof(META_OPS[0]); i++)
+    for(long i=0; i<sizeof(META_OPS)/sizeof(META_OPS[0]); i++)
     {
         if(strcmp(mop, META_OPS[i].mnemonic)==0)
             return &META_OPS[i];

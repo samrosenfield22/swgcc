@@ -13,24 +13,24 @@
 typedef struct intermediate_spec_s
 {
     char *op;
-    int arg;
+    long arg;
 } intermediate_spec;
 
 //defined in simulator.c
 extern char SIM_MEM[];
 extern char *sp, *bp;
-extern int eax;
+extern long eax;
 extern intermediate_spec *ip, *ip_start, *ip_end;
 
 
-int run_intermediate_code(bool verbose);
+long run_intermediate_code(bool verbose);
 void skip_code(void);
 
-int print_instr(intermediate_spec *instr);
-int print_reg_or_val(int arg);
+long print_instr(intermediate_spec *instr);
+long print_reg_or_val(long arg);
 void dump_stack(void);
 
-int define_var(symbol *sym);
+long define_var(symbol *sym);
 char *get_var_addr(symbol *variable);
 
 void *get_code_addr(void);
