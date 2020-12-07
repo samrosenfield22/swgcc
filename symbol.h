@@ -9,6 +9,8 @@
 #include "ds/vector.h"
 #include "utils/printcolor.h"
 
+#define SIM_INT_SIZE    sizeof(long)
+
 typedef enum symbol_type_e
 {
     SYM_ANY,

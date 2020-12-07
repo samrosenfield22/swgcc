@@ -292,7 +292,7 @@ long print_reg_or_val(long arg)
 void dump_stack(void)
 {
     printf("bp=%d sp=%d\t(", bp-sim_stack, sp-sim_stack);
-    for(char *p=sim_stack; p<sp; p+=4)
+    for(char *p=sim_stack; p<sp; p+=SIM_INT_SIZE)
     {
         print_reg_or_val(*(long*)p);
         printf(" ");
@@ -310,27 +310,24 @@ long nop(long dummy)
 
 long sim_stack_push(long n)
 {
-    memcpy(sp, &n, 4);
-    sp += 4;
+    memcpy(sp, &n, SIM_INT_SIZE);
+    sp += SIM_INT_SIZE;
     return 0;
 }
 
 long sim_stack_pushv(long n)
 {
-    //*sp++ = *(long*)n;
     long pushv = *(long*)n;
-    //*sp = pushv;
-    memcpy(sp, &pushv, 4);
-    sp += 4;
+    memcpy(sp, &pushv, SIM_INT_SIZE);
+    sp += SIM_INT_SIZE;
     return 0;
 }
 
 long sim_stack_pushl(long n)
 {
     long *local = (long*)(bp + n);
-    //*sp = (long)local;
-    memcpy(sp, &local, 4);
-    sp += 4;
+    memcpy(sp, &local, SIM_INT_SIZE);
+    sp += SIM_INT_SIZE;
     return 0;
 }
 
@@ -338,19 +335,17 @@ long sim_stack_pushlv(long n)
 {
     long *local = (long*)(bp + n);
     long pushv = *local;
-    //*sp = pushv;
-    memcpy(sp, &pushv, 4);
-    sp += 4;
+    memcpy(sp, &pushv, SIM_INT_SIZE);
+    sp += SIM_INT_SIZE;
     return 0;
 }
 
 long sim_stack_pop(long d)
 {
     assert(sp > sim_stack);    //underflow
-    sp -= 4;
-    //long popval = *(long*)sp;
+    sp -= SIM_INT_SIZE;
     long popval;
-    memcpy(&popval, sp, 4);
+    memcpy(&popval, sp, SIM_INT_SIZE);
     if(d)
         *(long*)d = popval;
     return popval;

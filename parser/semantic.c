@@ -559,8 +559,8 @@ bool make_push(pnode *sem, pnode *base, pnode *dummy)
 	//bool local = get_nonterm_ancestor(bid, "block") &&
 	//(is_nonterm_type(tree_get_parent(bid), "decl") || is_nonterm_type(tree_get_parent(bid), "mdecl_assign"));
 
-	char instr[21], buf[21];
-	int arg;
+	char instr[41], buf[41];
+	long arg;
 	pnode *id = base->children[0];
 
 	//compose the push command string
@@ -572,10 +572,10 @@ bool make_push(pnode *sem, pnode *base, pnode *dummy)
 	else
 	{
 		bool local = id->sym->scope == BLOCK;
-		arg = (int)id->sym->var;
-		snprintf(instr, 20, "push%s%s", local? "l":"", (base->lval)? "":"v");
+		arg = (long)id->sym->var;
+		snprintf(instr, 40, "push%s%s", local? "l":"", (base->lval)? "":"v");
 	}
-	snprintf(buf, 20, "%s %d", instr, arg);
+	snprintf(buf, 40, "%s %ld", instr, arg);
 
 	pnode *pushact = pnode_create(false, SEMACT, buf, NULL);
 	tree_add_child(base, pushact);
@@ -643,7 +643,7 @@ void update_jump_semacts(pnode *loop, const char *jtype)
 	{
 		//int jid = *(jsemacts[i]->str + strlen(jtype) + 1)-'0';	//+1 for the space after "pushaddr"/"jumplabel"
 		int jid = atoi(jsemacts[i]->str + strlen(jtype) + 1);	//+1 for the space after "pushaddr"/"jumplabel"
-		if(jid > 3)	//if the semact was already updated, skip it
+		if(jid > JMPLABEL_MAX)	//if the semact was already updated, skip it
 			continue;
 		snprintf(buf, 40, "%s %d", jtype, jid + jlpair);
 		free(jsemacts[i]->str);

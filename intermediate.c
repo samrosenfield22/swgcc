@@ -24,7 +24,7 @@ static bool filter_semact(void *n);
 //
 intermediate_spec *code = NULL;
 
-long local_var_addr = 0, local_arg_addr = -12;     //bp offsets
+long local_var_addr = 0, local_arg_addr = -(3*SIM_INT_SIZE);     //bp offsets
 
 
 
@@ -37,7 +37,7 @@ void generate_intermediate_code(pnode *n)
     //declaration_only = false;
 
     local_var_addr = 0;
-    local_arg_addr = -12;
+    local_arg_addr = -(3*SIM_INT_SIZE);
 
     //make instructions for all semantics
     tree_traverse(n, if(filter_semact(n)) generate_instruction(n), true);

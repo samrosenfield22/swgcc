@@ -23,7 +23,7 @@ void symbol_table_initialize(void)
 
     SYMBOL_TABLE = vector(*SYMBOL_TABLE, 0);
 
-    symbol_create("int", SYM_TYPESPEC, &(typespec){4});
+    symbol_create("int", SYM_TYPESPEC, &(typespec){SIM_INT_SIZE});
     symbol_create("char", SYM_TYPESPEC, &(typespec){1});
     symbol_create("short", SYM_TYPESPEC, &(typespec){2});
     symbol_create("function", SYM_TYPESPEC, &(typespec){0});
@@ -206,14 +206,14 @@ void dump_symbol_table(void)
             printf("symbol %d:\t\'%s\' (", i, sym->name);
             if(strcmp(sym->type->name, "function") == 0)
             {
-                printf("%s, %d args)(@ %d)\n", sym->type->name, sym->argct, (int)(sym->var));
+                printf("%s, %d args)(@ %ld)\n", sym->type->name, sym->argct, (long)(sym->var));
             }
             else
             {
                 if(sym->lifetime==STATIC)
-                    printf("static %s)(@ %d) = %ld\n", sym->type->name, (int)(sym->var), *(sym->var));
+                    printf("static %s)(@ %ld) = %ld\n", sym->type->name, (long)(sym->var), *(sym->var));
                 else
-                    printf("auto %s)(@ bp+%d)\n", sym->type->name, (int)(sym->var));
+                    printf("auto %s)(@ bp+%ld)\n", sym->type->name, (long)(sym->var));
             }   
         }
     }
