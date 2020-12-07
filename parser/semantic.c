@@ -33,15 +33,6 @@ bool is_conditional(void *n);
 
 void update_jump_semacts(pnode *loop, const char *jtype);
 
-static pnode *get_nonterm_child(pnode *parent, char *ntstr);
-static int get_nonterm_child_index(pnode *parent, char *ntstr);
-static pnode *get_semact_child(pnode *parent, char *ntstr);
-//static int get_semact_child_index(pnode *parent, char *str);
-//static bool is_semact_type(pnode *n, const char *sem);
-static bool is_semact_special(pnode *n);
-static pnode *get_nonterm_child_deep(pnode *parent, char *ntstr);
-static bool is_nonterm_type(pnode *n, const char *ntstr);
-static pnode *get_nonterm_ancestor(pnode *n, const char *ntstr);
 
 //static void semantic_print_failure(void);
 
@@ -109,6 +100,21 @@ sem_compiler_act COMPILER_ACTIONS[] =
 	//{"", 0, },
 };
 
+//comparison function for qsort
+/*int compar_semacts_by_order(const void *a, const void *b)
+{
+	pnode *an = (pnode *)a;
+	pnode *bn = (pnode *)b;
+	
+	int aord = array_search(COMPILER_ACTIONS, ARRAY_LEN(COMPILER_ACTIONS), strstr(an->str, n->str));
+	int bord = array_search(COMPILER_ACTIONS, ARRAY_LEN(COMPILER_ACTIONS), strstr(bn->str, n->str));
+	
+	assert(aord != -1);
+	assert(bord != -1);
+
+	return aord - bord;
+}*/
+
 #define MAX_ORDER 5
 pnode **decl_var_list = NULL;	//list of id nodes to be declared
 pnode **decl_func_list = NULL;	//list of function id nodes
@@ -119,87 +125,50 @@ bool semantic_compiler_actions(pnode *pt)
 	if(decl_func_list) vector_destroy(decl_func_list);
 	decl_func_list = vector(*decl_func_list, 0);
 
+	sem_compiler_act *comp_actions = vector_from_arr(COMPILER_ACTIONS);
+
 	pnode **sem = tree_filter(pt, is_semact_special(n), true);
+
 	for(int ord=0; ord<=MAX_ORDER; ord++)
 	{
+		sem_compiler_act *comp_actions_order = vector_copy_filter(comp_actions, n.order == ord);
+
 		vector_foreach(sem, i)
 		{
-			for(int a=0; a<sizeof(COMPILER_ACTIONS)/sizeof(COMPILER_ACTIONS[0]); a++)
-			{	
-				sem_compiler_act *aspec = &COMPILER_ACTIONS[a];
-				if(aspec->order != ord)
-					continue;
+			//get the compiler action that corresponds to the current semact
+			int aindex = array_search(
+				comp_actions_order, vector_len(comp_actions_order), strstr(sem[i]->str, n.str));
+			if(aindex == -1) continue;	//wrong order
+			sem_compiler_act *aspec = &comp_actions_order[aindex];
 
-				char *match = strstr(sem[i]->str, aspec->str);
-				if(match)
-				{
-					assert(match == &(sem[i]->str[2]));	//after the '!', ' '
+			//get the arg(s)
+			pnode *arg[2] = {NULL, NULL};
+			char *path = sem[i]->str + strlen(aspec->str) + 3;	//move past the "! " at the beginning, and the ' '
+			char *end;
 
-					//get the arg(s)
-					pnode *arg[2] = {NULL, NULL};
-					//if(aspec->argc == 1)
-					match += strlen(aspec->str) + 1;
-					for(int ai=0; ai<aspec->argc; ai++)
-					{
-						//traverse the argument string (ex. parent.1 means get the parent, then get its child[1])
-						arg[ai] = sem[i];
-						while(1)
-						{
-							if(strstr(match, "parent")==match)	arg[ai] = tree_get_parent(arg[ai]);
-							else if('a'<=*match && *match<='z')
-							{
-								char *end = firstchr(match, ".,");
-								char buf[65];
-								strncpy(buf, match, end-match);
-								buf[end-match] = '\0';
+			for(int ai=0; ai<aspec->argc; ai++)
+			{
+				assert(path);
+				end = strchr(path, ',');
+				if(end)	*end = '\0';
 
-								//printf("moving to sibling %s\n", buf); getchar();
-								arg[ai] = get_nonterm_child(arg[ai], buf);
-							}
-							else arg[ai] = arg[ai]->children[atoi(match)];
+				arg[ai] = ptree_walk_path(sem[i], path);
 
-							//advance to the next delimiter
-							//while(!(*match=='.' || *match==',' || *match=='\0')) match++;
-							match = firstchr(match, ".,");
-							if(*match == ',')
-							{
-								match++;
-								if(*match == ' ') match++;
-								break;
-							}
-							else if(*match == '\0')
-							{
-								if(ai+1 == aspec->argc)
-									goto args_loaded;
-								else
-								{
-									printf("internal error: semact \'%s\' expects %d args, only given %d\n",
-										aspec->str, aspec->argc, ai+1);
-									exit(-1);
-								}
-							}
-							else if(*match == '.') match++;
-							else assert(0);
-						}
-					}
-					args_loaded:
-					
-
-					//call the function
-					if(!aspec->action(sem[i], arg[0], arg[1]))
-					{
-						//semantic_print_failure();
-						return false;
-					}
-
-					//
-					//printf("deleting derived semact: %s\n", sem[i]->str);
-					//node_delete_from_parent(sem[i]);
-					vector_delete(&sem, i);
-					i--;
-					break;
-				}
+				if(!end) break;
+				path = end+1;
+				if(*path == ' ') path++;
 			}
+
+			//call the function
+			if(!aspec->action(sem[i], arg[0], arg[1]))
+			{
+				//semantic_print_failure();
+				return false;
+			}
+
+			//remove the semact from the list so we don't keep searching for it
+			vector_delete(&sem, i);
+			i--;
 		}
 
 		//reload the semacts in case one got deleted (this only works between semacts of different orders)
@@ -211,7 +180,7 @@ bool semantic_compiler_actions(pnode *pt)
 	sem = tree_filter(pt, is_semact_special(n), true);
 	vector_foreach(sem, i)
 		node_delete_from_parent(sem[i]);
-
+	
 	return true;
 }
 
@@ -301,12 +270,9 @@ pnode *get_containing_block(pnode *n)
 //declare all vars in the list
 bool seqpt(pnode *sem, pnode *dummy, pnode *dummy2)
 {
-	//printf("declaring %d vars\n", vector_len(decl_var_list));
 	vector_foreach(decl_var_list, i)
 	{
 		pnode *id = decl_var_list[i];
-
-		//printfcol(GREEN_FONT, "declaring var %s\n", id->str);
 		
 		/* only look for a variable w matching name in the same scope! if there's a var (w same name)
 		in an outer scope, we can shadow it */
@@ -389,18 +355,6 @@ bool check_args(pnode *sem, pnode *funcid, pnode *arglist)
 
 bool reverse_args(pnode *sem, pnode *arglist, pnode *dummy)
 {
-	/*
-	//pnode **temp = vector(*temp, vector_len(arglist->children));
-	int argc = vector_len(arglist->children);
-	pnode *temp[argc];
-
-	vector_foreach(arglist->children, i)
-	{
-		temp[i] = arglist->children[argc-i-1];
-	}
-
-	memcpy(arglist->children, temp, argc * sizeof(pnode *));
-	*/
 	vector_reverse(arglist->children);
 	return true;
 }
@@ -653,98 +607,6 @@ void update_jump_semacts(pnode *loop, const char *jtype)
 	vector_destroy(jsemacts);
 }
 
-//returns the first child that matches
-static pnode *get_nonterm_child(pnode *parent, char *ntstr)
-{
-
-	int index = get_nonterm_child_index(parent, ntstr);
-	return (index==-1)? NULL : parent->children[index];
-}
-
-static int get_nonterm_child_index(pnode *parent, char *ntstr)
-{
-	vector_foreach(parent->children, i)
-	{
-		if(is_nonterm_type(parent->children[i], ntstr))
-			return i;
-	}
-	return -1;
-}
-
-/*static int get_semact_child_index(pnode *parent, char *str)
-{
-	vector_foreach(parent->children, i)
-	{
-		//pnode *c = parent->children[i];
-		//if(!c->is_nonterminal && c->ntype==SEMACT && strcmp(c->str, str)==0)
-		//	return i;
-		if(is_semact_type(parent->children[i], str))
-			return i;
-	}
-	return -1;
-}*/
-
-/*static bool is_semact_type(pnode *n, const char *sem)
-{
-	if(n->is_nonterminal || n->ntype!=SEMACT)
-		return false;
-	return (strcmp(n->str, sem)==0);
-}*/
-
-static bool is_semact_special(pnode *n)
-{
-	if(n->is_nonterminal || n->ntype!=SEMACT)
-		return false;
-	return (n->str[0] == '!' && n->str[1] == ' ');
-}
-
-//looks all the way through the tree, returns the first nonterm match
-static pnode *get_nonterm_child_deep(pnode *parent, char *ntstr)
-{
-	pnode **matches = tree_filter(parent, is_nonterm_type(n, ntstr) && n!=parent, true);
-	pnode *child = vector_len(matches)? matches[0] : NULL;
-	vector_destroy(matches);
-	return child;
-}
-
-static pnode *get_semact_child(pnode *parent, char *ntstr)
-{
-	vector_foreach(parent->children, i)
-	{
-		pnode *c = parent->children[i];
-		if(!c->is_nonterminal && c->ntype==SEMACT && strcmp(c->str, ntstr)==0)
-			return parent->children[i];
-	}
-	return NULL;
-}
-
-static bool is_nonterm_type(pnode *n, const char *ntstr)
-{
-	//for testing only -- if i mistype the nonterm string, this will catch it
-	if(vector_search_str(gg.nonterminals, ntstr) == -1)
-	{
-		printf("typo in nonterm name \"%s\" passed to is_nonterm_type (semantic.c)\n", ntstr);
-		assert(0);
-	}
-
-	if(!(n->is_nonterminal))
-		return false;
-	return (strcmp(gg.nonterminals[n->ntype], ntstr)==0);
-}
-
-static pnode *get_nonterm_ancestor(pnode *n, const char *ntstr)
-{
-	assert(n);
-	while(1)
-	{
-		n = tree_get_parent(n);
-		if(!n) break;
-		
-		if(is_nonterm_type(n, ntstr))
-			return n;
-	}
-	return NULL;
-}
 
 
 /*static void semantic_print_failure(void)

@@ -26,14 +26,12 @@ bool run_tests = false;
 bool verbosity = VERBOSE;
 FILE **diag_printfile = &outfile;
 
-void print_the_string(void *t)
-{
-    char *str = ((node*)t)->str;
-    puts(str);
-}
 
 int main(int argc, char *argv[])
 {
+    //int nums[] = {5, 6, 4, 3, 22, 17, -6, 1, 7, 333};
+    //printf("%d\n", array_search(nums, n<<1 == 34));
+    //return 0;
     
     handle_cmdline_options(argc, argv);
     banner();

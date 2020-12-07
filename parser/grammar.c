@@ -160,7 +160,7 @@ static prod_tok *consume_ident(char **s)
     char temp = *end;
     *end = '\0';
 
-    if(arr_search_str(ident_table, ident_len, *s) == -1)
+    if(array_search_str(ident_table, ident_len, *s) == -1)
     {
         printf("found bad char in grammar:\n%s\n", *s);
         assert(0);
@@ -426,7 +426,7 @@ int find_parse_table_column(char *str, prod_tok_type ntype)
   int index;
   if(ntype == IDENT)
   {
-      index = arr_search_str(ident_table, ident_len, str);
+      index = array_search_str(ident_table, ident_len, str);
       assert(index != -1);
   }
   else if(ntype == TERMINAL)
