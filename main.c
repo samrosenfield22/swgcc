@@ -268,6 +268,7 @@ void handle_cmdline_options(int argc, char *argv[])
                     exit(-1);
                 }
                 *diag_printfile = fp;
+                outname = optarg;
                 atexit(close_outfile);
                 break;
 

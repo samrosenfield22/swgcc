@@ -4,6 +4,7 @@
 #include <stdlib.h>		//for system()
 
 extern FILE *outfile;
+extern const char *outname;
 
 //background can be set with \033[fg;bgm
 //the set /p suppresses the newline
@@ -18,9 +19,22 @@ extern FILE *outfile;
 
 #define set_text_color(color)	system(color);
 
-#define printf(...)	({int cc = printf(__VA_ARGS__); if(outfile) fprintf(outfile, __VA_ARGS__); cc;})
+/*#define printf(...)	({int cc = printf(__VA_ARGS__); if(outfile) fprintf(outfile, __VA_ARGS__); cc;})
 #define puts(s)		({int cc = puts(s); if(outfile) {fputs(s, outfile); fputc('\n', outfile);} cc;})
-#define putchar(c)	({int cc = putchar(c); if(outfile) fputc(c, outfile); cc;})
+#define putchar(c)	({int cc = putchar(c); if(outfile) fputc(c, outfile); cc;})*/
+
+#define printf(...)	({int cc = printf(__VA_ARGS__); print_to_log_file(__VA_ARGS__); cc;})
+#define puts(s)		({int cc = puts(s); print_to_log_file("%s\n", s); cc;})
+#define putchar(c)	({int cc = putchar(c); print_to_log_file("%c", c); cc;})
+
+#define print_to_log_file(...) ({		\
+	if(outfile) {						\
+		fprintf(outfile, __VA_ARGS__);	\
+		fclose(outfile);				\
+		outfile = fopen(outname, "a");	\
+		assert(outfile);				\
+	}									\
+})
 
 #define printfcol(color, ...)			\
 	({								\
