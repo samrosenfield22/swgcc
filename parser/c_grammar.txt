@@ -47,7 +47,9 @@
 <more_declare>	::= "," {pop} <declare>
 
 <full_dcltor>	::= <dcltor> {! seqpt}
-<dcltor>		::= <dclptr>* <dcltor>
+;<dcltor>		::= <dclptr>* <dcltor>
+<dcltor>		::= <dclptr> <dcltor>
+<dcltor>		::= "(" <dcltor> ")"
 <dcltor>		::= <base_id> <dclsuffix>?
 <dclsuffix>		::= "(" <funcdeflist> ")"
 <dclsuffix>		::= <dclarr>*

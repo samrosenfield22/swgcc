@@ -159,7 +159,7 @@ long define_var(symbol *sym)
 
     //get number of bytes
     symbol *type = sym->type;
-    size_t bytes = type->tspec->bytes;
+    size_t bytes = type->type_bytes;
 
     //allocate the var
     if(sym->lifetime == STATIC)

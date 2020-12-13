@@ -31,13 +31,16 @@ int main(int argc, char *argv[])
 {
     //int nums[] = {5, 6, 4, 3, 22, 17, -6, 1, 7, 333};
     //printf("%d\n", array_search(nums, n<<1 == 34));
+    
+    int *(*n[20]);
+    printf("%d\n", sizeof(n));
     //return 0;
     
     handle_cmdline_options(argc, argv);
     banner();
 
     symbol_table_initialize();
-    init_type_system();
+    //init_type_system();
     lexer_initialize();
 
     load_grammar("parser/c_grammar.txt");

@@ -83,6 +83,7 @@ void *tree_get_ancestor(void *n, size_t cnt)
 
 int *branch_list, *branch_ct;	//node lists for tracking branches during print_pretty
 
+//if print is NULL, it just prints the node string
 void tree_print_pretty(void *t, void (*print)(void *t))
 {
 	branch_list = vector(*branch_list, 0);
@@ -97,7 +98,7 @@ void tree_print_pretty(void *t, void (*print)(void *t))
 static void tree_print_pretty_rec(void *t, int depth, void (*print)(void *t))
 {
 	node *tt = (node*)t;
-	const bool compress_tree = true;
+	const bool compress_tree = false;
 
 	//compress the tree by skipping nodes that only have 1 child
 	if(compress_tree)
@@ -135,7 +136,8 @@ static void tree_print_pretty_rec(void *t, int depth, void (*print)(void *t))
 
 	//print the node
 	//if(!pt->is_nonterminal && pt->ntype == SEMACT)		set_text_color(MAGENTA_FONT);
-	print(t);	//depth??
+	if(print)	print(t);
+	else 		puts(tt->str);
 	//if(!pt->is_nonterminal && pt->ntype == SEMACT)		set_text_color(RESET_FONT);
 
 	if(d != -1)
@@ -179,7 +181,30 @@ void dag_add_child(void *root, void *child)
 	vector_append(parents, root);
 }
 
+//returns a vector containing all common parents to nodes in the input vector
+void *dag_get_common_parents(void *d)
+{
+	node **dags = (node**)d;
+	node **commons = vector(*commons, 0);
 
+	vector_foreach(dags[0]->parents, i)
+	{
+		node *p = dags[0]->parents[i];
+		bool found = true;
+		for(int j=1; j<vector_len(dags); j++)
+		{
+			if(vector_search(dags[j]->parents, (int)p) == -1)
+			{
+				found = false;
+				break;
+			}
+		}
+		if(found)
+			vector_append(commons, p);
+	}
+
+	return commons;
+}
 
 
 

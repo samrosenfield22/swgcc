@@ -23,10 +23,10 @@ void symbol_table_initialize(void)
 
     SYMBOL_TABLE = vector(*SYMBOL_TABLE, 0);
 
-    symbol_create("int", SYM_TYPESPEC, &(typespec){SIM_INT_SIZE});
-    symbol_create("char", SYM_TYPESPEC, &(typespec){1});
-    symbol_create("short", SYM_TYPESPEC, &(typespec){2});
-    symbol_create("function", SYM_TYPESPEC, &(typespec){0});
+    symbol_create("int", SYM_BASIC_TYPE, SIM_INT_SIZE);
+    symbol_create("char", SYM_BASIC_TYPE, 1);
+    symbol_create("short", SYM_BASIC_TYPE, 2);
+    symbol_create("function", SYM_BASIC_TYPE, 0);
 
     //symbol_create("lmao", SYM_IDENTIFIER, NULL);
 
@@ -39,11 +39,16 @@ void symbol_table_initialize(void)
 symbol *symbol_search(const char *name, symbol_type sym_type)
 {
 
-    symbol **match = vector_copy_filter(SYMBOL_TABLE, 
+    /*symbol **match = vector_copy_filter(SYMBOL_TABLE, 
         (n->sym_type == sym_type || sym_type==SYM_ANY) && strcmp(name, n->name)==0);
     //symbol *m = vector_is_empty(match)? NULL : match[0];
     symbol *m = vector_is_empty(match)? NULL : vector_last(match);
     vector_destroy(match);
+    return m;*/
+
+    int index = array_search(SYMBOL_TABLE, vector_len(SYMBOL_TABLE),
+        (n->sym_type == sym_type || sym_type==SYM_ANY) && strcmp(name, n->name)==0);
+    symbol *m = (index==-1)? NULL : SYMBOL_TABLE[index];
     return m;
 }
 
@@ -93,6 +98,8 @@ symbol *symbol_search_by_addr(char *varaddr)
 
 symbol *symbol_search_function_addr(char *varaddr)
 {
+    return NULL;    //until functions are worked into the type system
+
     symbol **match = vector_copy_filter(SYMBOL_TABLE,
         n->sym_type == SYM_IDENTIFIER && strcmp(n->type->name, "function")==0 && n->var < (long*)varaddr);
     symbol *m = vector_is_empty(match)? NULL : vector_last(match);  //assumes that functions are stored in the symbol
@@ -101,7 +108,7 @@ symbol *symbol_search_function_addr(char *varaddr)
     return m;
 }
 
-symbol *symbol_create(const char *name, symbol_type sym_type, typespec *type)
+symbol *symbol_create(const char *name, symbol_type sym_type, size_t type_bytes)
 {
     assert(sym_type != SYM_ANY);
     if(sym_type == SYM_ANY)
@@ -121,13 +128,19 @@ symbol *symbol_create(const char *name, symbol_type sym_type, typespec *type)
     vector_last(SYMBOL_TABLE)->argct = 0;
     vector_last(SYMBOL_TABLE)->argbytes = 0;
 
+    //
+    vector_last(SYMBOL_TABLE)->parents = vector(void*, 0);
+    vector_last(SYMBOL_TABLE)->children = vector(void*, 0);
+    vector_last(SYMBOL_TABLE)->str = vector_last(SYMBOL_TABLE)->name;
+
     //if we're defining a new type, add the type specification
-    if(type)
+    /*if(type)
     {
         vector_last(SYMBOL_TABLE)->tspec = malloc(sizeof(typespec));
         memcpy(vector_last(SYMBOL_TABLE)->tspec, type, sizeof(typespec));
         //vector_last(SYMBOL_TABLE)->type = type;
-    }
+    }*/
+    vector_last(SYMBOL_TABLE)->type_bytes = type_bytes;
 
     return vector_last(SYMBOL_TABLE);
 }
@@ -171,8 +184,7 @@ void delete_all_locals(void)
     vector_foreach(SYMBOL_TABLE, i)
     {
         symbol *sym = SYMBOL_TABLE[i];
-        //if(sym->sym_type==SYM_IDENTIFIER && strcmp(sym->type->name, "function")!=0 && sym->lifetime==AUTO)
-        if(sym->sym_type==SYM_IDENTIFIER && strcmp(sym->type->name, "function")!=0 && sym->scope==BLOCK)
+        if(sym->sym_type==SYM_IDENTIFIER && /*strcmp(sym->type->name, "function")!=0 &&*/ sym->scope==BLOCK)
         {
             vector_delete(&SYMBOL_TABLE, i);
             i--;
@@ -180,9 +192,10 @@ void delete_all_locals(void)
     }
 }
 
+//delet soon
 void assign_type_to_symbol(symbol *sym, const char *typestr)
 {
-    symbol *typesym = symbol_search(typestr, SYM_TYPESPEC);
+    symbol *typesym = symbol_search(typestr, SYM_BASIC_TYPE);
     if(!typesym)
     {
         assert(0);
@@ -204,16 +217,31 @@ void dump_symbol_table(void)
 
 
             printf("symbol %d:\t\'%s\' (", i, sym->name);
-            if(strcmp(sym->type->name, "function") == 0)
+            //if(strcmp(sym->type->name, "function") == 0)
+            if(sym->type == SYMBOL_TABLE[3])    //until funcs are worked into type system
             {
                 printf("%s, %d args)(@ %ld)\n", sym->type->name, sym->argct, (long)(sym->var));
             }
             else
             {
                 if(sym->lifetime==STATIC)
-                    printf("static %s)(@ %ld) = %ld\n", sym->type->name, (long)(sym->var), *(sym->var));
+                {
+                    printf("static ");
+                    //print_type(sym->type);
+                    tree_traverse(sym->type, printf("%s", n->str), true);
+                    printf(")(@ %ld) = %ld\n", (long)(sym->var), *(sym->var));
+
+                    //printf("static %s)(@ %ld) = %ld\n", sym->type->name, (long)(sym->var), *(sym->var));
+                }
                 else
-                    printf("auto %s)(@ bp+%ld)\n", sym->type->name, (long)(sym->var));
+                {
+                    printf("auto ");
+                    //print_type(sym->type);
+                    tree_traverse(sym->type, printf("%s", n->str), true);
+                    printf(")(@ bp+%ld)\n", (long)(sym->var));
+
+                    //printf("auto %s)(@ bp+%ld)\n", sym->type->name, (long)(sym->var));
+                }
             }   
         }
     }

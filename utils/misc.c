@@ -54,7 +54,7 @@ char *firstchr(const char *str, const char *cs)
 
 	i know, i know, it's horrible and ugly.
 */
-void sort(void *base, size_t nitems, size_t size, int (*compar)(const void *, const void*))
+/*void sort(void *base, size_t nitems, size_t size, int (*compar)(const void *, const void*))
 {
 	//add the order to each item
 	typedef struct extend_s
@@ -81,5 +81,5 @@ void sort(void *base, size_t nitems, size_t size, int (*compar)(const void *, co
 		void *item = (char*)base + i*size;
 		memcpy(item, ext_base[i].item, size);
 	}
-}
+}*/
 

@@ -5,23 +5,15 @@
 
 #include "ptree.h"
 #include "../ds/vector.h"
+#include "../utils/misc.h"
 //#include "../ds/tree.h"
 //#include "../symbol.h"
 
-typedef struct typetree_s
-{
-	struct 	//must be first!
-	{
-		pnode *parent;
-	    pnode **children;
-	    char *str;
-	};
 
-	
+typedef struct typenode_s typenode;
 
-} typetree;
-
-void init_type_system(void);
+//void init_type_system(void);
 void resolve_type(symbol *sym, pnode *dcltor, char *type);
+void print_type(typenode *t);
 
 #endif //TYPESYS_H_

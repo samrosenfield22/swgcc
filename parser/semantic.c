@@ -288,7 +288,7 @@ bool seqpt(pnode *sem, pnode *dummy, pnode *dummy2)
 			SEMANTIC_STATUS = SEM_REDECLARED_VAR;
 			return false;
 		}
-		id->sym = symbol_create(id->str, SYM_IDENTIFIER, NULL);
+		id->sym = symbol_create(id->str, SYM_IDENTIFIER, 0);
 
 		//get variable attributes from the context
 		pnode *decl = get_nonterm_ancestor(id, "funcdefarg");	//could use this to know if it's is_argument
@@ -304,7 +304,7 @@ bool seqpt(pnode *sem, pnode *dummy, pnode *dummy2)
 		id->sym->is_argument = get_nonterm_ancestor(id, "funcdeflist");
 		
 		resolve_type(id->sym, get_nonterm_ancestor(id, "full_dcltor"), type);
-		assign_type_to_symbol(id->sym, type);
+		//assign_type_to_symbol(id->sym, type);
 
 		int varsize = define_var(id->sym);
 
@@ -434,7 +434,7 @@ bool define_function(pnode *sem, pnode *dcltor, pnode *dummy)
 	//printfcol(GREEN_FONT, "\tdefining function: %s\n", id->str); getchar();
 
 	//declare the function
-	id->sym = symbol_create(id->str, SYM_IDENTIFIER, NULL);
+	id->sym = symbol_create(id->str, SYM_IDENTIFIER, 0);
 	assign_type_to_symbol(id->sym, "function");
 	id->sym->var = get_code_addr();
 	id->sym->declared = true;
@@ -446,9 +446,10 @@ bool define_function(pnode *sem, pnode *dcltor, pnode *dummy)
 	size_t bytes = 0;
 	vector_foreach(types, i)
 	{
-		symbol *type = symbol_search(types[i]->str, SYM_TYPESPEC);
+		symbol *type = symbol_search(types[i]->str, SYM_BASIC_TYPE);
 		id->sym->argct++;
-		bytes += type->tspec->bytes;
+		//bytes += type->tspec->bytes;
+		bytes += type->type_bytes;
 	}
 	id->sym->argbytes = bytes;
 	vector_destroy(defargs); vector_destroy(types);

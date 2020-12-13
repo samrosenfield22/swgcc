@@ -35,6 +35,7 @@ void tree_print_pretty(void *t, void (*print)(void *t));
 void *dag_create(const char *str);
 void *dag_create_extra(size_t size, const char *str);
 void dag_add_child(void *root, void *child);
+void *dag_get_common_parents(void *d);
 
 void node_delete_from_parent(void *n);
 
